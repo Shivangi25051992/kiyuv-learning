@@ -1,0 +1,1501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover" />
+<meta name="robots" content="noindex,nofollow" />
+<title>🧠 Yuvin & Kiki's Learning Academy</title>
+<!-- ============ PWA ============ -->
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#4f8bff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#2a1f55" media="(prefers-color-scheme: dark)" />
+<!-- iOS Safari "Add to Home Screen" -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Learning" />
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+<link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167.png" />
+<link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152.png" />
+<!-- Favicons -->
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
+<style>
+  :root{
+    --blue:#4f8bff; --rose:#ff86c8; --violet:#c084fc; --green:#3ddc97;
+    --red:#ff6b6b; --orange:#ff9f43; --gold:#ffd700; --sky:#7ec8ff;
+    --bg:#fafbff; --surface:#fff; --text:#2a2a4a; --muted:#6a7290;
+    --border:#e5e8f0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{margin:0;padding:0;min-height:100vh;font-family:'Comic Sans MS','Chalkboard SE',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:16px}
+  .nav{background:#fff;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,0.08);position:sticky;top:0;z-index:50}
+  .nav .back{color:#7b61ff;text-decoration:none;font-weight:700;font-size:14px}
+  .nav .title{font-size:20px;font-weight:700;background:linear-gradient(90deg,var(--rose),var(--violet),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .nav .right{display:flex;gap:10px;align-items:center}
+  .toggle{background:#f5f5f5;border:none;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:700}
+  .toggle.off{opacity:.5}
+
+  .hero{text-align:center;padding:24px 20px 10px}
+  .hero h1{font-size:36px;margin:0 0 6px;background:linear-gradient(90deg,var(--rose),var(--violet),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hero p{color:var(--muted);margin:0;font-size:14px}
+
+  .who-tabs{display:flex;justify-content:center;gap:16px;padding:14px 20px;flex-wrap:wrap}
+  .who{background:#fff;border:4px solid transparent;border-radius:24px;padding:14px 24px;font-size:20px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:0 4px 12px rgba(0,0,0,0.08);transition:all .2s}
+  .who.yuvin{color:var(--blue)} .who.kiki{color:var(--rose)}
+  .who:hover{transform:translateY(-2px)}
+  .who.active.yuvin{border-color:var(--blue);background:#eaf2ff}
+  .who.active.kiki{border-color:var(--rose);background:#fff0f7}
+  .who .age{font-size:12px;opacity:.7;background:rgba(0,0,0,0.05);padding:2px 8px;border-radius:999px}
+
+  .tab-switch{display:flex;gap:6px;background:#eef0f7;border-radius:999px;padding:4px;margin:0 auto 20px;max-width:500px}
+  .tab-switch button{flex:1;background:transparent;border:none;padding:10px;border-radius:999px;cursor:pointer;font-weight:700;font-size:13px;color:#888}
+  .tab-switch button.active{background:#fff;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+
+  .container{max-width:1100px;margin:0 auto;padding:10px 20px 40px}
+  .stats-bar{background:#fff;border-radius:16px;padding:14px 18px;margin-bottom:18px;display:flex;justify-content:space-around;flex-wrap:wrap;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,0.06)}
+  .stat{text-align:center;min-width:70px}
+  .stat .v{font-size:22px;font-weight:700;line-height:1}
+  .stat .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+  .stat.stars .v{color:var(--gold)}
+  .stat.streak .v{color:var(--orange)}
+  .stat.correct .v{color:var(--green)}
+  .stat.badges .v{color:var(--violet)}
+
+  /* === Curriculum Map === */
+  .cmap{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-bottom:24px}
+  .subject-card{background:#fff;border-radius:18px;padding:16px;box-shadow:0 4px 14px rgba(0,0,0,0.06);border-left:5px solid var(--border);transition:all .2s}
+  .subject-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.1)}
+  .subject-card h3{margin:0 0 4px;font-size:18px;display:flex;align-items:center;gap:8px}
+  .subject-card .meta{font-size:11px;color:var(--muted);margin-bottom:10px}
+  .subject-card .topics{display:flex;flex-wrap:wrap;gap:6px}
+  .topic-chip{padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;background:#f5f7fb;color:var(--text);border:2px solid transparent;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
+  .topic-chip:hover{background:var(--blue);color:#fff;transform:scale(1.05)}
+  .topic-chip.locked{opacity:.4;cursor:not-allowed;background:#eef0f7}
+  .topic-chip.locked:hover{transform:none;background:#eef0f7;color:var(--text)}
+  .topic-chip.mastered{background:linear-gradient(135deg,#ffd166,#ff9f43);color:#fff}
+  .topic-chip .diff{font-size:9px;opacity:.7;margin-left:3px}
+
+  .exam-track{background:linear-gradient(135deg,#ff9f43,#ffd166);color:#fff;padding:14px 16px;border-radius:14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+  .exam-track:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(255,159,67,0.3)}
+  .exam-track .et-left{font-weight:700;font-size:15px}
+  .exam-track .et-meta{font-size:12px;opacity:.9;margin-top:2px}
+  .exam-track .et-right{font-size:24px}
+
+  .alignment-badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700;margin-right:4px}
+  .b-cbse{background:#fee2e2;color:#dc2626}
+  .b-cc{background:#dbeafe;color:#2563eb}
+  .b-uk{background:#d1fae5;color:#059669}
+  .b-au{background:#fef3c7;color:#d97706}
+  .b-olym{background:#ede9fe;color:#7c3aed}
+
+  /* === Game Play === */
+  .game{background:#fff;border-radius:24px;padding:28px;box-shadow:0 6px 24px rgba(0,0,0,0.08);text-align:center;min-height:400px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+  .back-btn{position:absolute;top:20px;left:20px;background:#f5f5f5;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;font-size:18px}
+  .game .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;width:100%;max-width:600px;gap:10px;flex-wrap:wrap}
+  .game .q{font-size:36px;font-weight:700;margin-bottom:16px;min-height:50px;line-height:1.3}
+  .game .q.small{font-size:24px}
+  .game .q.med{font-size:28px}
+  .game .hint{color:var(--muted);font-size:13px;margin-bottom:14px;min-height:20px;max-width:600px}
+  .game .ops{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;max-width:600px}
+  .op{background:#f0f7ff;border:4px solid var(--blue);border-radius:16px;padding:14px 20px;font-size:22px;font-weight:700;cursor:pointer;min-width:80px;transition:all .15s;color:var(--blue)}
+  .op:hover{background:var(--blue);color:#fff;transform:scale(1.05)}
+  .kiki .op{border-color:var(--rose);color:var(--rose);background:#fff0f7;font-size:28px;padding:20px 28px;min-width:110px}
+  .kiki .op:hover{background:var(--rose);color:#fff}
+  .op.correct{background:var(--green)!important;color:#fff!important;border-color:var(--green)!important;animation:pop .4s}
+  .op.wrong{background:var(--red)!important;color:#fff!important;border-color:var(--red)!important;animation:shake .3s}
+  @keyframes pop{0%,100%{transform:scale(1)}50%{transform:scale(1.2)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+  @keyframes fall{0%{transform:translateY(-100px) rotate(0deg);opacity:1}100%{transform:translateY(600px) rotate(720deg);opacity:0}}
+  @keyframes rise{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-80px) scale(1.5);opacity:0}}
+  @keyframes starBurst{0%{transform:scale(0);opacity:1}100%{transform:scale(3);opacity:0}}
+  @keyframes trophy{0%{transform:scale(0);opacity:0}50%{transform:scale(1.3);opacity:1}100%{transform:scale(1);opacity:1}}
+
+  .score-pill{background:linear-gradient(90deg,#fff4d6,#ffe9a8);border-radius:999px;padding:6px 14px;font-weight:700;font-size:14px}
+  .streak-pill{background:linear-gradient(90deg,#fff0e4,#ffd7bb);border-radius:999px;padding:6px 14px;font-weight:700;font-size:14px}
+  .level-pill{background:linear-gradient(90deg,#e0f2fe,#bae6fd);border-radius:999px;padding:6px 14px;font-weight:700;font-size:14px;color:var(--blue)}
+
+  .progress-bar{width:100%;max-width:600px;height:8px;background:#eef0f7;border-radius:999px;overflow:hidden;margin-bottom:14px}
+  .progress-bar div{height:100%;background:linear-gradient(90deg,var(--green),var(--blue));transition:width .3s}
+
+  .msg{font-size:24px;font-weight:700;color:var(--green);min-height:36px;margin-top:14px}
+  .msg.wrong-msg{color:var(--red)}
+
+  .celebrate{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:100}
+  .confetti{position:absolute;width:12px;height:12px;animation:fall 2s linear forwards}
+  .star-burst{position:fixed;font-size:50px;pointer-events:none;z-index:101;animation:starBurst 1s ease-out forwards}
+  .float-emoji{position:fixed;font-size:40px;pointer-events:none;z-index:101;animation:rise 1.5s ease-out forwards}
+  .trophy-pop{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);font-size:100px;z-index:102;animation:trophy 1.5s ease-out forwards;pointer-events:none}
+
+  .kiki-obj{font-size:100px;cursor:pointer;display:inline-block;margin:10px;transition:all .15s}
+  .kiki-obj:hover{transform:scale(1.15)}
+  .color-btn{width:100px;height:100px;border-radius:24px;border:6px solid #fff;cursor:pointer;margin:8px;box-shadow:0 6px 16px rgba(0,0,0,0.15);transition:all .15s;font-size:0}
+  .color-btn:hover{transform:scale(1.1)}
+  .count-item{font-size:50px;display:inline-block;margin:3px;animation:bounce 0.5s ease}
+  @keyframes bounce{0%{transform:translateY(-30px);opacity:0}100%{transform:translateY(0);opacity:1}}
+
+  /* === Leaderboard === */
+  .leader{background:#fff;border-radius:20px;padding:24px;box-shadow:0 6px 24px rgba(0,0,0,0.08)}
+  .leader h2{margin:0 0 20px;text-align:center;font-size:26px;background:linear-gradient(90deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .vs-row{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;padding:14px;background:#f9f9ff;border-radius:16px;margin-bottom:10px}
+  .vs-side{text-align:center}
+  .vs-side .big{font-size:32px;font-weight:700;line-height:1}
+  .vs-side .lab{font-size:12px;color:var(--muted);margin-top:4px}
+  .vs-side.yuvin .big{color:var(--blue)}
+  .vs-side.kiki .big{color:var(--rose)}
+  .vs-mid{font-size:22px;color:#aaa}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;justify-content:center}
+  .badge{background:linear-gradient(135deg,#fff8d6,#ffe9a8);border:2px solid var(--gold);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;color:#8a6d00}
+  .badge.locked{background:#f0f0f0;border-color:#ddd;color:#aaa;opacity:.6}
+
+  .footer{text-align:center;padding:30px 20px;color:#999;font-size:12px}
+
+  @media(max-width:600px){
+    .hero h1{font-size:28px}
+    .game .q{font-size:26px}
+    .op{font-size:18px;padding:12px 16px}
+    .kiki .op{font-size:22px;min-width:90px}
+    .kiki-obj{font-size:80px}
+    .color-btn{width:85px;height:85px}
+  }
+
+  /* === Login Gate === */
+  .login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#ff86c8 0%,#c084fc 50%,#4f8bff 100%);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px}
+  .login-card{background:#fff;border-radius:28px;padding:40px 32px;max-width:420px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.25);text-align:center}
+  .login-card h2{margin:0 0 6px;font-size:28px;background:linear-gradient(90deg,var(--rose),var(--violet),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .login-card .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+  .login-card .emoji{font-size:64px;margin-bottom:10px}
+  .login-input{width:100%;padding:14px 16px;border:2px solid var(--border);border-radius:14px;font-size:16px;font-family:inherit;margin-bottom:12px;outline:none;transition:border .15s}
+  .login-input:focus{border-color:var(--blue)}
+  .login-input.pin{letter-spacing:8px;text-align:center;font-size:24px;font-weight:700}
+  .login-btn{width:100%;padding:14px;background:linear-gradient(90deg,var(--blue),var(--violet));color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;margin-top:8px}
+  .login-btn:hover{opacity:.9}
+  .login-btn:disabled{opacity:.4;cursor:not-allowed}
+  .login-err{color:var(--red);font-size:13px;margin-top:8px;font-weight:600;min-height:20px}
+  .login-note{color:var(--muted);font-size:11px;margin-top:16px;line-height:1.5}
+  .login-step{display:none}
+  .login-step.active{display:block}
+  .otp-boxes{display:flex;gap:10px;justify-content:center;margin-bottom:12px}
+  .otp-box{width:48px;height:56px;border:2px solid var(--border);border-radius:12px;text-align:center;font-size:24px;font-weight:700;outline:none;font-family:inherit}
+  .otp-box:focus{border-color:var(--blue)}
+  .mobile-flag{display:inline-block;padding:6px 10px;background:#f5f5f5;border-radius:10px 0 0 10px;border:2px solid var(--border);border-right:none;font-size:14px;font-weight:700}
+  .mobile-input-wrap{display:flex;margin-bottom:12px}
+  .mobile-input-wrap .login-input{border-radius:0 14px 14px 0;border-left:none;margin-bottom:0}
+  .logout-btn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 10px;border-radius:999px;font-size:11px;cursor:pointer;margin-right:8px}
+  .logout-btn:hover{color:var(--red);border-color:var(--red)}
+  .google-btn{width:100%;padding:14px 16px;background:#fff;color:#3c4043;border:2px solid #dadce0;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .15s;margin-bottom:8px}
+  .google-btn:hover{background:#f8f9fa;box-shadow:0 2px 6px rgba(0,0,0,0.1)}
+  .google-btn:disabled{opacity:.6;cursor:not-allowed}
+
+  /* === Touch-device fix: iOS Safari keeps :hover state stuck on the last tapped element.
+       When we render the next question, the button in the same screen position
+       inherits the "hover" look (solid blue) and looks pre-selected.
+       Solution: suppress hover visual states on devices that don't have real hover. === */
+  @media (hover: none) {
+    .op:hover          { background:#f0f7ff; color:var(--blue); transform:none; }
+    .kiki .op:hover    { background:#fff0f7; color:var(--rose); transform:none; }
+    .kiki-obj:hover    { transform:none; }
+    .color-btn:hover   { transform:none; }
+    .topic-chip:hover  { background:#f5f7fb; color:var(--text); transform:none; }
+    .topic-chip.mastered:hover { background:linear-gradient(135deg,#ffd166,#ff9f43); color:#fff; }
+    .subject-card:hover{ transform:none; box-shadow:0 4px 14px rgba(0,0,0,0.06); }
+    .who:hover         { transform:none; }
+    .gcard:hover       { transform:none; box-shadow:0 4px 16px rgba(0,0,0,0.08); }
+    .exam-track:hover  { transform:none; box-shadow:none; }
+    .google-btn:hover  { background:#fff; box-shadow:none; }
+    .login-btn:hover   { opacity:1; }
+  }
+
+  /* Give touch users feedback while actively pressing (gone the moment they lift). */
+  .op:active         { transform:scale(0.96); background:var(--blue); color:#fff; }
+  .kiki .op:active   { transform:scale(0.96); background:var(--rose); color:#fff; }
+  .kiki-obj:active   { transform:scale(0.95); }
+  .color-btn:active  { transform:scale(0.92); }
+  .topic-chip:active { transform:scale(0.96); background:var(--blue); color:#fff; }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN GATE ============ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="emoji">🌈</div>
+    <h2>Learning Academy</h2>
+    <p class="sub" id="loginSubtitle">Sign in with Google · then just 4-digit PIN</p>
+
+    <!-- Step 1: Google Sign-In (first time) -->
+    <div class="login-step active" id="step-google">
+      <button class="google-btn" onclick="doGoogleSignIn()" id="googleBtn">
+        <svg width="20" height="20" viewBox="0 0 48 48" style="margin-right:10px">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Sign in with Google
+      </button>
+      <div class="login-err" id="googleErr"></div>
+      <div class="login-note">
+        Your Google account is used once to recognize you.<br>
+        After this, you'll use a <b>4-digit PIN</b> for fast login — no Google sign-in needed each time.
+      </div>
+    </div>
+
+    <!-- Step 2: PIN set (first time) -->
+    <div class="login-step" id="step-setpin">
+      <p class="sub">👋 Hi <b id="welcomeName">there</b>! Set a 4-digit PIN for next time</p>
+      <input type="tel" class="login-input pin" id="pinInput" placeholder="• • • •" maxlength="4" inputmode="numeric" pattern="[0-9]*">
+      <button class="login-btn" onclick="savePIN()">Save & Start Learning →</button>
+      <div class="login-err" id="pinErr"></div>
+      <div class="login-note">
+        PIN is stored only on this device.<br>
+        <a href="#" onclick="event.preventDefault();skipPIN()" style="color:var(--blue)">Skip PIN — just enter the app</a>
+      </div>
+    </div>
+
+    <!-- Step 3: PIN login (returning) -->
+    <div class="login-step" id="step-pinlogin">
+      <div style="margin-bottom:8px"><img id="pinAvatar" src="" style="width:56px;height:56px;border-radius:50%;border:3px solid var(--border);display:none"></div>
+      <p class="sub">Welcome back, <b id="pinName">friend</b>! Enter your PIN</p>
+      <input type="tel" class="login-input pin" id="pinLoginInput" placeholder="• • • •" maxlength="4" inputmode="numeric" pattern="[0-9]*">
+      <button class="login-btn" onclick="verifyPIN()">Unlock 🔓</button>
+      <div class="login-err" id="pinLoginErr"></div>
+      <div class="login-note">
+        <a href="#" onclick="event.preventDefault();forgotPIN()" style="color:var(--blue)">Forgot PIN? Sign in with Google again</a> ·
+        <a href="#" onclick="event.preventDefault();switchAccount()" style="color:var(--muted)">Switch account</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="nav">
+  <a class="back" href="../index.html">← Home</a>
+  <div class="title">🧠 Learning Academy</div>
+  <div class="right">
+    <button class="logout-btn" id="logoutBtn" onclick="logout()" title="Sign out">🚪 Logout</button>
+    <button class="toggle" id="soundToggle">🔊 Sound</button>
+  </div>
+</div>
+
+<div class="hero">
+  <h1>Learn Everything! 🚀</h1>
+  <p>India CBSE · US Common Core · UK National Curriculum · Australia ACARA · Olympiad Prep</p>
+</div>
+
+<div class="who-tabs">
+  <button class="who yuvin active" data-who="yuvin">
+    <span>👦 Yuvin</span>
+    <span class="age">Age 6 · targeting Gr 3-4</span>
+  </button>
+  <button class="who kiki" data-who="kiki">
+    <span>👧 Kiki</span>
+    <span class="age">Age 2 · targeting Pre-K/K</span>
+  </button>
+</div>
+
+<div class="tab-switch">
+  <button class="active" id="tab-curriculum" onclick="showTab('curriculum')">📚 Curriculum Map</button>
+  <button id="tab-games" onclick="showTab('games')">🎮 Play</button>
+  <button id="tab-leader" onclick="showTab('leader')">🏆 Leaderboard</button>
+</div>
+
+<div class="container" id="root"></div>
+
+<div class="footer">Made with ❤️ by Papa · All-in-browser · No ads · No tracking · Content expandable by request</div>
+<div class="celebrate" id="celebrate"></div>
+
+<!-- Install Prompt (shown when browser supports beforeinstallprompt) -->
+<div id="installBanner" style="display:none;position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#fff;border:2px solid var(--blue);border-radius:16px;padding:12px 16px;box-shadow:0 10px 30px rgba(0,0,0,0.2);z-index:200;display:none;align-items:center;gap:12px;max-width:380px">
+  <div style="font-size:32px">📱</div>
+  <div style="flex:1">
+    <div style="font-weight:700;font-size:14px">Install Learning App</div>
+    <div style="font-size:12px;color:var(--muted)">Fast launch, full-screen, works offline</div>
+  </div>
+  <button onclick="installApp()" style="background:var(--blue);color:#fff;border:none;border-radius:999px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px">Install</button>
+  <button onclick="document.getElementById('installBanner').style.display='none'" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px">×</button>
+</div>
+
+<!-- iOS Add-to-Home instructions (iOS Safari doesn't support beforeinstallprompt) -->
+<div id="iosHint" style="display:none;position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#fff;border:2px solid var(--rose);border-radius:16px;padding:14px 18px;box-shadow:0 10px 30px rgba(0,0,0,0.2);z-index:200;max-width:360px;font-size:13px;line-height:1.5">
+  <div style="display:flex;gap:10px;align-items:start">
+    <div style="font-size:28px">🍎</div>
+    <div>
+      <div style="font-weight:700;margin-bottom:4px">Install on iPad</div>
+      <div style="color:var(--muted)">Tap <b style="color:var(--blue)">Share</b> (box with arrow ↑) → <b style="color:var(--blue)">Add to Home Screen</b> → Add. You'll get a real-looking app icon.</div>
+    </div>
+    <button onclick="document.getElementById('iosHint').style.display='none';localStorage.setItem('kidsAcad_iosHintDismissed','1')" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px">×</button>
+  </div>
+</div>
+
+<script>
+// ===== PWA: register service worker + handle install prompt =====
+(function pwaBoot(){
+  // Register service worker
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('/sw.js').catch(e=>console.warn('SW reg failed:', e));
+    });
+  }
+
+  // Detect if already installed (standalone mode)
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if(isStandalone) return; // Already installed, hide prompts
+
+  // Android / Chrome: capture install prompt
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e=>{
+    e.preventDefault();
+    deferredPrompt = e;
+    const banner = document.getElementById('installBanner');
+    if(!localStorage.getItem('kidsAcad_installDismissed')){
+      banner.style.display = 'flex';
+    }
+  });
+  window.installApp = async () => {
+    if(!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('installBanner').style.display = 'none';
+    if(result.outcome === 'dismissed') localStorage.setItem('kidsAcad_installDismissed','1');
+  };
+
+  // iOS Safari: show manual "Add to Home Screen" hint (once)
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  if(isIOS && isSafari && !localStorage.getItem('kidsAcad_iosHintDismissed')){
+    setTimeout(()=>{
+      document.getElementById('iosHint').style.display = 'block';
+    }, 2500);
+  }
+})();
+</script>
+
+<!-- Firebase SDK (modular) -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged }
+    from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+  import { getFirestore, doc, getDoc, setDoc, serverTimestamp, enableIndexedDbPersistence }
+    from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBjk8W82VcWzoxqeR7uTobpM2wT92gfpqA",
+    authDomain: "kids-playground-5b055.firebaseapp.com",
+    projectId: "kids-playground-5b055",
+    storageBucket: "kids-playground-5b055.firebasestorage.app",
+    messagingSenderId: "266803710188",
+    appId: "1:266803710188:web:1c92a9959e043b9742bdc9",
+    measurementId: "G-EZMG7YJ3E1"
+  };
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  try { setPersistence(auth, browserLocalPersistence); } catch(e) {}
+  try { enableIndexedDbPersistence(db); } catch(e) {}
+
+  // Expose minimal helpers to global scope
+  window.__fb = {
+    signIn: async () => {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, provider);
+      return {
+        uid: result.user.uid,
+        email: result.user.email,
+        name: result.user.displayName,
+        photo: result.user.photoURL,
+      };
+    },
+    signOut: () => signOut(auth),
+    uid: () => auth.currentUser?.uid || null,
+    saveProgress: async (kid, data) => {
+      const u = auth.currentUser;
+      if(!u) return;
+      await setDoc(doc(db, 'users', u.uid, 'progress', kid), {
+        ...data, updatedAt: serverTimestamp(), email: u.email
+      }, { merge: true });
+    },
+    loadProgress: async (kid) => {
+      const u = auth.currentUser;
+      if(!u) return null;
+      const snap = await getDoc(doc(db, 'users', u.uid, 'progress', kid));
+      return snap.exists() ? snap.data() : null;
+    },
+    saveProfile: async (data) => {
+      const u = auth.currentUser;
+      if(!u) return;
+      await setDoc(doc(db, 'users', u.uid), {
+        ...data, email: u.email, lastSeen: serverTimestamp()
+      }, { merge: true });
+    },
+    onAuthChange: (cb) => onAuthStateChanged(auth, cb),
+  };
+  window.dispatchEvent(new Event('fb-ready'));
+</script>
+
+<script>
+// ========================================================================
+// LOGIN GATE (Google Sign-In once + PIN thereafter)
+// ========================================================================
+// How it works:
+//   1. First visit: user clicks "Sign in with Google" → Firebase popup →
+//      we store { email, name, photo, uid } in localStorage.
+//   2. User sets a 4-digit PIN (optional but recommended).
+//   3. Next visits: PIN entry screen with their avatar + name shown.
+//   4. "Forgot PIN" → Google sign-in again (resets the PIN).
+//   5. Logout → clears session; Google sign-in required again.
+//   Session is per-device (localStorage). Progress stays separately.
+
+function L(id){ return document.getElementById(id); }
+function showStep(name){
+  document.querySelectorAll('.login-step').forEach(s=>s.classList.remove('active'));
+  L('step-'+name).classList.add('active');
+}
+
+async function doGoogleSignIn(){
+  const btn = L('googleBtn');
+  const err = L('googleErr');
+  err.textContent = '';
+  btn.disabled = true;
+  btn.innerHTML = '<span style="margin-right:8px">⏳</span> Opening Google...';
+  try {
+    // Wait for Firebase SDK to be ready
+    if(!window.__fb) await new Promise(r => window.addEventListener('fb-ready', r, {once:true}));
+    const user = await window.__fb.signIn();
+
+    // Check if this device already has a session for this email
+    const existing = JSON.parse(localStorage.getItem('kidsAcad_session')||'null');
+    if(existing && existing.email === user.email && existing.pin){
+      // Same user, PIN already set → go straight to PIN screen
+      localStorage.setItem('kidsAcad_session', JSON.stringify({...existing, lastLogin: Date.now()}));
+      enterApp();
+      return;
+    }
+
+    // New session or new user
+    localStorage.setItem('kidsAcad_session', JSON.stringify({
+      email: user.email,
+      name: user.name || user.email.split('@')[0],
+      photo: user.photo,
+      uid: user.uid,
+      createdAt: existing?.createdAt || Date.now(),
+      lastLogin: Date.now(),
+      pin: existing?.email === user.email ? existing.pin : null  // keep PIN if same user
+    }));
+    L('welcomeName').textContent = (user.name||'').split(' ')[0] || 'there';
+    if(!existing || existing.email !== user.email || !existing.pin){
+      showStep('setpin');
+      setTimeout(()=>L('pinInput').focus(), 100);
+    } else {
+      enterApp();
+    }
+  } catch (e) {
+    console.error(e);
+    err.textContent = e.code === 'auth/popup-closed-by-user'
+      ? 'Sign-in cancelled — please try again.'
+      : 'Sign-in failed. Check your internet and try again.';
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 48 48" style="margin-right:10px"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Sign in with Google';
+  }
+}
+
+function savePIN(){
+  const pin = L('pinInput').value.trim();
+  const err = L('pinErr');
+  if(!/^[0-9]{4}$/.test(pin)){ err.textContent='Enter a 4-digit PIN'; return; }
+  const session = JSON.parse(localStorage.getItem('kidsAcad_session'));
+  session.pin = pin;
+  localStorage.setItem('kidsAcad_session', JSON.stringify(session));
+  enterApp();
+}
+function skipPIN(){ enterApp(); }
+
+function verifyPIN(){
+  const entered = L('pinLoginInput').value.trim();
+  const err = L('pinLoginErr');
+  const session = JSON.parse(localStorage.getItem('kidsAcad_session'));
+  if(entered !== session.pin){ err.textContent='Wrong PIN. Try again.'; return; }
+  session.lastLogin = Date.now();
+  localStorage.setItem('kidsAcad_session', JSON.stringify(session));
+  enterApp();
+}
+function forgotPIN(){
+  // Fall back to Google sign-in
+  const session = JSON.parse(localStorage.getItem('kidsAcad_session')||'null');
+  if(session){ delete session.pin; localStorage.setItem('kidsAcad_session', JSON.stringify(session)); }
+  showStep('google');
+}
+function switchAccount(){
+  localStorage.removeItem('kidsAcad_session');
+  showStep('google');
+}
+
+async function enterApp(){
+  L('loginScreen').style.display = 'none';
+  // Pull progress from Firestore (cross-device sync)
+  if(typeof syncFromCloud === 'function'){
+    try { await syncFromCloud(); } catch(e) { console.warn(e); }
+  }
+  if(typeof showCurriculum === 'function') showCurriculum();
+}
+
+async function logout(){
+  if(!confirm('Sign out? Your progress will stay saved on this device.')) return;
+  try { if(window.__fb) await window.__fb.signOut(); } catch(e){}
+  localStorage.removeItem('kidsAcad_session');
+  location.reload();
+}
+
+// Bootstrap login flow on page load
+(function bootLogin(){
+  const session = JSON.parse(localStorage.getItem('kidsAcad_session')||'null');
+  if(session && session.pin){
+    // Returning user with PIN
+    L('pinName').textContent = (session.name||'').split(' ')[0] || 'friend';
+    if(session.photo){
+      const img = L('pinAvatar');
+      img.src = session.photo;
+      img.style.display = 'inline-block';
+    }
+    showStep('pinlogin');
+    setTimeout(()=>L('pinLoginInput').focus(), 100);
+  } else if(session) {
+    // Session exists but no PIN — straight in
+    L('loginScreen').style.display = 'none';
+  } else {
+    showStep('google');
+  }
+  L('pinInput').onkeydown = e=>{ if(e.key==='Enter') savePIN(); };
+  L('pinLoginInput').onkeydown = e=>{ if(e.key==='Enter') verifyPIN(); };
+})();
+
+// ========================================================================
+// SOUND (Web Audio API — no files)
+// ========================================================================
+let audioCtx = null;
+let soundOn = localStorage.getItem('kidsSoundOn') !== '0';
+function initAudio(){ if(!audioCtx){ try{audioCtx = new (window.AudioContext||window.webkitAudioContext)()}catch(e){} } }
+function tone(f,d,type='sine',v=0.25,delay=0){
+  if(!soundOn||!audioCtx) return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type=type; o.frequency.value=f; o.connect(g); g.connect(audioCtx.destination);
+  const t=audioCtx.currentTime+delay;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.001,t+d);
+  o.start(t); o.stop(t+d);
+}
+function song(notes){ if(!soundOn||!audioCtx) return; let t=0; notes.forEach(([f,d,v])=>{tone(f,d,'sine',v||0.22,t); t+=d*0.8;}); }
+const sfx = {
+  correct:  ()=>song([[523,.1],[659,.1],[784,.2]]),
+  mega:     ()=>song([[523,.1],[659,.1],[784,.1],[1047,.3]]),
+  streak:   ()=>song([[659,.08],[784,.08],[988,.08],[1319,.2]]),
+  wrong:    ()=>tone(220,.15,'sine',.12),
+  trophy:   ()=>song([[523,.12],[659,.12],[784,.12],[1047,.12],[1319,.35]]),
+  start:    ()=>song([[784,.08],[988,.15]]),
+  levelup:  ()=>song([[659,.1],[784,.1],[988,.1],[1319,.15],[1568,.3]]),
+};
+document.getElementById('soundToggle').onclick = ()=>{
+  soundOn=!soundOn; localStorage.setItem('kidsSoundOn', soundOn?'1':'0');
+  const b=document.getElementById('soundToggle');
+  b.classList.toggle('off',!soundOn); b.textContent=soundOn?'🔊 Sound':'🔇 Muted';
+  if(soundOn){initAudio(); sfx.start();}
+};
+if(!soundOn){ const b=document.getElementById('soundToggle'); b.classList.add('off'); b.textContent='🔇 Muted'; }
+document.body.addEventListener('click', ()=>{ initAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }, {once:true});
+
+// ========================================================================
+// HELPERS
+// ========================================================================
+const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const shuffle = a => a.slice().sort(()=>Math.random()-0.5);
+const uniqOpts = (correct, generator, n=3) => {
+  const set = new Set([correct]);
+  let tries=0;
+  while(set.size < n+1 && tries<50){ set.add(generator()); tries++; }
+  return shuffle([...set]);
+};
+
+// ========================================================================
+// CONTENT LIBRARIES — hand-crafted + generators
+// ========================================================================
+
+// -------- KIKI content (Pre-K/K) --------
+const KIKI_ALPHABET = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+const KIKI_ALPHABET_WORDS = {
+  A:['Apple','🍎'], B:['Ball','⚽'], C:['Cat','🐱'], D:['Dog','🐶'], E:['Egg','🥚'],
+  F:['Fish','🐟'], G:['Goat','🐐'], H:['Hat','👒'], I:['Ice','🧊'], J:['Jam','🍓'],
+  K:['Kite','🪁'], L:['Lion','🦁'], M:['Moon','🌙'], N:['Nest','🪺'], O:['Owl','🦉'],
+  P:['Pig','🐷'], Q:['Queen','👸'], R:['Rose','🌹'], S:['Sun','☀️'], T:['Tree','🌳'],
+  U:['Umbrella','☂️'], V:['Van','🚐'], W:['Water','💧'], X:['Xylophone','🎹'], Y:['Yarn','🧶'], Z:['Zebra','🦓'],
+};
+const KIKI_COLORS = [
+  {name:'Red',hex:'#ff6b6b'},{name:'Blue',hex:'#4f8bff'},{name:'Yellow',hex:'#ffd166'},
+  {name:'Green',hex:'#3ddc97'},{name:'Pink',hex:'#ff86c8'},{name:'Purple',hex:'#c084fc'},
+  {name:'Orange',hex:'#ff9f43'},{name:'Brown',hex:'#a0522d'},{name:'Black',hex:'#2a2a2a'},{name:'White',hex:'#f5f5f5'},
+];
+const KIKI_SHAPES = [
+  {emoji:'🔴',name:'Circle'},{emoji:'🟦',name:'Square'},{emoji:'🔺',name:'Triangle'},
+  {emoji:'⭐',name:'Star'},{emoji:'💛',name:'Heart'},{emoji:'🔶',name:'Diamond'},
+  {emoji:'🟪',name:'Rectangle'},{emoji:'🥚',name:'Oval'},
+];
+const KIKI_ANIMALS = [
+  {emoji:'🐶',name:'Dog',sound:'Woof Woof!'},{emoji:'🐱',name:'Cat',sound:'Meow Meow!'},
+  {emoji:'🐮',name:'Cow',sound:'Moo Moo!'},{emoji:'🐷',name:'Pig',sound:'Oink Oink!'},
+  {emoji:'🐸',name:'Frog',sound:'Ribbit!'},{emoji:'🐑',name:'Sheep',sound:'Baa Baa!'},
+  {emoji:'🐔',name:'Hen',sound:'Cluck Cluck!'},{emoji:'🦁',name:'Lion',sound:'Roar!'},
+  {emoji:'🦆',name:'Duck',sound:'Quack Quack!'},{emoji:'🐴',name:'Horse',sound:'Neigh!'},
+  {emoji:'🦉',name:'Owl',sound:'Hoot Hoot!'},{emoji:'🐘',name:'Elephant',sound:'Trumpet!'},
+  {emoji:'🐭',name:'Mouse',sound:'Squeak!'},{emoji:'🐝',name:'Bee',sound:'Buzz!'},
+];
+const KIKI_FRUITS = [
+  {emoji:'🍎',name:'Apple'},{emoji:'🍌',name:'Banana'},{emoji:'🍇',name:'Grapes'},
+  {emoji:'🍊',name:'Orange'},{emoji:'🍓',name:'Strawberry'},{emoji:'🍉',name:'Watermelon'},
+  {emoji:'🥭',name:'Mango'},{emoji:'🍑',name:'Peach'},{emoji:'🍍',name:'Pineapple'},{emoji:'🥝',name:'Kiwi'},
+];
+const KIKI_OPPOSITES = [
+  ['Big','Small','🐘','🐭'],['Hot','Cold','🔥','❄️'],['Happy','Sad','😀','😢'],
+  ['Up','Down','⬆️','⬇️'],['Day','Night','☀️','🌙'],['Fast','Slow','🏎️','🐢'],
+  ['Open','Closed','📖','📕'],['Full','Empty','🥛','🥃'],['Clean','Dirty','✨','🧦'],
+];
+const KIKI_BODY = [
+  {emoji:'👁️',name:'Eye'},{emoji:'👂',name:'Ear'},{emoji:'👃',name:'Nose'},
+  {emoji:'👄',name:'Mouth'},{emoji:'🖐️',name:'Hand'},{emoji:'🦶',name:'Foot'},
+  {emoji:'💪',name:'Arm'},{emoji:'🧠',name:'Brain'},{emoji:'🦷',name:'Tooth'},
+];
+const KIKI_HINDI_LETTERS = [
+  {letter:'अ',word:'अनार',emoji:'🍎',sound:'A'},{letter:'आ',word:'आम',emoji:'🥭',sound:'Aa'},
+  {letter:'इ',word:'इमली',emoji:'🫘',sound:'I'},{letter:'उ',word:'उल्लू',emoji:'🦉',sound:'U'},
+  {letter:'क',word:'कमल',emoji:'🪷',sound:'Ka'},{letter:'ख',word:'खरगोश',emoji:'🐰',sound:'Kha'},
+  {letter:'ग',word:'गाय',emoji:'🐄',sound:'Ga'},{letter:'च',word:'चाँद',emoji:'🌙',sound:'Cha'},
+];
+
+// -------- YUVIN content (Grade 3-4) --------
+const YUVIN_SPELLING_G3 = [
+  'ADDRESS','ANIMAL','BEAUTIFUL','BECAUSE','BEFORE','BELIEVE','BEHIND','BRIGHT','CARRY','CENTRE',
+  'CIRCLE','COMPLETE','COULD','DIFFERENT','DURING','EARLY','EARTH','ENOUGH','EXCITING','FAMOUS',
+  'FEBRUARY','FOREST','FRIEND','GARDEN','GROUP','HEALTH','HEART','HISTORY','HUNGRY','IMPORTANT',
+  'ISLAND','JOURNEY','KITCHEN','KNOWLEDGE','LANGUAGE','LAUGH','LEARN','LIBRARY','MACHINE','MEASURE',
+  'MIGHT','MINUTE','MOUNTAIN','MUSEUM','NATURAL','NUMBER','OCEAN','OFTEN','OPPOSITE','OXYGEN',
+  'PEOPLE','PICTURE','PLANET','POSSIBLE','QUESTION','QUICKLY','RHYTHM','SCHOOL','SCIENCE','SEARCH',
+  'SEASON','SPECIAL','SQUIRREL','STRAIGHT','STRANGE','STRENGTH','SUDDEN','SURPRISE','TOGETHER','THOUGHT',
+  'THROUGH','THURSDAY','TOMORROW','UNIVERSE','UNUSUAL','VEGETABLE','WEATHER','WEDNESDAY','YESTERDAY','ZEBRA',
+];
+const YUVIN_SPELLING_BEE = [  // harder, spelling bee style
+  'AMPHIBIAN','APPLAUSE','APPEARANCE','ARCHITECT','AUDIENCE','AUXILIARY','BALLERINA','BOUQUET','BRIGADE','CALENDAR',
+  'CALLIGRAPHY','CATASTROPHE','CEMETERY','CHAUFFEUR','COLOSSAL','CONSCIOUS','COURAGEOUS','DICTIONARY','DILIGENT','ECCENTRIC',
+  'ENVELOPE','ENTHUSIASM','EXHILARATION','FEBRUARY','FOREIGN','GENUINE','GORGEOUS','GRATITUDE','GUARANTEE','HARMONIOUS',
+  'HOROSCOPE','HYPOTHESIS','ILLUMINATION','IMAGINATION','INDEPENDENCE','INTELLIGENT','JEOPARDY','KNOWLEDGE','LABORATORY','LIEUTENANT',
+  'LIQUOR','MAGNIFICENT','MINIATURE','MISCHIEVOUS','MOSQUITO','NAUSEOUS','NECESSARY','NOTICEABLE','OBEDIENT','OCCASION',
+];
+const YUVIN_VOCAB_SYNONYMS = [
+  ['Happy','Joyful'],['Sad','Unhappy'],['Big','Large'],['Small','Tiny'],['Fast','Quick'],
+  ['Begin','Start'],['End','Finish'],['Afraid','Scared'],['Smart','Clever'],['Brave','Fearless'],
+  ['Cold','Chilly'],['Hot','Warm'],['Angry','Mad'],['Beautiful','Pretty'],['Famous','Well-known'],
+  ['Hard','Difficult'],['Easy','Simple'],['Rich','Wealthy'],['Poor','Needy'],['Ancient','Old'],
+  ['Modern','New'],['Fix','Repair'],['Hide','Conceal'],['Shout','Yell'],['Whisper','Murmur'],
+  ['Bright','Shiny'],['Dark','Dim'],['Enormous','Huge'],['Little','Tiny'],['Wise','Clever'],
+];
+const YUVIN_VOCAB_ANTONYMS = [
+  ['Happy','Sad'],['Big','Small'],['Fast','Slow'],['Hot','Cold'],['Up','Down'],
+  ['Good','Bad'],['Rich','Poor'],['Strong','Weak'],['Full','Empty'],['Light','Dark'],
+  ['Day','Night'],['Young','Old'],['Hard','Soft'],['Tall','Short'],['Thick','Thin'],
+  ['Open','Close'],['Wet','Dry'],['Clean','Dirty'],['Easy','Difficult'],['Early','Late'],
+  ['Begin','End'],['Love','Hate'],['Push','Pull'],['Give','Take'],['Buy','Sell'],
+  ['Ancient','Modern'],['Brave','Cowardly'],['Expand','Shrink'],['Enter','Exit'],['Accept','Reject'],
+];
+const YUVIN_GK_INDIA = [
+  {q:'What is the capital of India?',a:'New Delhi',opts:['Mumbai','New Delhi','Kolkata','Chennai']},
+  {q:'How many states does India have?',a:'28',opts:['25','28','29','30']},
+  {q:'What is the national animal of India?',a:'Tiger',opts:['Lion','Tiger','Elephant','Peacock']},
+  {q:'What is the national bird of India?',a:'Peacock',opts:['Eagle','Parrot','Peacock','Sparrow']},
+  {q:'Which river is known as the "Ganga of the South"?',a:'Godavari',opts:['Krishna','Godavari','Kaveri','Tungabhadra']},
+  {q:'Who was the first Prime Minister of India?',a:'Jawaharlal Nehru',opts:['Mahatma Gandhi','Jawaharlal Nehru','Sardar Patel','Subhash Chandra Bose']},
+  {q:'What is the national flower of India?',a:'Lotus',opts:['Rose','Lotus','Marigold','Sunflower']},
+  {q:'Which is the highest mountain peak in India?',a:'Kangchenjunga',opts:['Everest','K2','Kangchenjunga','Nanda Devi']},
+  {q:'What is the currency of India?',a:'Rupee',opts:['Dollar','Rupee','Euro','Yen']},
+  {q:'On which day is Independence Day celebrated?',a:'15 August',opts:['26 January','15 August','2 October','14 November']},
+  {q:'Which is the longest river in India?',a:'Ganga',opts:['Yamuna','Ganga','Brahmaputra','Godavari']},
+  {q:'Who wrote the Indian national anthem?',a:'Rabindranath Tagore',opts:['Bankim Chandra','Rabindranath Tagore','Sarojini Naidu','Subramania Bharati']},
+  {q:'What is the largest state of India by area?',a:'Rajasthan',opts:['Rajasthan','Madhya Pradesh','Maharashtra','Uttar Pradesh']},
+  {q:'Which city is called the "City of Lakes"?',a:'Udaipur',opts:['Jaipur','Udaipur','Srinagar','Nainital']},
+  {q:'What is India\'s national fruit?',a:'Mango',opts:['Banana','Mango','Apple','Pineapple']},
+];
+const YUVIN_GK_WORLD = [
+  {q:'What is the largest planet in our solar system?',a:'Jupiter',opts:['Earth','Jupiter','Saturn','Mars']},
+  {q:'Which planet is known as the Red Planet?',a:'Mars',opts:['Venus','Mars','Mercury','Jupiter']},
+  {q:'How many continents are there?',a:'7',opts:['5','6','7','8']},
+  {q:'What is the largest ocean?',a:'Pacific',opts:['Atlantic','Indian','Pacific','Arctic']},
+  {q:'What is the capital of France?',a:'Paris',opts:['London','Paris','Berlin','Rome']},
+  {q:'What is the capital of Australia?',a:'Canberra',opts:['Sydney','Melbourne','Canberra','Perth']},
+  {q:'What is the capital of USA?',a:'Washington D.C.',opts:['New York','Washington D.C.','Los Angeles','Chicago']},
+  {q:'Which is the smallest continent?',a:'Australia',opts:['Europe','Australia','Antarctica','South America']},
+  {q:'Which is the largest desert in the world?',a:'Sahara',opts:['Gobi','Sahara','Kalahari','Thar']},
+  {q:'What is the tallest mountain in the world?',a:'Mt. Everest',opts:['K2','Mt. Everest','Kangchenjunga','Lhotse']},
+  {q:'Who painted the Mona Lisa?',a:'Leonardo da Vinci',opts:['Michelangelo','Leonardo da Vinci','Van Gogh','Picasso']},
+  {q:'How many colors are in a rainbow?',a:'7',opts:['5','6','7','8']},
+  {q:'Which animal is the fastest on land?',a:'Cheetah',opts:['Lion','Cheetah','Horse','Leopard']},
+  {q:'What gas do plants breathe in?',a:'Carbon dioxide',opts:['Oxygen','Carbon dioxide','Nitrogen','Hydrogen']},
+  {q:'Which is the largest country by area?',a:'Russia',opts:['China','USA','Russia','Canada']},
+];
+const YUVIN_SCIENCE = [
+  {q:'How many planets are in our solar system?',a:'8',opts:['7','8','9','10']},
+  {q:'What is the center of our solar system?',a:'Sun',opts:['Earth','Moon','Sun','Jupiter']},
+  {q:'What do plants need to make food?',a:'Sunlight',opts:['Sunlight','Darkness','Sand','Oil']},
+  {q:'How many bones are in an adult human body?',a:'206',opts:['150','206','250','300']},
+  {q:'What is the hardest natural substance?',a:'Diamond',opts:['Iron','Gold','Diamond','Rock']},
+  {q:'How many teeth does an adult have?',a:'32',opts:['28','30','32','34']},
+  {q:'What organ pumps blood in our body?',a:'Heart',opts:['Lungs','Heart','Liver','Kidney']},
+  {q:'Which animal lays eggs but is not a bird?',a:'Snake',opts:['Cow','Dog','Snake','Cat']},
+  {q:'What force pulls things towards Earth?',a:'Gravity',opts:['Magnetism','Gravity','Friction','Push']},
+  {q:'What is the gas we breathe in to stay alive?',a:'Oxygen',opts:['Nitrogen','Oxygen','Carbon dioxide','Hydrogen']},
+  {q:'What are baby frogs called?',a:'Tadpoles',opts:['Puppies','Tadpoles','Cubs','Kittens']},
+  {q:'How many states of matter are there?',a:'3',opts:['2','3','4','5']},
+  {q:'What is the process of water changing to vapor?',a:'Evaporation',opts:['Freezing','Melting','Evaporation','Condensation']},
+  {q:'Which planet is closest to the Sun?',a:'Mercury',opts:['Venus','Mercury','Earth','Mars']},
+  {q:'What gives plants their green color?',a:'Chlorophyll',opts:['Sunlight','Water','Chlorophyll','Soil']},
+];
+const YUVIN_GRAMMAR = [
+  {q:'Which is a NOUN? (Naming word)',a:'Cat',opts:['Run','Cat','Big','Slowly']},
+  {q:'Which is a VERB? (Action word)',a:'Jump',opts:['Blue','Table','Jump','Sweet']},
+  {q:'Which is an ADJECTIVE? (Describes)',a:'Happy',opts:['Happy','Run','Book','Quickly']},
+  {q:'Choose the correct: "She ___ to school every day."',a:'goes',opts:['go','going','goes','gone']},
+  {q:'Past tense of "run":',a:'ran',opts:['runned','ran','running','runs']},
+  {q:'Past tense of "eat":',a:'ate',opts:['eated','ate','eaten','eating']},
+  {q:'Plural of "child":',a:'children',opts:['childs','children','childrens','childes']},
+  {q:'Plural of "mouse":',a:'mice',opts:['mouses','mice','mices','mouse']},
+  {q:'Pick the correct article: "___ apple is red."',a:'An',opts:['A','An','The','No article']},
+  {q:'Pick the correct article: "I have ___ book."',a:'a',opts:['a','an','the','no']},
+  {q:'Which word is a PRONOUN?',a:'They',opts:['Table','They','Walk','Red']},
+  {q:'"Quickly" is a/an:',a:'Adverb',opts:['Noun','Verb','Adjective','Adverb']},
+  {q:'Opposite of "day" is:',a:'night',opts:['sun','night','sky','morning']},
+  {q:'Which word rhymes with "cat"?',a:'bat',opts:['dog','bat','sun','pen']},
+  {q:'Which letter is a vowel?',a:'A',opts:['B','C','A','D']},
+];
+const YUVIN_OLYMPIAD_LOGIC = [
+  {q:'Which number comes next? 2, 4, 6, 8, ?',a:'10',opts:['9','10','11','12']},
+  {q:'Which number comes next? 1, 3, 6, 10, 15, ?',a:'21',opts:['18','20','21','22'],hint:'Triangle numbers'},
+  {q:'What comes next? A, C, E, G, ?',a:'I',opts:['H','I','J','K'],hint:'Skip 1 letter each time'},
+  {q:'If 2+3=10, 3+4=21, 4+5=36, then 5+6=?',a:'55',opts:['49','55','56','61'],hint:'n² + n of the first number... try harder'},
+  {q:'What is the next shape? 🔵🔴🔵🔴🔵?',a:'🔴',opts:['🔵','🔴','🟡','🟢']},
+  {q:'Count the triangles: 🔺🔺🔺🔺',a:'4',opts:['3','4','5','6']},
+  {q:'If today is Monday, what day was yesterday?',a:'Sunday',opts:['Saturday','Sunday','Tuesday','Friday']},
+  {q:'How many sides does a hexagon have?',a:'6',opts:['4','5','6','8']},
+  {q:'How many corners does a square have?',a:'4',opts:['3','4','5','6']},
+  {q:'If 3 cats eat 3 fish in 3 minutes, how many cats eat 9 fish in 9 minutes?',a:'3',opts:['3','6','9','27'],hint:'Same rate!'},
+  {q:'What is half of 100?',a:'50',opts:['25','50','75','100']},
+  {q:'What is a quarter of 100?',a:'25',opts:['10','20','25','50']},
+  {q:'Which fraction is bigger? 1/2 or 1/4?',a:'1/2',opts:['1/2','1/4','Same','Can\'t tell']},
+  {q:'How many minutes in 1 hour?',a:'60',opts:['50','60','100','120']},
+  {q:'How many hours in a day?',a:'24',opts:['12','18','24','30']},
+  {q:'How many months in a year?',a:'12',opts:['10','11','12','14']},
+  {q:'How many days in a week?',a:'7',opts:['5','6','7','8']},
+  {q:'What comes after Wednesday?',a:'Thursday',opts:['Tuesday','Thursday','Friday','Saturday']},
+];
+
+// -------- Math question generators (infinite) --------
+const mathGen = {
+  add_easy: () => { const a=rand(1,20), b=rand(1,20); return {q:`${a} + ${b}`, a:a+b}; },
+  add_med:  () => { const a=rand(20,99), b=rand(20,99); return {q:`${a} + ${b}`, a:a+b}; },
+  add_hard: () => { const a=rand(100,999), b=rand(100,999); return {q:`${a} + ${b}`, a:a+b}; },
+  sub_easy: () => { const a=rand(5,20), b=rand(1,a); return {q:`${a} − ${b}`, a:a-b}; },
+  sub_med:  () => { const a=rand(50,100), b=rand(10,a); return {q:`${a} − ${b}`, a:a-b}; },
+  sub_hard: () => { const a=rand(500,1000), b=rand(100,a); return {q:`${a} − ${b}`, a:a-b}; },
+  mul_easy: () => { const a=rand(1,10), b=rand(1,5); return {q:`${a} × ${b}`, a:a*b}; },
+  mul_med:  () => { const a=rand(2,12), b=rand(2,12); return {q:`${a} × ${b}`, a:a*b}; },
+  mul_hard: () => { const a=rand(10,25), b=rand(5,15); return {q:`${a} × ${b}`, a:a*b}; },
+  div_easy: () => { const b=rand(2,5), q=rand(1,10); return {q:`${b*q} ÷ ${b}`, a:q}; },
+  div_med:  () => { const b=rand(2,12), q=rand(2,12); return {q:`${b*q} ÷ ${b}`, a:q}; },
+  div_hard: () => { const b=rand(3,15), q=rand(10,50); return {q:`${b*q} ÷ ${b}`, a:q}; },
+  frac_easy:() => { const d=pick([2,4,5,10]); const n=rand(1,d-1); return {q:`What is ${n}/${d} of ${d*rand(2,10)}?`, a:(n/d)*(d*rand(2,10))|0, generate:()=>{}}; }, // simplified
+  wp_easy:  () => { const a=rand(5,20),b=rand(1,15); return {q:`Yuvin has ${a} apples. He gives ${b} away. How many left?`, a:a-b}; },
+  wp_med:   () => { const a=rand(5,12),b=rand(3,8); return {q:`Each box has ${a} pencils. There are ${b} boxes. How many pencils?`, a:a*b}; },
+  wp_hard:  () => { const total=rand(50,100), part=rand(10,40); return {q:`A class has ${total} students. ${part} are girls. How many boys?`, a:total-part}; },
+  place:    () => { const n=rand(100,9999); const digit=pick([...String(n)]); const pos=String(n).indexOf(digit); const places=['thousands','hundreds','tens','ones']; const placeName=places[String(n).length-pos-1 + (4-String(n).length)]; return {q:`In ${n}, what is the place value of digit ${digit}?`, a:placeName}; },
+  time:     () => { const h=rand(1,12), m=pick([0,15,30,45]); const mstr = m===0?"o'clock":(m+' minutes past'); return {q:`What time? ${h} ${mstr}`, a:`${h}:${String(m).padStart(2,'0')}`}; },
+  rounding: () => { const n=rand(1,999); return {q:`Round ${n} to nearest 10`, a:Math.round(n/10)*10}; },
+};
+
+// ========================================================================
+// CURRICULUM MAP DEFINITION
+// ========================================================================
+const CURRICULUM = {
+  kiki: {
+    label: 'Kiki · Age 2 · Pre-K → K',
+    subjects: [
+      { emoji:'🔢', name:'Numbers & Counting', grade:'Pre-K / Reception / Foundation', systems:['cbse','cc','uk','au'],
+        topics: [
+          {id:'k-count5', name:'Count to 5', diff:1},
+          {id:'k-count10', name:'Count to 10', diff:2},
+          {id:'k-count20', name:'Count to 20', diff:3},
+          {id:'k-match', name:'Number Match', diff:2},
+          {id:'k-biggerN', name:'Bigger Number', diff:3},
+        ]},
+      { emoji:'🔤', name:'Alphabet (English)', grade:'Pre-K / Reception', systems:['cbse','cc','uk','au'],
+        topics:[
+          {id:'k-letter', name:'Letter Recognition', diff:1},
+          {id:'k-starts', name:'Starts with...', diff:2},
+          {id:'k-upper', name:'Uppercase Match', diff:2},
+        ]},
+      { emoji:'🎨', name:'Colors', grade:'Pre-K / Reception', systems:['cbse','cc','uk','au'],
+        topics:[
+          {id:'k-color8', name:'8 Basic Colors', diff:1},
+          {id:'k-color10', name:'10 Colors', diff:2},
+        ]},
+      { emoji:'🔷', name:'Shapes', grade:'Pre-K / K', systems:['cbse','cc','uk','au'],
+        topics:[
+          {id:'k-shape6', name:'6 Shapes', diff:1},
+          {id:'k-shape8', name:'8 Shapes (incl. Rectangle, Oval)', diff:2},
+        ]},
+      { emoji:'🐾', name:'Animals', grade:'Pre-K', systems:['cbse','cc'],
+        topics:[
+          {id:'k-animal6', name:'Pet & Farm Animals', diff:1},
+          {id:'k-animal-sound', name:'Animal Sounds', diff:2},
+          {id:'k-animal-wild', name:'Wild Animals', diff:3},
+        ]},
+      { emoji:'🍎', name:'Food & Fruits', grade:'Pre-K', systems:['cbse','cc'],
+        topics:[
+          {id:'k-fruit', name:'Common Fruits', diff:1},
+        ]},
+      { emoji:'🫁', name:'Body Parts', grade:'Pre-K', systems:['cbse','cc','uk'],
+        topics:[
+          {id:'k-body', name:'Face & Body', diff:1},
+        ]},
+      { emoji:'🔄', name:'Opposites', grade:'K', systems:['cbse','cc','uk','au'],
+        topics:[
+          {id:'k-opp', name:'Opposite Pairs', diff:2},
+        ]},
+      { emoji:'🇮🇳', name:'Hindi Varnamala', grade:'Pre-K India', systems:['cbse'],
+        topics:[
+          {id:'k-hindi-vowel', name:'स्वर (Vowels)', diff:1},
+          {id:'k-hindi-cons', name:'व्यंजन (Consonants)', diff:2},
+        ]},
+    ],
+  },
+  yuvin: {
+    label: 'Yuvin · Age 6 · Grade 3-4 Target',
+    subjects: [
+      { emoji:'🔢', name:'Math — Core', grade:'Grade 3-4', systems:['cbse','cc','uk','au'],
+        topics:[
+          {id:'y-add-e', name:'Addition (1-40)', diff:1, gen:'add_easy'},
+          {id:'y-add-m', name:'Addition (2-digit)', diff:2, gen:'add_med'},
+          {id:'y-add-h', name:'Addition (3-digit)', diff:3, gen:'add_hard'},
+          {id:'y-sub-e', name:'Subtraction (Easy)', diff:1, gen:'sub_easy'},
+          {id:'y-sub-m', name:'Subtraction (2-digit)', diff:2, gen:'sub_med'},
+          {id:'y-sub-h', name:'Subtraction (3-digit)', diff:3, gen:'sub_hard'},
+          {id:'y-mul-e', name:'Multiplication (Tables 1-5)', diff:1, gen:'mul_easy'},
+          {id:'y-mul-m', name:'Multiplication (2x2 digit)', diff:2, gen:'mul_med'},
+          {id:'y-mul-h', name:'Multiplication (Harder)', diff:3, gen:'mul_hard'},
+          {id:'y-div-e', name:'Division (Easy)', diff:1, gen:'div_easy'},
+          {id:'y-div-m', name:'Division (Medium)', diff:2, gen:'div_med'},
+          {id:'y-div-h', name:'Division (Hard)', diff:3, gen:'div_hard'},
+        ]},
+      { emoji:'🧮', name:'Math — Advanced', grade:'Grade 4-5', systems:['cbse','cc','uk','au','olym'],
+        topics:[
+          {id:'y-wp-e', name:'Word Problems (Easy)', diff:1, gen:'wp_easy'},
+          {id:'y-wp-m', name:'Word Problems (Medium)', diff:2, gen:'wp_med'},
+          {id:'y-wp-h', name:'Word Problems (Hard)', diff:3, gen:'wp_hard'},
+          {id:'y-time', name:'Telling Time', diff:2, gen:'time'},
+          {id:'y-round', name:'Rounding Numbers', diff:2, gen:'rounding'},
+        ]},
+      { emoji:'🔤', name:'English — Spelling', grade:'Grade 3-5', systems:['cbse','cc','uk','au','olym'],
+        topics:[
+          {id:'y-spell-g3', name:'Grade 3-4 Words (80 words)', diff:2},
+          {id:'y-spell-bee', name:'Spelling Bee Words (50 harder)', diff:3},
+        ]},
+      { emoji:'📖', name:'English — Vocabulary', grade:'Grade 3-5', systems:['cbse','cc','uk','au','olym'],
+        topics:[
+          {id:'y-syn', name:'Synonyms (30 pairs)', diff:2},
+          {id:'y-ant', name:'Antonyms (30 pairs)', diff:2},
+        ]},
+      { emoji:'✏️', name:'English — Grammar', grade:'Grade 3-4', systems:['cbse','cc','uk','au'],
+        topics:[
+          {id:'y-grammar', name:'Nouns, Verbs, Tense, Articles', diff:2},
+        ]},
+      { emoji:'🔬', name:'Science (NSO Prep)', grade:'Grade 3-5', systems:['cbse','cc','uk','au','olym'],
+        topics:[
+          {id:'y-science', name:'Living World, Space, Matter, Body', diff:2},
+        ]},
+      { emoji:'🇮🇳', name:'GK — India', grade:'Grade 3-5', systems:['cbse'],
+        topics:[
+          {id:'y-gk-india', name:'India Facts (15 Q)', diff:2},
+        ]},
+      { emoji:'🌍', name:'GK — World', grade:'Grade 3-5', systems:['cbse','cc','uk','au'],
+        topics:[
+          {id:'y-gk-world', name:'World Facts (15 Q)', diff:2},
+        ]},
+      { emoji:'🧩', name:'Olympiad Logic', grade:'IMO / NCO Prep', systems:['olym'],
+        topics:[
+          {id:'y-logic', name:'Patterns, Puzzles, Logic (18 Q)', diff:3},
+        ]},
+    ],
+  },
+};
+
+const BADGES = [
+  {id:'first', emoji:'🌱', name:'First Star', check:p=>p.stars>=1},
+  {id:'ten', emoji:'⭐', name:'10 Stars', check:p=>p.stars>=10},
+  {id:'fifty', emoji:'🌟', name:'50 Stars', check:p=>p.stars>=50},
+  {id:'hundred', emoji:'💫', name:'100 Stars', check:p=>p.stars>=100},
+  {id:'megafan', emoji:'🏆', name:'250 Stars', check:p=>p.stars>=250},
+  {id:'super', emoji:'👑', name:'500 Stars', check:p=>p.stars>=500},
+  {id:'streak3', emoji:'🔥', name:'3-in-a-row', check:p=>p.bestStreak>=3},
+  {id:'streak5', emoji:'⚡', name:'5-in-a-row', check:p=>p.bestStreak>=5},
+  {id:'streak10', emoji:'🚀', name:'10-in-a-row', check:p=>p.bestStreak>=10},
+  {id:'streak20', emoji:'🌈', name:'20-in-a-row', check:p=>p.bestStreak>=20},
+  {id:'tried5', emoji:'🎮', name:'Tried 5 Topics', check:p=>Object.keys(p.games).length>=5},
+  {id:'tried10', emoji:'🎯', name:'Tried 10 Topics', check:p=>Object.keys(p.games).length>=10},
+  {id:'master1', emoji:'🏅', name:'Mastered 1 Topic', check:p=>Object.values(p.games).filter(g=>g.best>=10).length>=1},
+  {id:'master3', emoji:'🥇', name:'Mastered 3 Topics', check:p=>Object.values(p.games).filter(g=>g.best>=10).length>=3},
+];
+
+// ========================================================================
+// STATE & STORAGE
+// ========================================================================
+const DEFAULT = {stars:0, streak:0, bestStreak:0, totalCorrect:0, totalWrong:0, games:{}, badges:[]};
+function loadProg(kid){ try{ return JSON.parse(localStorage.getItem('kidsAcad_'+kid)) || structuredClone(DEFAULT); }catch(e){ return structuredClone(DEFAULT); } }
+
+// Debounced cloud sync — writes to Firestore 2s after last change
+const _syncTimers = {};
+function saveProg(kid, p){
+  localStorage.setItem('kidsAcad_'+kid, JSON.stringify(p));
+  if(window.__fb && window.__fb.uid()){
+    clearTimeout(_syncTimers[kid]);
+    _syncTimers[kid] = setTimeout(()=>{
+      window.__fb.saveProgress(kid, p).catch(e=>console.warn('Cloud sync failed:', e.message));
+      // Also update "last active" ping on the parent profile
+      const today = new Date().toISOString().slice(0,10);
+      window.__fb.saveProfile({ lastActiveDate: today }).catch(()=>{});
+    }, 1500);
+  }
+}
+
+// Pull cloud progress on login; merge with local (take higher star count as tiebreaker)
+async function syncFromCloud(){
+  if(!window.__fb || !window.__fb.uid()) return;
+  for(const kid of ['yuvin','kiki']){
+    try {
+      const cloud = await window.__fb.loadProgress(kid);
+      if(!cloud) continue;
+      const local = loadProg(kid);
+      const merged = {
+        stars: Math.max(cloud.stars||0, local.stars||0),
+        streak: cloud.streak||0,
+        bestStreak: Math.max(cloud.bestStreak||0, local.bestStreak||0),
+        totalCorrect: Math.max(cloud.totalCorrect||0, local.totalCorrect||0),
+        totalWrong: Math.max(cloud.totalWrong||0, local.totalWrong||0),
+        games: {...(local.games||{}), ...(cloud.games||{})},
+        badges: cloud.badges || local.badges || [],
+      };
+      // For each game, take the best "best" and sum "played"/"correct" from cloud (cloud is source of truth after sync)
+      Object.keys(merged.games).forEach(gid=>{
+        const l = local.games[gid] || {played:0,correct:0,best:0,sessionBest:0};
+        const c = cloud.games[gid] || {played:0,correct:0,best:0};
+        merged.games[gid] = {
+          played: Math.max(l.played||0, c.played||0),
+          correct: Math.max(l.correct||0, c.correct||0),
+          best: Math.max(l.best||0, c.best||0),
+          sessionBest: 0,
+        };
+      });
+      localStorage.setItem('kidsAcad_'+kid, JSON.stringify(merged));
+    } catch(e){ console.warn('Cloud load failed for',kid,e.message); }
+  }
+}
+
+let who = 'yuvin';
+let currentTab = 'curriculum';
+let currentTopic = null;
+let qCount = 0, qTarget = 10;
+
+const root = document.getElementById('root');
+
+// ========================================================================
+// VISUAL EFFECTS
+// ========================================================================
+function confettiBlast(){
+  const el = document.getElementById('celebrate');
+  const colors = ['#ff6b6b','#ffd166','#3ddc97','#4f8bff','#c084fc','#ff86c8','#ff9f43','#ffd700'];
+  for(let i=0;i<50;i++){
+    const c = document.createElement('div'); c.className='confetti';
+    c.style.left = Math.random()*100+'%'; c.style.background = pick(colors);
+    c.style.animationDelay = (Math.random()*0.5)+'s';
+    c.style.animationDuration = (1.5+Math.random())+'s';
+    c.style.borderRadius = Math.random()>0.5 ? '50%' : '2px';
+    el.appendChild(c); setTimeout(()=>c.remove(), 2500);
+  }
+}
+function starBurst(x,y){
+  const emojis = ['⭐','✨','💫','🌟'];
+  for(let i=0;i<8;i++){
+    const s = document.createElement('div'); s.className='star-burst'; s.textContent=pick(emojis);
+    const angle=(i/8)*Math.PI*2, dist=70+Math.random()*30;
+    s.style.left=(x+Math.cos(angle)*dist)+'px'; s.style.top=(y+Math.sin(angle)*dist)+'px';
+    document.body.appendChild(s); setTimeout(()=>s.remove(),1000);
+  }
+}
+function floatEmoji(x,y,emoji){
+  const f=document.createElement('div'); f.className='float-emoji'; f.textContent=emoji;
+  f.style.left=x+'px'; f.style.top=y+'px'; document.body.appendChild(f); setTimeout(()=>f.remove(),1500);
+}
+function showTrophy(){
+  const t=document.createElement('div'); t.className='trophy-pop'; t.textContent='🏆';
+  document.body.appendChild(t); setTimeout(()=>t.remove(),1800);
+}
+
+// ========================================================================
+// MINI HEADERS
+// ========================================================================
+function updateMinis(){
+  const y = loadProg('yuvin'), k = loadProg('kiki');
+  // Could display somewhere later
+}
+updateMinis();
+
+function showTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab-switch button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='curriculum') showCurriculum();
+  else if(tab==='games') showPlay();
+  else showLeader();
+}
+
+// ========================================================================
+// CURRICULUM VIEW
+// ========================================================================
+function showCurriculum(){
+  const cur = CURRICULUM[who];
+  const p = loadProg(who);
+  root.className = who;
+  const sysLabel = { cbse:'CBSE', cc:'US CC', uk:'UK NC', au:'AU ACARA', olym:'Olympiad' };
+  const sysCls = { cbse:'b-cbse', cc:'b-cc', uk:'b-uk', au:'b-au', olym:'b-olym' };
+
+  const examPrep = who==='yuvin' ? [
+    {name:'🏅 International Math Olympiad (IMO)', org:'SOF India', target:'Math + Logic + Reasoning · Level 1 for Grade 3'},
+    {name:'🔬 National Science Olympiad (NSO)', org:'SOF India', target:'Living/Non-living, Space, Body, Matter · Grade 3-5'},
+    {name:'📖 International English Olympiad (IEO)', org:'SOF India', target:'Vocabulary, Grammar, Spelling, Comprehension'},
+    {name:'🐝 Spelling Bee', org:'Scripps / National', target:'50+ harder words included'},
+    {name:'💻 National Cyber Olympiad (NCO)', org:'SOF India', target:'Logic, Patterns, Computer basics'},
+    {name:'🇬🇧 11+ Exam (UK)', org:'UK Secondary', target:'Verbal + Non-verbal Reasoning'},
+    {name:'🇦🇺 NAPLAN (Australia)', org:'ACARA', target:'Numeracy + Literacy (Yr 3-5)'},
+  ] : [
+    {name:'🌱 Early Years Foundation', org:'UK EYFS / India Pre-primary', target:'Letters, numbers, colors, shapes'},
+    {name:'📚 Kindergarten Readiness', org:'US Common Core K', target:'Count to 20, letter recognition'},
+  ];
+
+  root.innerHTML = `
+    ${statsBarHTML(p)}
+    <div style="text-align:center;margin-bottom:16px">
+      <h2 style="margin:0 0 4px;font-size:22px;color:${who==='yuvin'?'var(--blue)':'var(--rose)'}">${cur.label}</h2>
+      <p style="color:var(--muted);font-size:13px;margin:0">Aligned to international curricula · Progress tracked per topic</p>
+    </div>
+
+    <h3 style="font-size:16px;color:var(--text);margin:20px 0 10px">📚 Subjects (${cur.subjects.length})</h3>
+    <div class="cmap">
+      ${cur.subjects.map(s=>`
+        <div class="subject-card" style="border-left-color:${who==='yuvin'?'var(--blue)':'var(--rose)'}">
+          <h3>${s.emoji} ${s.name}</h3>
+          <div class="meta">
+            ${s.systems.map(sy=>`<span class="alignment-badge ${sysCls[sy]}">${sysLabel[sy]}</span>`).join('')}
+            <br><span style="color:var(--muted);font-size:11px;margin-top:4px;display:inline-block">${s.grade}</span>
+          </div>
+          <div class="topics">
+            ${s.topics.map(t=>{
+              const stat = p.games[t.id];
+              const best = stat?.best || 0;
+              const cls = best>=10 ? 'mastered' : '';
+              return `<span class="topic-chip ${cls}" onclick="startTopic('${t.id}')">${t.name}<span class="diff">${'★'.repeat(t.diff)}</span>${best? ' · 🏅'+best : ''}</span>`;
+            }).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <h3 style="font-size:16px;color:var(--text);margin:24px 0 10px">🎯 Exam Preparation Tracks</h3>
+    ${examPrep.map(e=>`
+      <div class="exam-track">
+        <div>
+          <div class="et-left">${e.name}</div>
+          <div class="et-meta">${e.org} · ${e.target}</div>
+        </div>
+        <div class="et-right">→</div>
+      </div>
+    `).join('')}
+
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-top:20px;color:var(--muted);font-size:13px;line-height:1.6">
+      <b style="color:var(--text)">📈 How this works:</b> Each colored chip is a topic — tap to practice.
+      ★ = difficulty. 🏅 = your best streak in that topic. Topics turn <span style="background:linear-gradient(135deg,#ffd166,#ff9f43);color:#fff;padding:2px 8px;border-radius:999px;font-weight:700;font-size:12px">gold</span> when mastered (10-streak).
+      <br><br><b style="color:var(--text)">📣 Content expansion:</b> The curriculum map is complete; the question banks for each topic will keep growing. Ask Papa to add more questions for any topic you love — he'll plug them straight in.
+    </div>
+  `;
+}
+
+function statsBarHTML(p){
+  const totalQ = p.totalCorrect + p.totalWrong;
+  const acc = totalQ ? Math.round(p.totalCorrect/totalQ*100) : 0;
+  const earned = BADGES.filter(b=>b.check(p)).length;
+  const mastered = Object.values(p.games).filter(g=>g.best>=10).length;
+  return `<div class="stats-bar">
+    <div class="stat stars"><div class="v">⭐${p.stars}</div><div class="l">Stars</div></div>
+    <div class="stat streak"><div class="v">🔥${p.streak}</div><div class="l">Streak</div></div>
+    <div class="stat streak"><div class="v">🏅${p.bestStreak}</div><div class="l">Best</div></div>
+    <div class="stat correct"><div class="v">${acc}%</div><div class="l">Accuracy</div></div>
+    <div class="stat badges"><div class="v">${earned}/${BADGES.length}</div><div class="l">Badges</div></div>
+    <div class="stat correct"><div class="v">🏆${mastered}</div><div class="l">Mastered</div></div>
+  </div>`;
+}
+
+function showPlay(){
+  // Play tab mirrors curriculum map for easy topic jumping
+  showCurriculum();
+}
+
+// ========================================================================
+// TOPIC RUNNER — wraps all question types into a 10-question session
+// ========================================================================
+function startTopic(topicId){
+  initAudio();
+  currentTopic = topicId;
+  qCount = 0;
+  qTarget = 10;
+  const p = loadProg(who);
+  if(!p.games[topicId]) p.games[topicId]={played:0, correct:0, best:0, sessionBest:0};
+  p.games[topicId].sessionBest = 0;
+  saveProg(who, p);
+  nextQuestion();
+}
+
+function finishTopic(){
+  const p = loadProg(who);
+  const stat = p.games[currentTopic];
+  const correctThis = stat?.sessionBest || 0;
+  root.innerHTML = `
+    <div class="game">
+      <button class="back-btn" onclick="showTab('curriculum')">←</button>
+      <div style="font-size:64px">${correctThis>=9?'🏆':(correctThis>=7?'🥇':(correctThis>=5?'🥈':'🥉'))}</div>
+      <div class="q">Great practice!</div>
+      <div style="font-size:48px;color:var(--gold);font-weight:700">${correctThis} / ${qTarget}</div>
+      <div class="hint" style="margin-top:16px">${correctThis>=9?'Mastered! You\'re ready for the next level 🚀': (correctThis>=7?'Excellent work — one more round for mastery':'Try again — practice makes perfect!')}</div>
+      <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+        <button class="op" style="min-width:140px" onclick="startTopic('${currentTopic}')">🔄 Again</button>
+        <button class="op" style="min-width:140px;background:#f0f0f0;border-color:#ccc;color:#555" onclick="showTab('curriculum')">📚 Back to Map</button>
+      </div>
+    </div>
+  `;
+  if(correctThis>=9){ showTrophy(); sfx.trophy(); confettiBlast(); confettiBlast(); }
+}
+
+function nextQuestion(){
+  if(qCount >= qTarget){ finishTopic(); return; }
+  qCount++;
+  const topicId = currentTopic;
+  const p = loadProg(who);
+  const bar = `
+    <div class="bar">
+      <button class="back-btn" onclick="showTab('curriculum')">←</button>
+      <div class="level-pill">Q ${qCount}/${qTarget}</div>
+      <div class="score-pill">⭐ ${p.stars}</div>
+      <div class="streak-pill">🔥 ${p.streak}</div>
+    </div>
+    <div class="progress-bar"><div style="width:${(qCount-1)/qTarget*100}%"></div></div>
+  `;
+
+  // ============ KIKI TOPICS ============
+  if(topicId==='k-count5' || topicId==='k-count10' || topicId==='k-count20'){
+    const max = topicId==='k-count5'?5 : (topicId==='k-count10'?10:20);
+    const n = rand(1,max);
+    const emoji = pick(['🍎','🎈','⭐','🐸','🚗','🌸','🦋','🌙','🍌','🧸']);
+    const opts = shuffle(uniqOpts(n, ()=>rand(1,max)));
+    renderGame(`${bar}
+      <div class="q small">How many?</div>
+      <div style="margin:10px 0">${Array(n).fill(emoji).map(e=>`<span class="count-item">${e}</span>`).join('')}</div>
+      <div class="ops">${opts.map(o=>`<button class="op" onclick="checkAns(event,this,${o===n})">${o}</button>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+  if(topicId==='k-match' || topicId==='k-biggerN'){
+    const a=rand(1,20), b=rand(1,20);
+    const bigger = a>=b?a:b;
+    renderGame(`${bar}
+      <div class="q">${topicId==='k-biggerN'?'Which is bigger?':'Tap the number '+a}</div>
+      <div class="ops">${shuffle([a,b]).map(n=>`<button class="op" style="font-size:40px;padding:24px 36px" onclick="checkAns(event,this,${topicId==='k-biggerN'?(n===bigger):(n===a)})">${n}</button>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+  if(topicId==='k-letter' || topicId==='k-starts' || topicId==='k-upper'){
+    const letter = pick(KIKI_ALPHABET);
+    const [word,emoji] = KIKI_ALPHABET_WORDS[letter];
+    const opts = shuffle(uniqOpts(letter, ()=>pick(KIKI_ALPHABET)));
+    const q = topicId==='k-starts' ? `Which letter does "${word}" start with?` : (topicId==='k-upper'?`Tap the big "${letter}"`:`Tap "${letter}"`);
+    renderGame(`${bar}
+      <div class="q">${q}</div>
+      ${topicId==='k-starts'?`<div style="font-size:80px">${emoji}</div>`:''}
+      <div class="ops">${opts.map(l=>`<button class="op" onclick="checkAns(event,this,'${l}'==='${letter}')">${l}</button>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+  if(topicId==='k-color8' || topicId==='k-color10'){
+    const pool = topicId==='k-color8'?KIKI_COLORS.slice(0,8):KIKI_COLORS;
+    const target = pick(pool);
+    const opts = shuffle([target, ...shuffle(pool.filter(c=>c.name!==target.name)).slice(0,3)]);
+    renderGame(`${bar}
+      <div class="q">Tap <span style="color:${target.hex}">${target.name}</span>! 🎨</div>
+      <div class="ops">${opts.map(c=>`<button class="color-btn" style="background:${c.hex}" onclick="checkAns(event,this,'${c.name}'==='${target.name}')"></button>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+  if(topicId==='k-shape6' || topicId==='k-shape8'){
+    const pool = topicId==='k-shape6'?KIKI_SHAPES.slice(0,6):KIKI_SHAPES;
+    const target = pick(pool);
+    const opts = shuffle([target, ...shuffle(pool.filter(s=>s.name!==target.name)).slice(0,2)]);
+    renderGame(`${bar}
+      <div class="q">Tap the <b>${target.name}</b>!</div>
+      <div class="ops">${opts.map(s=>`<span class="kiki-obj" onclick="checkAns(event,this,'${s.name}'==='${target.name}')">${s.emoji}</span>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+  if(topicId==='k-animal6' || topicId==='k-animal-sound' || topicId==='k-animal-wild'){
+    const target = pick(KIKI_ANIMALS);
+    const opts = shuffle([target, ...shuffle(KIKI_ANIMALS.filter(a=>a.name!==target.name)).slice(0,2)]);
+    const q = topicId==='k-animal-sound' ? `Who says "${target.sound}"?` : `Tap the <b>${target.name}</b>!`;
+    renderGame(`${bar}
+      <div class="q small">${q}</div>
+      <div class="ops">${opts.map(a=>`<span class="kiki-obj" onclick="checkAns(event,this,'${a.name}'==='${target.name}')">${a.emoji}</span>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+  if(topicId==='k-fruit'){
+    const target = pick(KIKI_FRUITS);
+    const opts = shuffle([target, ...shuffle(KIKI_FRUITS.filter(f=>f.name!==target.name)).slice(0,2)]);
+    renderGame(`${bar}
+      <div class="q">Where is the <b style="color:var(--red)">${target.name}</b>?</div>
+      <div class="ops">${opts.map(f=>`<span class="kiki-obj" onclick="checkAns(event,this,'${f.name}'==='${target.name}')">${f.emoji}</span>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+  if(topicId==='k-body'){
+    const target = pick(KIKI_BODY);
+    const opts = shuffle([target, ...shuffle(KIKI_BODY.filter(b=>b.name!==target.name)).slice(0,2)]);
+    renderGame(`${bar}
+      <div class="q">Where is the <b>${target.name}</b>?</div>
+      <div class="ops">${opts.map(b=>`<span class="kiki-obj" onclick="checkAns(event,this,'${b.name}'==='${target.name}')">${b.emoji}</span>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+  if(topicId==='k-opp'){
+    const pair = pick(KIKI_OPPOSITES);
+    const [w1,w2,e1,e2] = pair;
+    const askFirst = Math.random()<0.5;
+    const target = askFirst?w1:w2, correctEm = askFirst?e1:e2, otherEm = askFirst?e2:e1;
+    const distractors = shuffle(KIKI_ANIMALS.map(a=>a.emoji).filter(e=>e!==correctEm&&e!==otherEm)).slice(0,1);
+    const opts = shuffle([correctEm, otherEm, ...distractors]);
+    renderGame(`${bar}
+      <div class="q">Opposite of <b>${askFirst?w2:w1}</b>? ${askFirst?e2:e1}</div>
+      <div class="ops">${opts.map(e=>`<span class="kiki-obj" onclick="checkAns(event,this,'${e}'==='${correctEm}')">${e}</span>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+  if(topicId==='k-hindi-vowel' || topicId==='k-hindi-cons'){
+    const pool = topicId==='k-hindi-vowel'?KIKI_HINDI_LETTERS.slice(0,4):KIKI_HINDI_LETTERS.slice(4);
+    const target = pick(pool);
+    const opts = shuffle([target, ...shuffle(pool.filter(l=>l.letter!==target.letter)).slice(0,2)]);
+    renderGame(`${bar}
+      <div class="q">Tap <b>${target.sound}</b> (${target.word} ${target.emoji})</div>
+      <div class="ops">${opts.map(l=>`<button class="op" style="font-size:40px;padding:20px 32px" onclick="checkAns(event,this,'${l.letter}'==='${target.letter}')">${l.letter}</button>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+
+  // ============ YUVIN MATH (via generators) ============
+  const mathTopic = CURRICULUM.yuvin.subjects.flatMap(s=>s.topics).find(t=>t.id===topicId);
+  if(mathTopic?.gen){
+    const g = mathGen[mathTopic.gen]();
+    const correct = g.a;
+    let opts;
+    if(typeof correct==='number'){
+      opts = shuffle(uniqOpts(correct, ()=>Math.max(0, correct + rand(-5,5))));
+    } else {
+      opts = [correct];
+      // simple distractors for word answers
+      if(mathTopic.gen==='place'){ opts = shuffle(['ones','tens','hundreds','thousands']); if(!opts.includes(correct)) opts[0]=correct; }
+      else if(mathTopic.gen==='time'){
+        const [h,m] = correct.split(':'); const distractors=[`${(+h+1)%12||12}:${m}`,`${h}:${m==='00'?'30':'00'}`];
+        opts = shuffle([correct, ...distractors]);
+      } else opts = [correct];
+    }
+    renderGame(`${bar}
+      <div class="q">${g.q} = ?</div>
+      <div class="ops">${opts.map(o=>`<button class="op" onclick="checkAns(event,this,'${o}'==='${correct}')">${o}</button>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+
+  // ============ YUVIN SPELLING ============
+  if(topicId==='y-spell-g3' || topicId==='y-spell-bee'){
+    const bank = topicId==='y-spell-g3' ? YUVIN_SPELLING_G3 : YUVIN_SPELLING_BEE;
+    const word = pick(bank);
+    const missing = rand(0, word.length-1);
+    const display = word.split('').map((c,i)=>i===missing?'_':c).join(' ');
+    const opts = shuffle([word[missing], ...shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(c=>c!==word[missing])).slice(0,3)]);
+    renderGame(`${bar}
+      <div class="q small" style="color:var(--muted);font-size:14px">Fill in the missing letter</div>
+      <div class="q" style="letter-spacing:6px">${display}</div>
+      <div class="hint">Full word has ${word.length} letters</div>
+      <div class="ops">${opts.map(o=>`<button class="op" onclick="checkAns(event,this,'${o}'==='${word[missing]}')">${o}</button>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+
+  // ============ YUVIN VOCAB ============
+  if(topicId==='y-syn' || topicId==='y-ant'){
+    const bank = topicId==='y-syn' ? YUVIN_VOCAB_SYNONYMS : YUVIN_VOCAB_ANTONYMS;
+    const pair = pick(bank);
+    const askFirst = Math.random()<0.5;
+    const q = askFirst?pair[0]:pair[1], ans = askFirst?pair[1]:pair[0];
+    const distractors = shuffle(bank.flat().filter(w=>w!==q&&w!==ans)).slice(0,3);
+    const opts = shuffle([ans, ...distractors]);
+    renderGame(`${bar}
+      <div class="q med">${topicId==='y-syn'?'Synonym':'Opposite'} of <b style="color:var(--blue)">"${q}"</b>?</div>
+      <div class="ops">${opts.map(o=>`<button class="op" onclick="checkAns(event,this,'${o}'==='${ans}')">${o}</button>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+
+  // ============ YUVIN Q-LIST style (Science, GK, Grammar, Logic) ============
+  const lookup = { 'y-science':YUVIN_SCIENCE, 'y-gk-india':YUVIN_GK_INDIA, 'y-gk-world':YUVIN_GK_WORLD, 'y-grammar':YUVIN_GRAMMAR, 'y-logic':YUVIN_OLYMPIAD_LOGIC };
+  if(lookup[topicId]){
+    const item = pick(lookup[topicId]);
+    const opts = shuffle(item.opts);
+    renderGame(`${bar}
+      <div class="q med">${item.q}</div>
+      ${item.hint?`<div class="hint">💡 ${item.hint}</div>`:''}
+      <div class="ops">${opts.map(o=>`<button class="op" onclick="checkAns(event,this,'${o.replace(/'/g,'&#39;')}'==='${item.a.replace(/'/g,'&#39;')}')">${o}</button>`).join('')}</div>
+      <div class="msg" id="msg"></div>`);
+    return;
+  }
+
+  // Fallback
+  renderGame(`${bar}
+    <div class="q">🚧 Coming Soon!</div>
+    <div class="hint">This topic is in the curriculum map but not yet filled with questions. Ask Papa to add it.</div>
+    <button class="op" onclick="showTab('curriculum')">📚 Back</button>`);
+}
+
+function renderGame(html){
+  root.className = who;
+  root.innerHTML = `<div class="game">${html}</div>`;
+}
+
+// ========================================================================
+// CHECK ANSWER
+// ========================================================================
+function checkAns(evt, btn, correct){
+  const msg = document.getElementById('msg');
+  const oldP = loadProg(who);
+  const p = loadProg(who);
+  const topicId = currentTopic;
+  if(!p.games[topicId]) p.games[topicId]={played:0, correct:0, best:0, sessionBest:0};
+  p.games[topicId].played++;
+  const rect = btn.getBoundingClientRect();
+  const x = rect.left + rect.width/2, y = rect.top + rect.height/2;
+
+  if(correct){
+    btn.classList.add('correct');
+    const earned = who==='yuvin' ? 2 : 3;
+    p.stars += earned;
+    p.streak++;
+    p.totalCorrect++;
+    p.games[topicId].correct++;
+    p.games[topicId].sessionBest++;
+    if(p.games[topicId].sessionBest > p.games[topicId].best){
+      p.games[topicId].best = p.games[topicId].sessionBest;
+    }
+    if(p.streak > p.bestStreak) p.bestStreak = p.streak;
+    saveProg(who, p);
+    starBurst(x,y); floatEmoji(x,y,'+'+earned+'⭐');
+    const s = p.streak>=5?sfx.streak : (p.streak>=3?sfx.mega:sfx.correct);
+    s();
+    if(p.stars%25===0){confettiBlast();confettiBlast();}
+    else if(p.streak>=3 && p.streak%3===0) confettiBlast();
+    const newBadges = BADGES.filter(b=>b.check(p) && !b.check(oldP));
+    if(newBadges.length){
+      setTimeout(()=>{showTrophy(); sfx.trophy(); confettiBlast(); confettiBlast();
+        msg.innerHTML = `🏅 New Badge: <b>${newBadges[0].emoji} ${newBadges[0].name}</b>!`;
+      },300);
+    }
+    const praises = who==='yuvin' ? ['Awesome!','Correct!','Great!','Bravo!','Brilliant!','Nice!','Wow!']
+                                   : ['Yay!','Clever!','Woohoo!','Amazing!','Super!','Hooray!'];
+    msg.className='msg';
+    if(!newBadges.length) msg.textContent = '🎉 ' + pick(praises) + (p.streak>=3?` (${p.streak}🔥)`:'');
+    document.querySelectorAll('.op, .kiki-obj, .color-btn').forEach(b=>b.onclick=null);
+    setTimeout(()=>nextQuestion(), 1400);
+  } else {
+    btn.classList.add('wrong');
+    p.totalWrong++; p.streak = 0;
+    saveProg(who, p);
+    sfx.wrong();
+    msg.className='msg wrong-msg';
+    msg.textContent = who==='yuvin' ? '🤔 Try again!' : '💫 Oopsie!';
+    setTimeout(()=>{btn.classList.remove('wrong'); msg.textContent='';}, 1000);
+  }
+}
+
+// ========================================================================
+// LEADERBOARD
+// ========================================================================
+function showLeader(){
+  const y = loadProg('yuvin'), k = loadProg('kiki');
+  const winner = (yv,kv) => yv>kv?'crown-y':(kv>yv?'crown-k':'tie');
+  const w = (yv,kv) => yv===kv?'🤝':(yv>kv?'👑':'👑');
+
+  const yMast = Object.values(y.games).filter(g=>g.best>=10).length;
+  const kMast = Object.values(k.games).filter(g=>g.best>=10).length;
+  const yAcc = (y.totalCorrect+y.totalWrong)?Math.round(y.totalCorrect/(y.totalCorrect+y.totalWrong)*100):0;
+  const kAcc = (k.totalCorrect+k.totalWrong)?Math.round(k.totalCorrect/(k.totalCorrect+k.totalWrong)*100):0;
+
+  root.className = '';
+  root.innerHTML = `
+    <div class="leader">
+      <h2>🏆 Leaderboard · Yuvin vs Kiki</h2>
+      <div class="vs-row"><div class="vs-side yuvin"><div class="big">⭐ ${y.stars}</div><div class="lab">Yuvin</div></div><div class="vs-mid">${y.stars===k.stars?'🤝':'👑'}</div><div class="vs-side kiki"><div class="big">⭐ ${k.stars}</div><div class="lab">Kiki</div></div></div>
+      <div class="vs-row"><div class="vs-side yuvin"><div class="big">🏅 ${y.bestStreak}</div><div class="lab">Best Streak</div></div><div class="vs-mid">vs</div><div class="vs-side kiki"><div class="big">🏅 ${k.bestStreak}</div><div class="lab">Best Streak</div></div></div>
+      <div class="vs-row"><div class="vs-side yuvin"><div class="big">✅ ${y.totalCorrect}</div><div class="lab">Correct</div></div><div class="vs-mid">vs</div><div class="vs-side kiki"><div class="big">✅ ${k.totalCorrect}</div><div class="lab">Correct</div></div></div>
+      <div class="vs-row"><div class="vs-side yuvin"><div class="big">🎯 ${yAcc}%</div><div class="lab">Accuracy</div></div><div class="vs-mid">vs</div><div class="vs-side kiki"><div class="big">🎯 ${kAcc}%</div><div class="lab">Accuracy</div></div></div>
+      <div class="vs-row"><div class="vs-side yuvin"><div class="big">🏆 ${yMast}</div><div class="lab">Topics Mastered</div></div><div class="vs-mid">vs</div><div class="vs-side kiki"><div class="big">🏆 ${kMast}</div><div class="lab">Topics Mastered</div></div></div>
+
+      <h3 style="margin:24px 0 10px;color:var(--blue);text-align:center">👦 Yuvin's Badges</h3>
+      <div class="badges">${BADGES.map(b=>`<div class="badge ${b.check(y)?'':'locked'}">${b.emoji} ${b.name}</div>`).join('')}</div>
+      <h3 style="margin:24px 0 10px;color:var(--rose);text-align:center">👧 Kiki's Badges</h3>
+      <div class="badges">${BADGES.map(b=>`<div class="badge ${b.check(k)?'':'locked'}">${b.emoji} ${b.name}</div>`).join('')}</div>
+
+      <div style="text-align:center;margin-top:30px">
+        <button style="background:#ffe5e5;color:#c33;border:none;padding:10px 18px;border-radius:12px;cursor:pointer;font-weight:700" onclick="resetAll()">🗑️ Reset All Progress</button>
+      </div>
+    </div>
+  `;
+}
+function resetAll(){ if(confirm("Reset BOTH kids' progress?")){ localStorage.removeItem('kidsAcad_yuvin'); localStorage.removeItem('kidsAcad_kiki'); showLeader(); } }
+
+// ========================================================================
+// BOOTSTRAP
+// ========================================================================
+document.querySelectorAll('.who').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('.who').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); who=b.dataset.who; initAudio(); sfx.start();
+    if(currentTab==='curriculum' || currentTab==='games') showCurriculum();
+    else showLeader();
+  };
+});
+
+// Only render the app if login was already cleared at boot
+(function autoBootApp(){
+  const session = JSON.parse(localStorage.getItem('kidsAcad_session')||'null');
+  if(session && !session.pin) showCurriculum();
+  // If PIN set → wait for verifyPIN()
+  // If no session → wait for verifyOTP() + savePIN()/skipPIN()
+})();
+</script>
+</body>
+</html>

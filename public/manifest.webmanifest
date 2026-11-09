@@ -1,0 +1,19 @@
+{
+  "name": "Kids Learning Academy",
+  "short_name": "Learning",
+  "description": "Yuvin & Kiki's gamified curriculum — CBSE, Common Core, UK & Olympiad prep.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ff86c8",
+  "theme_color": "#4f8bff",
+  "categories": ["education", "kids"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+  ]
+}

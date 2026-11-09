@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<meta name="robots" content="noindex,nofollow" />
+<title>🌈 Yuvin & Kiki's Learning Playground</title>
+<style>
+  :root{
+    --sky:#7ec8ff; --sun:#ffd166; --grass:#a3e635; --rose:#ff86c8; --violet:#c084fc;
+    --blue:#4f8bff; --green:#3ddc97; --red:#ff6b6b; --orange:#ff9f43; --gold:#ffd700;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{margin:0;padding:0;min-height:100vh;font-family:'Comic Sans MS','Chalkboard SE',system-ui,-apple-system,sans-serif;overflow-x:hidden;background:linear-gradient(135deg,#fef9ef 0%,#fff0f7 50%,#f0f7ff 100%)}
+  body{color:#2a2a4a;font-size:18px}
+
+  .nav{background:white;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 12px rgba(0,0,0,0.08);position:sticky;top:0;z-index:50}
+  .nav .back{color:#7b61ff;text-decoration:none;font-weight:700;font-size:14px}
+  .nav .title{font-size:20px;font-weight:700;background:linear-gradient(90deg,var(--rose),var(--violet),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .nav .right{display:flex;gap:10px;align-items:center}
+  .nav .toggle{background:#f5f5f5;border:none;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:14px;font-weight:700}
+  .nav .toggle.off{opacity:.5}
+
+  .hero{text-align:center;padding:30px 20px 10px}
+  .hero h1{font-size:40px;margin:0 0 6px;background:linear-gradient(90deg,var(--rose) 0%,var(--violet) 50%,var(--blue) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .hero p{color:#555;margin:0;font-size:16px}
+
+  .who-tabs{display:flex;justify-content:center;gap:16px;padding:14px 20px;flex-wrap:wrap}
+  .who{background:white;border:4px solid transparent;border-radius:24px;padding:16px 28px;font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:0 4px 12px rgba(0,0,0,0.08);transition:all .2s}
+  .who.yuvin{color:var(--blue)}.who.kiki{color:var(--rose)}
+  .who:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.12)}
+  .who.active.yuvin{border-color:var(--blue);background:#eaf2ff}
+  .who.active.kiki{border-color:var(--rose);background:#fff0f7}
+  .who .age{font-size:13px;opacity:.7;background:rgba(0,0,0,0.05);padding:2px 10px;border-radius:999px}
+  .who .stars-mini{font-size:13px;color:#999}
+
+  .container{max-width:900px;margin:0 auto;padding:10px 20px 40px}
+
+  .stats-bar{background:white;border-radius:16px;padding:14px 18px;margin-bottom:18px;display:flex;justify-content:space-around;flex-wrap:wrap;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,0.06)}
+  .stat{text-align:center;min-width:80px}
+  .stat .v{font-size:24px;font-weight:700;line-height:1}
+  .stat .l{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+  .stat.stars .v{color:var(--gold)}
+  .stat.streak .v{color:var(--orange)}
+  .stat.correct .v{color:var(--green)}
+  .stat.badges .v{color:var(--violet)}
+
+  .games{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px}
+  .gcard{background:white;border-radius:20px;padding:22px;cursor:pointer;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.08);transition:all .2s;border:3px solid transparent;position:relative}
+  .gcard:hover{transform:translateY(-4px) scale(1.03);box-shadow:0 10px 28px rgba(0,0,0,0.15)}
+  .gcard .emoji{font-size:54px;line-height:1;display:block;margin-bottom:8px}
+  .gcard .name{font-size:19px;font-weight:700;margin-bottom:4px}
+  .gcard .desc{font-size:12px;color:#666;line-height:1.4}
+  .gcard .best{position:absolute;top:10px;right:10px;background:var(--gold);color:white;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700}
+  .yuvin .gcard{border-color:#dbeafe}
+  .kiki .gcard{border-color:#ffe4f1}
+  .yuvin .gcard:hover{border-color:var(--blue)}
+  .kiki .gcard:hover{border-color:var(--rose)}
+
+  .game{background:white;border-radius:24px;padding:28px;box-shadow:0 6px 24px rgba(0,0,0,0.1);text-align:center;min-height:400px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+  .game .q{font-size:42px;font-weight:700;margin-bottom:20px;min-height:60px}
+  .game .q.small{font-size:28px}
+  .game .ops{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;max-width:600px}
+  .op{background:linear-gradient(135deg,#f0f7ff,#fff);border:4px solid var(--blue);border-radius:16px;padding:18px 24px;font-size:28px;font-weight:700;cursor:pointer;min-width:90px;transition:all .15s;color:var(--blue)}
+  .op:hover{background:var(--blue);color:white;transform:scale(1.08)}
+  .kiki .op{border-color:var(--rose);color:var(--rose);background:linear-gradient(135deg,#fff0f7,#fff);font-size:36px;padding:24px 32px;min-width:120px}
+  .kiki .op:hover{background:var(--rose);color:white}
+  .op.correct{background:var(--green)!important;color:white!important;border-color:var(--green)!important;animation:pop .4s}
+  .op.wrong{background:var(--red)!important;color:white!important;border-color:var(--red)!important;animation:shake .3s}
+  @keyframes pop{0%,100%{transform:scale(1)}50%{transform:scale(1.2) rotate(5deg)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+  @keyframes fall{0%{transform:translateY(-100px) rotate(0deg);opacity:1}100%{transform:translateY(600px) rotate(720deg);opacity:0}}
+  @keyframes rise{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-80px) scale(1.5);opacity:0}}
+  @keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-200px) scale(2);opacity:0}}
+  @keyframes starBurst{0%{transform:scale(0) rotate(0);opacity:1}100%{transform:scale(3) rotate(360deg);opacity:0}}
+  @keyframes trophy{0%{transform:scale(0) rotate(-180deg);opacity:0}50%{transform:scale(1.3) rotate(10deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+
+  .bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:0 10px;width:100%;max-width:600px;flex-wrap:wrap;gap:10px}
+  .bar .btn{background:#eee;border:none;border-radius:12px;padding:8px 14px;cursor:pointer;font-size:14px;font-weight:700;color:#555}
+  .bar .score-pill{background:linear-gradient(90deg,#fff4d6,#ffe9a8);border-radius:999px;padding:8px 16px;font-weight:700;font-size:16px}
+  .bar .streak-pill{background:linear-gradient(90deg,#fff0e4,#ffd7bb);border-radius:999px;padding:8px 16px;font-weight:700;font-size:16px}
+
+  .celebrate{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:100}
+  .confetti{position:absolute;width:12px;height:12px;animation:fall 2s linear forwards}
+  .star-burst{position:fixed;font-size:60px;pointer-events:none;z-index:101;animation:starBurst 1s ease-out forwards}
+  .float-emoji{position:fixed;font-size:48px;pointer-events:none;z-index:101;animation:floatUp 1.5s ease-out forwards}
+  .trophy{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);font-size:120px;z-index:102;animation:trophy 1.5s ease-out forwards;pointer-events:none}
+
+  .msg{font-size:28px;font-weight:700;color:var(--green);min-height:40px;margin-top:16px}
+  .msg.wrong-msg{color:var(--red)}
+
+  .kiki-obj{font-size:120px;line-height:1;cursor:pointer;display:inline-block;margin:10px;transition:all .15s}
+  .kiki-obj:hover{transform:scale(1.15) rotate(-5deg)}
+
+  .color-btn{width:120px;height:120px;border-radius:30px;border:6px solid white;cursor:pointer;margin:8px;box-shadow:0 6px 16px rgba(0,0,0,0.15);transition:all .15s;font-size:0}
+  .color-btn:hover{transform:scale(1.1) rotate(5deg)}
+
+  .count-item{font-size:60px;display:inline-block;margin:4px;animation:bounce 0.5s ease}
+  @keyframes bounce{0%{transform:translateY(-30px);opacity:0}100%{transform:translateY(0);opacity:1}}
+
+  .leader{background:white;border-radius:24px;padding:28px;box-shadow:0 6px 24px rgba(0,0,0,0.1);margin-bottom:20px}
+  .leader h2{margin:0 0 20px;text-align:center;font-size:28px;background:linear-gradient(90deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .vs-row{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;padding:14px;background:#f9f9ff;border-radius:16px;margin-bottom:12px}
+  .vs-side{text-align:center}
+  .vs-side .big{font-size:36px;font-weight:700;line-height:1}
+  .vs-side .lab{font-size:13px;color:#888;margin-top:4px}
+  .vs-side.yuvin .big{color:var(--blue)}
+  .vs-side.kiki .big{color:var(--rose)}
+  .vs-mid{font-size:24px;color:#aaa}
+  .vs-mid.win-yuvin{color:var(--blue)}
+  .vs-mid.win-kiki{color:var(--rose)}
+  .game-stats{margin-top:24px}
+  .game-stat-row{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0f0f0;align-items:center}
+  .game-stat-row .gname{font-weight:700;display:flex;align-items:center;gap:8px}
+  .game-stat-row .gstats{display:flex;gap:16px;font-size:13px;color:#666}
+  .game-stat-row .gstats b{color:#333;font-size:16px}
+
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;justify-content:center}
+  .badge{background:linear-gradient(135deg,#fff8d6,#ffe9a8);border:2px solid var(--gold);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;color:#8a6d00}
+  .badge.locked{background:#f0f0f0;border-color:#ddd;color:#aaa;opacity:.6}
+  .badge .b-ic{margin-right:4px}
+
+  .footer{text-align:center;padding:30px 20px;color:#999;font-size:13px}
+
+  .back-btn{position:absolute;top:20px;left:20px;background:#f5f5f5;border:none;border-radius:50%;width:44px;height:44px;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center}
+  .back-btn:hover{background:#e5e5e5}
+
+  .tab-switch{display:flex;gap:8px;background:#f5f5f5;border-radius:999px;padding:4px;margin:0 auto 20px;max-width:360px}
+  .tab-switch button{flex:1;background:transparent;border:none;padding:10px;border-radius:999px;cursor:pointer;font-weight:700;font-size:14px;color:#888}
+  .tab-switch button.active{background:white;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
+
+  @media(max-width:600px){
+    .hero h1{font-size:30px}
+    .game .q{font-size:30px}
+    .op{font-size:22px;padding:14px 18px;min-width:70px}
+    .kiki .op{font-size:28px;min-width:100px}
+    .kiki-obj{font-size:90px}
+    .color-btn{width:100px;height:100px}
+  }
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <a class="back" href="../index.html">← Home</a>
+  <div class="title">🌈 Kids Playground</div>
+  <div class="right">
+    <button class="toggle" id="soundToggle">🔊 Sound</button>
+  </div>
+</div>
+
+<div class="hero">
+  <h1>Hi Yuvin & Kiki! 👋</h1>
+  <p>Pick who's playing — collect stars, win badges, beat your high score!</p>
+</div>
+
+<div class="who-tabs">
+  <button class="who yuvin active" data-who="yuvin">
+    <span>👦 Yuvin</span>
+    <span class="age">6 yrs</span>
+    <span class="stars-mini" id="yuvin-stars-mini"></span>
+  </button>
+  <button class="who kiki" data-who="kiki">
+    <span>👧 Kiki</span>
+    <span class="age">2 yrs</span>
+    <span class="stars-mini" id="kiki-stars-mini"></span>
+  </button>
+</div>
+
+<div class="tab-switch">
+  <button class="active" id="tab-games" onclick="showTab('games')">🎮 Games</button>
+  <button id="tab-leader" onclick="showTab('leader')">🏆 Leaderboard</button>
+</div>
+
+<div class="container" id="root"></div>
+
+<div class="footer">Made with ❤️ by Papa · Local-only · No ads · No internet</div>
+
+<div class="celebrate" id="celebrate"></div>
+
+<script>
+// ================= SOUND (Web Audio API) =================
+let audioCtx = null;
+let soundOn = localStorage.getItem('kidsSoundOn') !== '0';
+
+function initAudio(){
+  if(!audioCtx){ try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){} }
+}
+function playTone(freq, dur, type='sine', vol=0.3, delay=0){
+  if(!soundOn || !audioCtx) return;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  o.connect(g); g.connect(audioCtx.destination);
+  const t0 = audioCtx.currentTime + delay;
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(vol, t0+0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+  o.start(t0); o.stop(t0+dur);
+}
+function playSong(notes){
+  if(!soundOn || !audioCtx) return;
+  let t=0;
+  notes.forEach(([f,d,v])=>{ playTone(f,d,'sine',v||0.25,t); t+=d*0.8; });
+}
+// Pleasant ding on correct
+const sfx = {
+  correct: ()=>playSong([[523,.1],[659,.1],[784,.2]]),  // C-E-G major
+  mega:    ()=>playSong([[523,.1],[659,.1],[784,.1],[1047,.3]]),  // C-E-G-C up octave
+  streak:  ()=>playSong([[659,.08],[784,.08],[988,.08],[1319,.2]]),  // E-G-B-E
+  wrong:   ()=>playTone(220,.2,'sine',.15),  // low gentle
+  trophy:  ()=>playSong([[523,.15],[659,.15],[784,.15],[1047,.15],[1319,.4]]),  // C-E-G-C-E fanfare
+  start:   ()=>playSong([[784,.08],[988,.15]]),  // G-B friendly
+};
+
+document.getElementById('soundToggle').onclick = ()=>{
+  soundOn = !soundOn;
+  localStorage.setItem('kidsSoundOn', soundOn?'1':'0');
+  document.getElementById('soundToggle').classList.toggle('off', !soundOn);
+  document.getElementById('soundToggle').textContent = soundOn ? '🔊 Sound' : '🔇 Muted';
+  if(soundOn){ initAudio(); sfx.start(); }
+};
+if(!soundOn){ document.getElementById('soundToggle').classList.add('off'); document.getElementById('soundToggle').textContent='🔇 Muted'; }
+
+// Unlock audio on first interaction
+document.body.addEventListener('click', ()=>{ initAudio(); if(audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }, {once:true});
+
+// ================= PROGRESS STORAGE =================
+const DEFAULT = {stars:0, streak:0, bestStreak:0, totalCorrect:0, totalWrong:0, games:{}, badges:[]};
+function loadProg(kid){
+  try{ return JSON.parse(localStorage.getItem('kidsProg_'+kid)) || structuredClone(DEFAULT); }
+  catch(e){ return structuredClone(DEFAULT); }
+}
+function saveProg(kid, p){ localStorage.setItem('kidsProg_'+kid, JSON.stringify(p)); }
+
+// ================= CONFIG =================
+const YUVIN_GAMES = [
+  {id:'add', emoji:'➕', name:'Addition', desc:'Adding numbers 1 to 20'},
+  {id:'sub', emoji:'➖', name:'Subtraction', desc:'Taking away numbers'},
+  {id:'mul', emoji:'✖️', name:'Times Tables', desc:'Learn 2x, 5x, 10x'},
+  {id:'spell', emoji:'🔤', name:'Spelling', desc:'Spell simple words'},
+  {id:'memory', emoji:'🧠', name:'Memory Match', desc:'Flip cards & match'},
+  {id:'bigger', emoji:'🔢', name:'Bigger Number', desc:'Which is bigger?'},
+];
+const KIKI_GAMES = [
+  {id:'colors', emoji:'🎨', name:'Colors', desc:'Tap the right color!'},
+  {id:'count', emoji:'🔢', name:'Count Fun', desc:'How many?'},
+  {id:'animals', emoji:'🐾', name:'Animals', desc:'Who says this?'},
+  {id:'shapes', emoji:'🔷', name:'Shapes', desc:'Find the shape'},
+  {id:'fruits', emoji:'🍎', name:'Fruits', desc:'Yummy fruits'},
+  {id:'objects', emoji:'🎈', name:'Big & Small', desc:'What is this?'},
+];
+
+const BADGES = [
+  {id:'first',    emoji:'🌱', name:'First Star',     check:p=>p.stars>=1},
+  {id:'ten',      emoji:'⭐', name:'10 Stars',        check:p=>p.stars>=10},
+  {id:'fifty',    emoji:'🌟', name:'50 Stars',        check:p=>p.stars>=50},
+  {id:'hundred',  emoji:'💫', name:'100 Stars',       check:p=>p.stars>=100},
+  {id:'megafan',  emoji:'🏆', name:'250 Stars',       check:p=>p.stars>=250},
+  {id:'streak3',  emoji:'🔥', name:'3-in-a-row',      check:p=>p.bestStreak>=3},
+  {id:'streak5',  emoji:'⚡', name:'5-in-a-row',      check:p=>p.bestStreak>=5},
+  {id:'streak10', emoji:'🚀', name:'10-in-a-row',     check:p=>p.bestStreak>=10},
+  {id:'allgames', emoji:'🎮', name:'Tried All Games', check:p=>Object.keys(p.games).length>=6},
+];
+
+let who = 'yuvin';
+let currentTab = 'games';
+let currentGame = null;
+
+const root = document.getElementById('root');
+const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+const shuffle = a => a.slice().sort(()=>Math.random()-0.5);
+
+function updateMinis(){
+  const y = loadProg('yuvin'), k = loadProg('kiki');
+  document.getElementById('yuvin-stars-mini').textContent = y.stars ? `⭐${y.stars}` : '';
+  document.getElementById('kiki-stars-mini').textContent  = k.stars ? `⭐${k.stars}` : '';
+}
+updateMinis();
+
+// ================= VISUAL EFFECTS =================
+function confettiBlast(){
+  const el = document.getElementById('celebrate');
+  const colors = ['#ff6b6b','#ffd166','#3ddc97','#4f8bff','#c084fc','#ff86c8','#ff9f43','#ffd700'];
+  for(let i=0;i<50;i++){
+    const c = document.createElement('div');
+    c.className='confetti';
+    c.style.left = Math.random()*100+'%';
+    c.style.background = pick(colors);
+    c.style.animationDelay = (Math.random()*0.5)+'s';
+    c.style.animationDuration = (1.5+Math.random())+'s';
+    c.style.borderRadius = Math.random()>0.5 ? '50%' : '2px';
+    el.appendChild(c);
+    setTimeout(()=>c.remove(), 2500);
+  }
+}
+function starBurst(x, y){
+  const emojis = ['⭐','✨','💫','🌟'];
+  for(let i=0;i<8;i++){
+    const s = document.createElement('div');
+    s.className='star-burst';
+    s.textContent = pick(emojis);
+    const angle = (i/8)*Math.PI*2;
+    const dist = 80 + Math.random()*40;
+    s.style.left = x + 'px';
+    s.style.top = y + 'px';
+    s.style.transform = `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`;
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(), 1200);
+  }
+}
+function floatEmoji(x, y, emoji){
+  const f = document.createElement('div');
+  f.className='float-emoji';
+  f.textContent = emoji;
+  f.style.left = x + 'px';
+  f.style.top = y + 'px';
+  document.body.appendChild(f);
+  setTimeout(()=>f.remove(), 1500);
+}
+function showTrophy(){
+  const t = document.createElement('div');
+  t.className='trophy';
+  t.textContent = '🏆';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 1800);
+}
+
+// ================= TABS =================
+function showTab(tab){
+  currentTab = tab;
+  document.getElementById('tab-games').classList.toggle('active', tab==='games');
+  document.getElementById('tab-leader').classList.toggle('active', tab==='leader');
+  if(tab==='games') showHome();
+  else showLeader();
+}
+
+// ================= STATS BAR =================
+function statsBarHTML(){
+  const p = loadProg(who);
+  const totalQ = p.totalCorrect + p.totalWrong;
+  const acc = totalQ ? Math.round(p.totalCorrect/totalQ*100) : 0;
+  const earned = BADGES.filter(b=>b.check(p)).length;
+  return `
+    <div class="stats-bar">
+      <div class="stat stars"><div class="v">⭐${p.stars}</div><div class="l">Stars</div></div>
+      <div class="stat streak"><div class="v">🔥${p.streak}</div><div class="l">Streak</div></div>
+      <div class="stat streak"><div class="v">🏅${p.bestStreak}</div><div class="l">Best Streak</div></div>
+      <div class="stat correct"><div class="v">${acc}%</div><div class="l">Accuracy</div></div>
+      <div class="stat badges"><div class="v">${earned}/${BADGES.length}</div><div class="l">Badges</div></div>
+    </div>
+  `;
+}
+
+// ================= HOME =================
+function showHome(){
+  const games = who==='yuvin' ? YUVIN_GAMES : KIKI_GAMES;
+  const colorLabel = who==='yuvin' ? "Yuvin's Games" : "Kiki's Games";
+  const p = loadProg(who);
+  root.className = who;
+  root.innerHTML = `
+    ${statsBarHTML()}
+    <h2 style="text-align:center;margin:10px 0 20px;font-size:24px;color:${who==='yuvin'?'var(--blue)':'var(--rose)'}">${colorLabel} 🎮</h2>
+    <div class="games">
+      ${games.map(g=>{
+        const gstat = p.games[g.id];
+        const best = gstat ? `<div class="best">🏅 Best ${gstat.best}</div>` : '';
+        return `
+          <div class="gcard" onclick="launch('${g.id}')">
+            ${best}
+            <span class="emoji">${g.emoji}</span>
+            <div class="name">${g.name}</div>
+            <div class="desc">${g.desc}</div>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function launch(id){
+  currentGame = id;
+  const p = loadProg(who);
+  if(!p.games[id]) p.games[id] = {played:0, correct:0, best:0, sessionBest:0};
+  p.games[id].sessionBest = 0;
+  saveProg(who, p);
+  GAMES[id]();
+}
+
+function renderGame(html){
+  const p = loadProg(who);
+  root.className = who;
+  root.innerHTML = `
+    <div class="game">
+      <button class="back-btn" onclick="showHome()">←</button>
+      <div class="bar">
+        <div></div>
+        <div class="score-pill">⭐ ${p.stars}</div>
+        <div class="streak-pill">🔥 ${p.streak}</div>
+      </div>
+      ${html}
+    </div>
+  `;
+}
+
+function nextAfter(ms, fn){ setTimeout(fn, ms); }
+
+// ================= LEADERBOARD =================
+function showLeader(){
+  const y = loadProg('yuvin'), k = loadProg('kiki');
+  const games = [...YUVIN_GAMES, ...KIKI_GAMES];
+  const allGames = {...Object.fromEntries(YUVIN_GAMES.map(g=>[g.id,{...g,owner:'yuvin'}])),
+                    ...Object.fromEntries(KIKI_GAMES.map(g=>[g.id,{...g,owner:'kiki'}]))};
+
+  const winner = (yv,kv)=>{
+    if(yv>kv) return 'win-yuvin';
+    if(kv>yv) return 'win-kiki';
+    return '';
+  };
+
+  const yBadges = BADGES.map(b=>`<div class="badge ${b.check(y)?'':'locked'}"><span class="b-ic">${b.emoji}</span>${b.name}</div>`).join('');
+  const kBadges = BADGES.map(b=>`<div class="badge ${b.check(k)?'':'locked'}"><span class="b-ic">${b.emoji}</span>${b.name}</div>`).join('');
+
+  root.className = '';
+  root.innerHTML = `
+    <div class="leader">
+      <h2>🏆 Leaderboard · Yuvin vs Kiki</h2>
+
+      <div class="vs-row">
+        <div class="vs-side yuvin"><div class="big">⭐ ${y.stars}</div><div class="lab">Yuvin's Stars</div></div>
+        <div class="vs-mid ${winner(y.stars,k.stars)}">${y.stars===k.stars?'🤝':'👑'}</div>
+        <div class="vs-side kiki"><div class="big">⭐ ${k.stars}</div><div class="lab">Kiki's Stars</div></div>
+      </div>
+
+      <div class="vs-row">
+        <div class="vs-side yuvin"><div class="big">🏅 ${y.bestStreak}</div><div class="lab">Yuvin's Best Streak</div></div>
+        <div class="vs-mid ${winner(y.bestStreak,k.bestStreak)}">vs</div>
+        <div class="vs-side kiki"><div class="big">🏅 ${k.bestStreak}</div><div class="lab">Kiki's Best Streak</div></div>
+      </div>
+
+      <div class="vs-row">
+        <div class="vs-side yuvin"><div class="big">✅ ${y.totalCorrect}</div><div class="lab">Yuvin's Correct</div></div>
+        <div class="vs-mid ${winner(y.totalCorrect,k.totalCorrect)}">vs</div>
+        <div class="vs-side kiki"><div class="big">✅ ${k.totalCorrect}</div><div class="lab">Kiki's Correct</div></div>
+      </div>
+
+      <div class="game-stats">
+        <h3 style="margin:24px 0 10px;color:var(--blue);font-size:18px">👦 Yuvin's Games</h3>
+        ${YUVIN_GAMES.map(g=>{
+          const s = y.games[g.id];
+          if(!s) return `<div class="game-stat-row"><div class="gname">${g.emoji} ${g.name}</div><div class="gstats" style="color:#bbb">Not played yet</div></div>`;
+          return `<div class="game-stat-row">
+            <div class="gname">${g.emoji} ${g.name}</div>
+            <div class="gstats">
+              <span>Played <b>${s.played}</b></span>
+              <span>Correct <b style="color:var(--green)">${s.correct}</b></span>
+              <span>🏅 Best <b style="color:var(--gold)">${s.best}</b></span>
+            </div>
+          </div>`;
+        }).join('')}
+
+        <h3 style="margin:24px 0 10px;color:var(--rose);font-size:18px">👧 Kiki's Games</h3>
+        ${KIKI_GAMES.map(g=>{
+          const s = k.games[g.id];
+          if(!s) return `<div class="game-stat-row"><div class="gname">${g.emoji} ${g.name}</div><div class="gstats" style="color:#bbb">Not played yet</div></div>`;
+          return `<div class="game-stat-row">
+            <div class="gname">${g.emoji} ${g.name}</div>
+            <div class="gstats">
+              <span>Played <b>${s.played}</b></span>
+              <span>Correct <b style="color:var(--green)">${s.correct}</b></span>
+              <span>🏅 Best <b style="color:var(--gold)">${s.best}</b></span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <h3 style="margin:24px 0 10px;color:var(--blue);text-align:center">👦 Yuvin's Badges</h3>
+      <div class="badges">${yBadges}</div>
+
+      <h3 style="margin:24px 0 10px;color:var(--rose);text-align:center">👧 Kiki's Badges</h3>
+      <div class="badges">${kBadges}</div>
+
+      <div style="text-align:center;margin-top:30px">
+        <button class="btn" style="background:#ffe5e5;color:#c33;border:none;padding:10px 18px;border-radius:12px;cursor:pointer;font-weight:700" onclick="resetAll()">🗑️ Reset All Progress</button>
+      </div>
+    </div>
+  `;
+}
+
+function resetAll(){
+  if(confirm("Reset BOTH kids' progress? This can't be undone.")){
+    localStorage.removeItem('kidsProg_yuvin');
+    localStorage.removeItem('kidsProg_kiki');
+    updateMinis();
+    showLeader();
+  }
+}
+
+// ================= GAMES =================
+const GAMES = {};
+
+GAMES.add = () => {
+  const a = rand(1,15), b = rand(1,15);
+  const ans = a+b;
+  const opts = shuffle([ans, ans+rand(1,3), Math.max(0,ans-rand(1,3)), ans+rand(4,6)]);
+  renderGame(`
+    <div class="q">${a} + ${b} = ?</div>
+    <div class="ops">
+      ${opts.map(o=>`<button class="op" onclick="check(event, this, ${o===ans}, 'add')">${o}</button>`).join('')}
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+GAMES.sub = () => {
+  const a = rand(5,20), b = rand(1,a);
+  const ans = a-b;
+  const opts = shuffle([ans, ans+rand(1,3), Math.abs(ans-rand(1,3)), ans+rand(4,6)]);
+  renderGame(`
+    <div class="q">${a} − ${b} = ?</div>
+    <div class="ops">
+      ${opts.map(o=>`<button class="op" onclick="check(event, this, ${o===ans}, 'sub')">${o}</button>`).join('')}
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+GAMES.mul = () => {
+  const table = pick([2,5,10]);
+  const n = rand(1,10);
+  const ans = table*n;
+  const opts = shuffle([ans, ans+table, Math.max(0,ans-table), ans+table*2]);
+  renderGame(`
+    <div class="q">${table} × ${n} = ?</div>
+    <div class="ops">
+      ${opts.map(o=>`<button class="op" onclick="check(event, this, ${o===ans}, 'mul')">${o}</button>`).join('')}
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+GAMES.spell = () => {
+  const words = ['CAT','DOG','SUN','CAR','HAT','BOX','PEN','CUP','BOOK','FISH','BIRD','TREE','MILK','BALL','DUCK','FROG','MOON','STAR','RAIN','CAKE'];
+  const word = pick(words);
+  const emoji = {CAT:'🐱',DOG:'🐶',SUN:'☀️',CAR:'🚗',HAT:'👒',BOX:'📦',PEN:'🖊️',CUP:'🥤',BOOK:'📖',FISH:'🐟',BIRD:'🐦',TREE:'🌳',MILK:'🥛',BALL:'⚽',DUCK:'🦆',FROG:'🐸',MOON:'🌙',STAR:'⭐',RAIN:'🌧️',CAKE:'🎂'}[word];
+  const missing = rand(0, word.length-1);
+  const display = word.split('').map((c,i)=>i===missing?'_':c).join(' ');
+  const opts = shuffle([word[missing], ...shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter(c=>c!==word[missing])).slice(0,3)]);
+  renderGame(`
+    <div style="font-size:90px">${emoji}</div>
+    <div class="q" style="letter-spacing:8px">${display}</div>
+    <div class="ops">
+      ${opts.map(o=>`<button class="op" onclick="check(event, this, '${o}'==='${word[missing]}', 'spell')">${o}</button>`).join('')}
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+GAMES.bigger = () => {
+  const a = rand(10,99), b = rand(10,99);
+  renderGame(`
+    <div class="q small">Which is bigger?</div>
+    <div class="ops">
+      <button class="op" style="font-size:48px;padding:30px 50px" onclick="check(event, this, ${a>b}, 'bigger')">${a}</button>
+      <button class="op" style="font-size:48px;padding:30px 50px" onclick="check(event, this, ${b>a}, 'bigger')">${b}</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+GAMES.memory = () => {
+  const icons = ['🐶','🐱','🐰','🐸','🦁','🐼','🐨','🐯'];
+  const pool = shuffle([...icons, ...icons]);
+  renderGame(`
+    <div class="q small">Match the Pairs! 🧠</div>
+    <div id="mboard" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:500px"></div>
+    <div class="msg" id="msg"></div>
+  `);
+  const board = document.getElementById('mboard');
+  let flipped = [], matched = 0;
+  pool.forEach((icon)=>{
+    const card = document.createElement('div');
+    card.style.cssText = 'background:linear-gradient(135deg,var(--blue),var(--violet));border-radius:14px;height:85px;display:flex;align-items:center;justify-content:center;font-size:46px;cursor:pointer;color:transparent;transition:all .2s';
+    card.textContent = icon;
+    card.onclick = () => {
+      if(card.style.color==='white' || flipped.length>=2) return;
+      card.style.color='white'; card.style.background='#fff';
+      flipped.push({card, icon});
+      playTone(400+flipped.length*100,.08);
+      if(flipped.length===2){
+        if(flipped[0].icon===flipped[1].icon){
+          matched++;
+          flipped.forEach(f=>{f.card.style.background='var(--green)';f.card.style.cursor='default'});
+          flipped=[];
+          sfx.correct();
+          awardStars(5);
+          if(matched===icons.length){
+            showTrophy(); sfx.trophy(); confettiBlast(); confettiBlast();
+            document.getElementById('msg').textContent='🎉 You got them all!';
+            nextAfter(2800, ()=>GAMES.memory());
+          }
+        } else {
+          sfx.wrong();
+          setTimeout(()=>{
+            flipped.forEach(f=>{f.card.style.color='transparent';f.card.style.background='linear-gradient(135deg,var(--blue),var(--violet))'});
+            flipped=[];
+          },900);
+        }
+      }
+    };
+    board.appendChild(card);
+  });
+};
+
+// ========== KIKI GAMES ==========
+GAMES.colors = () => {
+  const COLORS = [
+    {name:'Red',hex:'#ff6b6b'},{name:'Blue',hex:'#4f8bff'},{name:'Yellow',hex:'#ffd166'},
+    {name:'Green',hex:'#3ddc97'},{name:'Pink',hex:'#ff86c8'},{name:'Purple',hex:'#c084fc'},
+    {name:'Orange',hex:'#ff9f43'},{name:'Brown',hex:'#a0522d'},
+  ];
+  const target = pick(COLORS);
+  const opts = shuffle([target, ...shuffle(COLORS.filter(c=>c.name!==target.name)).slice(0,3)]);
+  renderGame(`
+    <div class="q">Tap <span style="color:${target.hex}">${target.name}</span>! 🎨</div>
+    <div class="ops">
+      ${opts.map(c=>`<button class="color-btn" style="background:${c.hex}" onclick="check(event, this, '${c.name}'==='${target.name}', 'colors')"></button>`).join('')}
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+GAMES.count = () => {
+  const n = rand(1,6);
+  const emoji = pick(['🍎','🎈','⭐','🐸','🚗','🌸','🦋','🌙','🍌','🧸']);
+  const opts = shuffle([n, Math.max(1,n-1), n+1, n+2]).slice(0,3);
+  if(!opts.includes(n)) opts[0]=n;
+  const items = Array(n).fill(emoji).map(e=>`<span class="count-item">${e}</span>`).join('');
+  renderGame(`
+    <div class="q small">How many?</div>
+    <div style="margin:20px 0;min-height:80px">${items}</div>
+    <div class="ops">
+      ${shuffle(opts).map(o=>`<button class="op" onclick="check(event, this, ${o===n}, 'count')">${o}</button>`).join('')}
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+GAMES.animals = () => {
+  const ANIMALS = [
+    {emoji:'🐶',name:'Dog',sound:'Woof Woof!'},
+    {emoji:'🐱',name:'Cat',sound:'Meow Meow!'},
+    {emoji:'🐮',name:'Cow',sound:'Moo Moo!'},
+    {emoji:'🐷',name:'Pig',sound:'Oink Oink!'},
+    {emoji:'🐸',name:'Frog',sound:'Ribbit!'},
+    {emoji:'🐑',name:'Sheep',sound:'Baa Baa!'},
+    {emoji:'🐔',name:'Hen',sound:'Cluck Cluck!'},
+    {emoji:'🦁',name:'Lion',sound:'Roar!'},
+    {emoji:'🦆',name:'Duck',sound:'Quack Quack!'},
+  ];
+  const target = pick(ANIMALS);
+  const opts = shuffle([target, ...shuffle(ANIMALS.filter(a=>a.name!==target.name)).slice(0,2)]);
+  renderGame(`
+    <div class="q">Who says "${target.sound}"?</div>
+    <div class="ops">
+      ${opts.map(a=>`<span class="kiki-obj" onclick="check(event, this, '${a.name}'==='${target.name}', 'animals')">${a.emoji}</span>`).join('')}
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+GAMES.shapes = () => {
+  const SHAPES = [
+    {emoji:'🔴',name:'Circle'},{emoji:'🟦',name:'Square'},{emoji:'🔺',name:'Triangle'},
+    {emoji:'⭐',name:'Star'},{emoji:'💛',name:'Heart'},{emoji:'🔶',name:'Diamond'},
+  ];
+  const target = pick(SHAPES);
+  const opts = shuffle([target, ...shuffle(SHAPES.filter(s=>s.name!==target.name)).slice(0,2)]);
+  renderGame(`
+    <div class="q">Tap the <b style="color:var(--rose)">${target.name}</b>!</div>
+    <div class="ops">
+      ${opts.map(s=>`<span class="kiki-obj" onclick="check(event, this, '${s.name}'==='${target.name}', 'shapes')">${s.emoji}</span>`).join('')}
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+GAMES.fruits = () => {
+  const FRUITS = [
+    {emoji:'🍎',name:'Apple'},{emoji:'🍌',name:'Banana'},{emoji:'🍇',name:'Grapes'},
+    {emoji:'🍊',name:'Orange'},{emoji:'🍓',name:'Strawberry'},{emoji:'🍉',name:'Watermelon'},
+    {emoji:'🥭',name:'Mango'},{emoji:'🍑',name:'Peach'},
+  ];
+  const target = pick(FRUITS);
+  const opts = shuffle([target, ...shuffle(FRUITS.filter(f=>f.name!==target.name)).slice(0,2)]);
+  renderGame(`
+    <div class="q">Where is the <b style="color:var(--red)">${target.name}</b>?</div>
+    <div class="ops">
+      ${opts.map(f=>`<span class="kiki-obj" onclick="check(event, this, '${f.name}'==='${target.name}', 'fruits')">${f.emoji}</span>`).join('')}
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+GAMES.objects = () => {
+  const OBJ = [
+    {emoji:'🎈',name:'Balloon'},{emoji:'🚗',name:'Car'},{emoji:'🧸',name:'Teddy'},
+    {emoji:'🌙',name:'Moon'},{emoji:'☀️',name:'Sun'},{emoji:'⭐',name:'Star'},
+    {emoji:'🌈',name:'Rainbow'},{emoji:'🌸',name:'Flower'},{emoji:'🎂',name:'Cake'},
+  ];
+  const target = pick(OBJ);
+  const opts = shuffle([target, ...shuffle(OBJ.filter(o=>o.name!==target.name)).slice(0,2)]);
+  renderGame(`
+    <div class="q">Tap the <b style="color:var(--violet)">${target.name}</b>!</div>
+    <div class="ops">
+      ${opts.map(o=>`<span class="kiki-obj" onclick="check(event, this, '${o.name}'==='${target.name}', 'objects')">${o.emoji}</span>`).join('')}
+    </div>
+    <div class="msg" id="msg"></div>
+  `);
+};
+
+// ================= PROGRESS UPDATE =================
+function awardStars(n){
+  const p = loadProg(who);
+  p.stars += n;
+  saveProg(who, p);
+  const scoreEl = document.querySelector('.score-pill');
+  if(scoreEl) scoreEl.textContent = '⭐ ' + p.stars;
+  updateMinis();
+}
+function checkBadges(oldP, newP){
+  const was = BADGES.filter(b=>b.check(oldP)).map(b=>b.id);
+  const now = BADGES.filter(b=>b.check(newP)).map(b=>b.id);
+  return BADGES.filter(b=>now.includes(b.id) && !was.includes(b.id));
+}
+
+function check(evt, btn, correct, gameId){
+  const msg = document.getElementById('msg');
+  const oldP = loadProg(who);
+  const p = loadProg(who);
+  if(!p.games[gameId]) p.games[gameId] = {played:0, correct:0, best:0, sessionBest:0};
+  p.games[gameId].played++;
+
+  // Get click position for star burst
+  const rect = btn.getBoundingClientRect();
+  const x = rect.left + rect.width/2;
+  const y = rect.top + rect.height/2;
+
+  if(correct){
+    btn.classList.add('correct');
+    const earned = who==='yuvin' ? 2 : 3;
+    p.stars += earned;
+    p.streak++;
+    p.totalCorrect++;
+    p.games[gameId].correct++;
+    p.games[gameId].sessionBest++;
+    if(p.games[gameId].sessionBest > p.games[gameId].best){
+      p.games[gameId].best = p.games[gameId].sessionBest;
+    }
+    if(p.streak > p.bestStreak) p.bestStreak = p.streak;
+    saveProg(who, p);
+    updateMinis();
+
+    // Visual + sound
+    starBurst(x, y);
+    floatEmoji(x, y, '+'+earned+'⭐');
+    const streakSound = p.streak >= 5 ? sfx.streak : (p.streak >= 3 ? sfx.mega : sfx.correct);
+    streakSound();
+
+    // Confetti on milestone
+    if(p.stars % 25 === 0) { confettiBlast(); confettiBlast(); }
+    else if(p.streak >= 3 && p.streak % 3 === 0) confettiBlast();
+
+    // Check new badges
+    const newBadges = checkBadges(oldP, p);
+    if(newBadges.length){
+      setTimeout(()=>{
+        showTrophy(); sfx.trophy();
+        confettiBlast(); confettiBlast();
+        msg.innerHTML = `🏅 New Badge: <b>${newBadges[0].emoji} ${newBadges[0].name}</b>!`;
+      }, 400);
+    }
+
+    const praises = who==='yuvin'
+      ? ['Awesome!','Correct!','Great job!','You got it!','Super!','Bravo!','Brilliant!','Nice work!']
+      : ['Yay!','Clever girl!','Woohoo!','Super Kiki!','Amazing!','Good job!','Hooray!','Well done!'];
+    msg.className='msg';
+    if(!newBadges.length) msg.textContent = '🎉 ' + pick(praises) + (p.streak>=3?` (${p.streak} in a row! 🔥)`:'');
+    document.querySelectorAll('.op, .kiki-obj, .color-btn').forEach(b=>b.onclick=null);
+
+    // Update the score pill and streak pill in the bar
+    const scorePill = document.querySelector('.score-pill');
+    const streakPill = document.querySelector('.streak-pill');
+    if(scorePill) scorePill.textContent = '⭐ ' + p.stars;
+    if(streakPill) streakPill.textContent = '🔥 ' + p.streak;
+
+    nextAfter(1600, ()=>GAMES[gameId]());
+  } else {
+    btn.classList.add('wrong');
+    p.totalWrong++;
+    p.streak = 0;
+    saveProg(who, p);
+    sfx.wrong();
+    msg.className='msg wrong-msg';
+    msg.textContent = who==='yuvin' ? '🤔 Try again!' : '💫 Oopsie!';
+    const streakPill = document.querySelector('.streak-pill');
+    if(streakPill) streakPill.textContent = '🔥 0';
+    setTimeout(()=>{btn.classList.remove('wrong');msg.textContent='';},1000);
+  }
+}
+
+// ================= BOOTSTRAP =================
+document.querySelectorAll('.who').forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll('.who').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    who = b.dataset.who;
+    initAudio();
+    sfx.start();
+    if(currentTab==='games') showHome();
+    else showLeader();
+  };
+});
+showHome();
+</script>
+</body>
+</html>
