@@ -196,7 +196,7 @@ This phase changes the existing `public/index.html` directly and leaves restruct
 - [x] **1.8 Remove SQL Connect from the repo.** Delete `dataconnect/` and `public/dataconnect-generated/`. Remove the `dataconnect` and `emulators.dataconnect` entries from `firebase.json`.
 - [x] **1.9 Update the service worker in the same commit.** Remove `/dataconnect-generated/esm/index.esm.js` from the precache list and bump the cache to `kids-academy-v4`. A precached file that no longer exists can break service worker installation.
 - [x] **1.10 Add rules and index exemption.** Use the rules in Phase 3 with `pinFresh()` temporarily returning `true`, and add the `topics` index exemption. Test them in the emulator.
-- [ ] **1.12 Extend the kid schema before the first deploy.** In the merged `firestore.rules`, add `name`, `age`, `country`, `state` and `favColor` to `validKid` as in Phase 3, update the header comment, and add emulator tests for each new field. In `index.html`, write these fields with safe defaults for the two existing profiles (`k1`, `k2`), so the schema is final on day one. The onboarding form itself is built in Phase 2.
+- [x] **1.12 Extend the kid schema before the first deploy.** In the merged `firestore.rules`, add `name`, `age`, `country`, `state` and `favColor` to `validKid` as in Phase 3, update the header comment, and add emulator tests for each new field. In `index.html`, write these fields with safe defaults for the two existing profiles (`k1`, `k2`), so the schema is final on day one. The onboarding form itself is built in Phase 2.
 - [ ] **1.11 Deploy after approval.** Run `firebase deploy --only hosting,firestore`, after 1.12 is merged.
 
 ### Acceptance checks

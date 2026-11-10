@@ -424,8 +424,30 @@
   const KID_ID_MAP = { yuvin: 'k1', kiki: 'k2' };
   const KID_BY_ID = { k1: 'yuvin', k2: 'kiki' };
   const KID_META = {
-    yuvin: { kidId: 'k1', nickname: 'Yuvin', avatar: '👦', ageBand: '5-7', track: 'primary' },
-    kiki:  { kidId: 'k2', nickname: 'Kiki',  avatar: '👧', ageBand: '2-4', track: 'early' }
+    yuvin: {
+      kidId: 'k1',
+      name: 'Yuvin',
+      nickname: 'Yuvin',
+      age: 6,
+      country: 'IN',
+      state: '',
+      favColor: 'blue',
+      avatar: '👦',
+      ageBand: '5-7',
+      track: 'primary'
+    },
+    kiki: {
+      kidId: 'k2',
+      name: 'Kiki',
+      nickname: 'Kiki',
+      age: 2,
+      country: 'IN',
+      state: '',
+      favColor: 'rose',
+      avatar: '👧',
+      ageBand: '2-4',
+      track: 'early'
+    }
   };
 
   let _userDocExists = false;
@@ -474,7 +496,12 @@
   function buildKidPayload(kid, data, resetEpoch) {
     const meta = KID_META[kid] || {
       kidId: KID_ID_MAP[kid] || 'k1',
+      name: String(kid).slice(0, 30),
       nickname: String(kid).slice(0, 20),
+      age: 6,
+      country: 'IN',
+      state: '',
+      favColor: 'blue',
       avatar: '🧒',
       ageBand: '5-7',
       track: 'primary'
@@ -483,7 +510,12 @@
       ? BADGES.filter(b => b.check(data)).map(b => b.id)
       : (Array.isArray(data.badges) ? data.badges : []);
     return {
+      name: meta.name,
       nickname: meta.nickname,
+      age: meta.age,
+      country: meta.country,
+      state: meta.state,
+      favColor: meta.favColor,
       avatar: meta.avatar,
       ageBand: meta.ageBand,
       track: meta.track,
