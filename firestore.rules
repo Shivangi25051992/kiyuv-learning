@@ -1,12 +1,131 @@
 rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users/{uid}
+// Document ID: {uid} (Firebase Auth UID)
+// Fields:
+//   - createdAt: timestamp (required, immutable, must equal request.time on create)
+//   - lastActiveDate: string (required, 1..16 chars, e.g. YYYY-MM-DD)
+//   - locale: string (required, 2..16 chars, e.g. en-IN)
+//   - resetEpoch: int (required, 0..100000000, monotonic non-decreasing on update)
+//   - schemaVersion: int (required, immutable on update, 1..100)
+//
+// Collection: users/{uid}/kids/{kidId}
+// Document ID: {kidId} matching ^k[1-6]$ (caps children at 6 per family)
+// Fields:
+//   - nickname: string (required, 1..20 chars)
+//   - avatar: string (required, 1..16 chars)
+//   - ageBand: string (required, enum: '2-4', '5-7', '8-10', '11-13')
+//   - track: string (required, enum: 'early', 'primary')
+//   - stars: int (required, 0..100000000)
+//   - streak: int (required, 0..100000000)
+//   - bestStreak: int (required, 0..100000000)
+//   - totalCorrect: int (required, 0..100000000)
+//   - totalWrong: int (required, 0..100000000)
+//   - badges: list (required, max 100 entries)
+//   - topics: map (required, max 1000 entries; exempted from indexing)
+//   - resetEpoch: int (required, 0..100000000, monotonic non-decreasing on update)
+//   - updatedAt: timestamp (required, must equal request.time)
+//
+// Collection: consents/{uid}/records/{id}
+// Document ID: {id}
+// Access: Read-only for the authenticated owner; written only by Cloud Functions.
+//
+// Collection: pinSecrets/{uid}
+// Access: Denied to all clients by default; accessed only by Cloud Functions Admin SDK.
+// ===============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only read/write their own data tree
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    // ===============================================================
+    // Helper & Domain Validator Functions
+    // ===============================================================
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Phase 1 (Task 1.10): Temporarily returns true while PIN verification is not yet server-backed.
+    // Phase 3 replaces this with:
+    //   return request.auth.token.get('pin_at', 0) * 1000 > request.time.toMillis() - seconds * 1000;
+    function pinFresh(seconds) {
+      return seconds >= 0;
+    }
+
+    function count(v) {
+      return v is int && v >= 0 && v <= 100000000;
+    }
+
+    function validUserCreate(d) {
+      return d.keys().hasAll(['createdAt', 'lastActiveDate', 'locale', 'resetEpoch', 'schemaVersion'])
+        && d.keys().hasOnly(['createdAt', 'lastActiveDate', 'locale', 'resetEpoch', 'schemaVersion'])
+        && d.createdAt == request.time
+        && d.lastActiveDate is string && d.lastActiveDate.size() >= 1 && d.lastActiveDate.size() <= 16
+        && d.locale is string && d.locale.size() >= 2 && d.locale.size() <= 16
+        && count(d.resetEpoch)
+        && d.schemaVersion is int && d.schemaVersion >= 1 && d.schemaVersion <= 100;
+    }
+
+    function validUserUpdate(d, prev) {
+      return d.diff(prev).affectedKeys().hasOnly(['lastActiveDate', 'locale', 'resetEpoch'])
+        && d.lastActiveDate is string && d.lastActiveDate.size() >= 1 && d.lastActiveDate.size() <= 16
+        && d.locale is string && d.locale.size() >= 2 && d.locale.size() <= 16
+        && count(d.resetEpoch) && d.resetEpoch >= prev.resetEpoch;
+    }
+
+    function validKid(d) {
+      return d.keys().hasAll([
+          'nickname', 'avatar', 'ageBand', 'track', 'stars', 'streak',
+          'bestStreak', 'totalCorrect', 'totalWrong', 'badges', 'topics', 'resetEpoch', 'updatedAt'
+        ])
+        && d.keys().hasOnly([
+          'nickname', 'avatar', 'ageBand', 'track', 'stars', 'streak',
+          'bestStreak', 'totalCorrect', 'totalWrong', 'badges', 'topics', 'resetEpoch', 'updatedAt'
+        ])
+        && d.nickname is string && d.nickname.size() >= 1 && d.nickname.size() <= 20
+        && d.avatar is string && d.avatar.size() >= 1 && d.avatar.size() <= 16
+        && d.ageBand in ['2-4', '5-7', '8-10', '11-13']
+        && d.track in ['early', 'primary']
+        && count(d.stars) && count(d.streak) && count(d.bestStreak)
+        && count(d.totalCorrect) && count(d.totalWrong) && count(d.resetEpoch)
+        && d.badges is list && d.badges.size() <= 100
+        && d.topics is map && d.topics.size() <= 1000
+        && d.updatedAt == request.time;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      allow get: if isOwner(uid);
+      allow list: if false;
+      allow create: if isOwner(uid) && validUserCreate(request.resource.data);
+      allow update: if isOwner(uid) && pinFresh(43200)
+        && validUserUpdate(request.resource.data, resource.data);
+      allow delete: if false;
+
+      match /kids/{kidId} {
+        allow get, list: if isOwner(uid) && pinFresh(43200);
+        allow create: if isOwner(uid) && pinFresh(300)
+          && kidId.matches('^k[1-6]$') && validKid(request.resource.data);
+        allow update: if isOwner(uid) && pinFresh(43200)
+          && kidId.matches('^k[1-6]$') && validKid(request.resource.data)
+          && (request.resource.data.resetEpoch > resource.data.resetEpoch
+              || request.time > resource.data.updatedAt + duration.value(5, 's'))
+          && (request.resource.data.resetEpoch == resource.data.resetEpoch
+              || (pinFresh(300) && request.resource.data.resetEpoch > resource.data.resetEpoch));
+        allow delete: if isOwner(uid) && pinFresh(300);
       }
+    }
+
+    match /consents/{uid}/records/{id} {
+      allow get, list: if isOwner(uid) && pinFresh(43200);
+      allow create, update, delete: if false;
     }
   }
 }

@@ -1,4 +1,6 @@
 {
   "indexes": [],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    { "collectionGroup": "kids", "fieldPath": "topics", "indexes": [] }
+  ]
 }
