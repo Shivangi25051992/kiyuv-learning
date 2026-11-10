@@ -50,8 +50,10 @@ export function toggleSound(): boolean {
   if (soundEnabled) {
     initAudio();
     sfx.hello();
+    startMusic();
   } else {
     stopSpeaking();
+    stopMusic();
   }
   return soundEnabled;
 }
@@ -196,7 +198,18 @@ export const sfx = {
 
 // ---------------------------------------------------------------------------
 // Read-aloud voice (the browser's built-in speech; nothing is sent anywhere)
+//
+// Which voices exist depends on the device. We pick the most natural-sounding
+// English voice, preferring a soft female one, and the parent can choose another
+// in the Parent Area.
 // ---------------------------------------------------------------------------
+
+const VOICE_KEY = 'kidsVoiceName';
+
+const FEMALE_RE =
+  /\b(aria|jenny|ava|emma|sonia|libby|samantha|karen|tessa|moira|serena|susan|zira|hazel|fiona|victoria|allison|nicky|kathy|joanna|salli|kimberly|amy|nova|female|woman|girl)\b/;
+const MALE_RE =
+  /\b(david|mark|james|george|daniel|alex|fred|ryan|guy|thomas|rishi|bruce|ralph|junior|male|man)\b/;
 
 export function canSpeak(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -204,19 +217,267 @@ export function canSpeak(): boolean {
 
 export function stopSpeaking(): void {
   if (canSpeak()) window.speechSynthesis.cancel();
+  duckMusic(false);
 }
 
-/** Speaks a short phrase in a slow, friendly voice. Does nothing when sound is off. */
+function scoreVoice(v: SpeechSynthesisVoice): number {
+  const name = v.name.toLowerCase();
+  const lang = v.lang.toLowerCase().replace('_', '-');
+  if (!lang.startsWith('en')) return -1000;
+  let score = 0;
+  if (/natural|neural|online|premium|enhanced/.test(name)) score += 40;
+  if (FEMALE_RE.test(name)) score += 30;
+  if (MALE_RE.test(name)) score -= 60;
+  if (/google/.test(name)) score += 8;
+  if (['en-us', 'en-gb', 'en-in', 'en-au'].includes(lang)) score += 5;
+  if (v.localService) score += 2;
+  return score;
+}
+
+/** English voices on this device, best first. */
+export function listEnglishVoices(): SpeechSynthesisVoice[] {
+  if (!canSpeak()) return [];
+  return window.speechSynthesis
+    .getVoices()
+    .filter((v) => scoreVoice(v) > -1000)
+    .sort((a, b) => scoreVoice(b) - scoreVoice(a));
+}
+
+/** The voice we would choose on our own. */
+export function recommendedVoice(): SpeechSynthesisVoice | null {
+  return listEnglishVoices()[0] ?? null;
+}
+
+export function getSavedVoiceName(): string | null {
+  try {
+    return localStorage.getItem(VOICE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Saves the parent's choice. Pass null to go back to the automatic choice. */
+export function setVoiceName(name: string | null): void {
+  try {
+    if (name) localStorage.setItem(VOICE_KEY, name);
+    else localStorage.removeItem(VOICE_KEY);
+  } catch {
+    // storage unavailable
+  }
+}
+
+function chosenVoice(): SpeechSynthesisVoice | null {
+  const voices = listEnglishVoices();
+  const saved = getSavedVoiceName();
+  return (saved ? voices.find((v) => v.name === saved) : undefined) ?? voices[0] ?? null;
+}
+
+/** Speaks a short phrase slowly and softly. Does nothing when sound is off. */
 export function speak(text: string): void {
   if (!soundEnabled || !canSpeak() || !text.trim()) return;
   try {
-    window.speechSynthesis.cancel();
+    const synth = window.speechSynthesis;
+    synth.cancel();
     const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 0.85;
-    utter.pitch = 1.25;
-    utter.volume = 1;
-    window.speechSynthesis.speak(utter);
+    const voice = chosenVoice();
+    if (voice) {
+      utter.voice = voice;
+      utter.lang = voice.lang;
+    }
+    utter.rate = 0.88;
+    utter.pitch = 1.12;
+    utter.volume = 0.95;
+    utter.onstart = () => duckMusic(true);
+    utter.onend = () => duckMusic(false);
+    utter.onerror = () => duckMusic(false);
+    synth.speak(utter);
   } catch {
     // Speech is optional.
   }
+}
+
+// ---------------------------------------------------------------------------
+// Background music: a soft music-box lullaby, made up live so there are no
+// audio files and no licences. A slow four-chord loop with a gentle pad, a
+// quiet bass note and a wandering bell melody on a happy five-note scale.
+// ---------------------------------------------------------------------------
+
+type MusicScene = 'home' | 'play';
+
+const MUSIC_KEY = 'kidsMusicOn';
+const BPM = 72;
+const BEAT = 60 / BPM;
+
+let musicEnabled =
+  typeof localStorage !== 'undefined' ? localStorage.getItem(MUSIC_KEY) !== '0' : true;
+let musicBus: GainNode | null = null;
+let musicTimer: number | null = null;
+let nextBeatTime = 0;
+let beatCount = 0;
+let melodyIdx = 3;
+let musicScene: MusicScene = 'home';
+let musicDucked = false;
+let musicLifecycleBound = false;
+
+// Chords as [bass, three upper notes] in Hz: C, Am, F, G (always sounds friendly).
+const CHORDS: ReadonlyArray<readonly [number, number, number, number]> = [
+  [130.81, 261.63, 329.63, 392.0],
+  [110.0, 261.63, 329.63, 440.0],
+  [87.31, 261.63, 349.23, 440.0],
+  [98.0, 246.94, 293.66, 392.0],
+];
+const SCALE = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66] as const;
+
+export function isMusicEnabled(): boolean {
+  return musicEnabled;
+}
+
+function musicLevel(): number {
+  const base = musicScene === 'play' ? 0.16 : 0.3;
+  return musicDucked ? base * 0.35 : base;
+}
+
+function applyMusicLevel(): void {
+  if (!audioCtx || !musicBus) return;
+  musicBus.gain.setTargetAtTime(musicLevel(), audioCtx.currentTime, 0.25);
+}
+
+/** Lower the music while the voice is speaking, so words stay clear. */
+export function duckMusic(on: boolean): void {
+  musicDucked = on;
+  applyMusicLevel();
+}
+
+/** Quieter music during a game round, so it never competes with thinking. */
+export function setMusicScene(scene: MusicScene): void {
+  musicScene = scene;
+  applyMusicLevel();
+}
+
+function ensureMusicBus(): GainNode | null {
+  if (!audioCtx || !master) return null;
+  if (musicBus) return musicBus;
+  const bus = audioCtx.createGain();
+  bus.gain.value = 0.0001;
+
+  // A soft echo gives the bells a roomy, dreamy tail.
+  const delay = audioCtx.createDelay(1);
+  delay.delayTime.value = BEAT * 0.75;
+  const feedback = audioCtx.createGain();
+  feedback.gain.value = 0.32;
+  const tone = audioCtx.createBiquadFilter();
+  tone.type = 'lowpass';
+  tone.frequency.value = 2200;
+  bus.connect(master);
+  bus.connect(delay);
+  delay.connect(tone);
+  tone.connect(feedback);
+  feedback.connect(delay);
+  tone.connect(master);
+
+  musicBus = bus;
+  return bus;
+}
+
+function musicNote(
+  freq: number,
+  when: number,
+  length: number,
+  volume: number,
+  type: OscillatorType,
+  attack: number,
+): void {
+  if (!audioCtx || !musicBus) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.exponentialRampToValueAtTime(volume, when + attack);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + length);
+  osc.connect(gain);
+  gain.connect(musicBus);
+  osc.start(when);
+  osc.stop(when + length + 0.05);
+}
+
+function scheduleBeat(when: number, beat: number): void {
+  const inBar = beat % 4;
+  const chord = CHORDS[Math.floor(beat / 4) % CHORDS.length]!;
+
+  if (inBar === 0) {
+    // Soft pad across the whole bar, and one low bass note.
+    const barLength = BEAT * 4;
+    musicNote(chord[0], when, barLength * 0.95, 0.2, 'sine', 0.05);
+    for (const f of [chord[1], chord[2], chord[3]]) {
+      musicNote(f, when, barLength * 1.05, 0.085, 'sine', 0.9);
+    }
+  }
+
+  // Bell melody: a wandering walk on the scale, with rests so it can breathe.
+  for (const half of [0, 0.5]) {
+    if (Math.random() < 0.38) continue;
+    melodyIdx = Math.max(0, Math.min(SCALE.length - 1, melodyIdx + Math.floor(Math.random() * 5) - 2));
+    const freq = SCALE[melodyIdx]!;
+    const at = when + half * BEAT;
+    musicNote(freq, at, 1.4, 0.2, 'triangle', 0.01);
+    musicNote(freq * 2, at, 0.5, 0.04, 'sine', 0.01);
+  }
+}
+
+function musicTick(): void {
+  if (!audioCtx) return;
+  while (nextBeatTime < audioCtx.currentTime + 0.7) {
+    scheduleBeat(nextBeatTime, beatCount);
+    nextBeatTime += BEAT;
+    beatCount += 1;
+  }
+}
+
+function bindMusicLifecycle(): void {
+  if (musicLifecycleBound || typeof document === 'undefined') return;
+  musicLifecycleBound = true;
+  // Music pauses when the app is not on screen and returns when it is.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') stopMusic();
+    else startMusic();
+  });
+}
+
+/** Starts the music (does nothing if it is off, muted, or already playing). */
+export function startMusic(): void {
+  if (!musicEnabled || !soundEnabled || !audioCtx || musicTimer !== null) return;
+  if (!ensureMusicBus()) return;
+  bindMusicLifecycle();
+  nextBeatTime = audioCtx.currentTime + 0.15;
+  beatCount = 0;
+  applyMusicLevel();
+  musicTimer = window.setInterval(musicTick, 200);
+  musicTick();
+}
+
+export function stopMusic(): void {
+  if (musicTimer !== null) {
+    window.clearInterval(musicTimer);
+    musicTimer = null;
+  }
+  if (audioCtx && musicBus) {
+    musicBus.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.2);
+  }
+}
+
+export function toggleMusic(): boolean {
+  musicEnabled = !musicEnabled;
+  try {
+    localStorage.setItem(MUSIC_KEY, musicEnabled ? '1' : '0');
+  } catch {
+    // storage unavailable
+  }
+  if (musicEnabled) {
+    initAudio();
+    startMusic();
+  } else {
+    stopMusic();
+  }
+  return musicEnabled;
 }

@@ -164,3 +164,20 @@ export const IconRefresh: React.FC<IconProps> = (p) => (
     <path d="M20 4v7h-7" />
   </Svg>
 );
+
+export const IconMusic: React.FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M9 18V6.5l10-2V16" />
+    <circle cx="6.5" cy="18" r="2.6" fill="currentColor" />
+    <circle cx="16.5" cy="16" r="2.6" fill="currentColor" />
+  </Svg>
+);
+
+export const IconMusicOff: React.FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M9 18V6.5l10-2V16" />
+    <circle cx="6.5" cy="18" r="2.6" fill="currentColor" />
+    <circle cx="16.5" cy="16" r="2.6" fill="currentColor" />
+    <path d="M3 3l18 18" />
+  </Svg>
+);

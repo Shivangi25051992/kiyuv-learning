@@ -6,6 +6,7 @@ import {
   type KidProfile,
 } from '@kiyuv/shared';
 import type { AuthParentUser } from '../../lib/firebase/index.js';
+import { VoiceSettings } from './VoiceSettings.js';
 
 interface ParentAreaModalProps {
   user: AuthParentUser;
@@ -142,6 +143,8 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
             </div>
           </div>
         )}
+
+        <VoiceSettings />
 
         <div
           style={{

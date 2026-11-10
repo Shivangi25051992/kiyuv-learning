@@ -28,7 +28,15 @@ import {
   syncFamilyFromCloud,
   type LegacyImportCandidate,
 } from '../lib/sync/index.js';
-import { initAudio, isSoundEnabled, sfx, toggleSound } from '../lib/sound.js';
+import {
+  initAudio,
+  isMusicEnabled,
+  isSoundEnabled,
+  sfx,
+  startMusic,
+  toggleMusic,
+  toggleSound,
+} from '../lib/sound.js';
 import { LoginScreen } from '../features/auth/LoginScreen.js';
 import {
   clearDeviceUnlock,
@@ -40,6 +48,8 @@ import {
   IconBook,
   IconGame,
   IconLogout,
+  IconMusic,
+  IconMusicOff,
   IconParent,
   IconSoundOff,
   IconSoundOn,
@@ -75,6 +85,7 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('curriculum');
   const [currentTopicId, setCurrentTopicId] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState<boolean>(() => isSoundEnabled());
+  const [musicOn, setMusicOn] = useState<boolean>(() => isMusicEnabled());
   const [legacyCandidates, setLegacyCandidates] = useState<LegacyImportCandidate[]>([]);
 
   // Parent PIN gate state for sensitive actions (add/edit/delete profile, parent area, reset)
@@ -211,8 +222,11 @@ export const App: React.FC = () => {
     const onPress = (e: PointerEvent) => {
       const target = e.target as HTMLElement | null;
       const button = target?.closest('button');
-      if (!button || button.disabled || button.hasAttribute('data-silent')) return;
+      if (!button || button.disabled) return;
+      // Browsers only allow sound after a tap, so the music starts on the first one.
       initAudio();
+      startMusic();
+      if (button.hasAttribute('data-silent')) return;
       sfx.tap();
     };
     document.addEventListener('pointerdown', onPress, { passive: true });
@@ -428,6 +442,18 @@ export const App: React.FC = () => {
             title="Parent area (PIN needed)"
           >
             <IconParent />
+          </button>
+
+          <button
+            type="button"
+            className={`icon-btn ${musicOn && soundOn ? '' : 'is-off'}`}
+            onClick={() => setMusicOn(toggleMusic())}
+            aria-pressed={musicOn}
+            aria-label={musicOn ? 'Music on' : 'Music off'}
+            title={musicOn ? 'Music on' : 'Music off'}
+            data-silent
+          >
+            {musicOn ? <IconMusic /> : <IconMusicOff />}
           </button>
 
           <button

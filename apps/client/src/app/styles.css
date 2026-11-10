@@ -2354,3 +2354,21 @@ select.text-input {
 .topic-best {
   color: var(--text);
 }
+
+.parent-heading {
+  margin: 0 0 var(--s2);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 19px;
+}
+.voice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  align-items: center;
+}
+.voice-row .text-input {
+  flex: 1 1 220px;
+  min-height: 48px;
+  font-size: 16px;
+}

@@ -12,7 +12,7 @@ import {
   type KidProfile,
 } from '@kiyuv/shared';
 import { confettiBlast, floatEmoji, showTrophy, starBurst } from '../../lib/effects.js';
-import { canSpeak, initAudio, sfx, speak } from '../../lib/sound.js';
+import { canSpeak, initAudio, setMusicScene, sfx, speak } from '../../lib/sound.js';
 import { Mascot, type MascotMood } from '../../ui/Mascot.js';
 import { IconBack, IconFlame, IconRefresh, IconSpeaker, IconStar, IconBook } from '../../ui/Icons.js';
 
@@ -89,6 +89,12 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       if (sessionCorrect >= 6) confettiBlast();
     }
   }, [finished, sessionCorrect]);
+
+  // The background music gets quieter during a round, so it never competes with thinking.
+  useEffect(() => {
+    setMusicScene('play');
+    return () => setMusicScene('home');
+  }, []);
 
   // The youngest learners cannot read yet, so their questions are read aloud.
   useEffect(() => {
