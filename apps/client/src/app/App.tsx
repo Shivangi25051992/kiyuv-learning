@@ -28,15 +28,7 @@ import {
   syncFamilyFromCloud,
   type LegacyImportCandidate,
 } from '../lib/sync/index.js';
-import {
-  initAudio,
-  isMusicEnabled,
-  isSoundEnabled,
-  sfx,
-  startMusic,
-  toggleMusic,
-  toggleSound,
-} from '../lib/sound.js';
+import { initAudio, isSoundEnabled, sfx, startMusic, toggleSound } from '../lib/sound.js';
 import { LoginScreen } from '../features/auth/LoginScreen.js';
 import {
   clearDeviceUnlock,
@@ -44,12 +36,11 @@ import {
   markDeviceUnlocked,
 } from '../features/auth/deviceUnlock.js';
 import { Mascot } from '../ui/Mascot.js';
+import { MusicControl } from '../ui/MusicControl.js';
 import {
   IconBook,
   IconGame,
   IconLogout,
-  IconMusic,
-  IconMusicOff,
   IconParent,
   IconSoundOff,
   IconSoundOn,
@@ -85,7 +76,6 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('curriculum');
   const [currentTopicId, setCurrentTopicId] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState<boolean>(() => isSoundEnabled());
-  const [musicOn, setMusicOn] = useState<boolean>(() => isMusicEnabled());
   const [legacyCandidates, setLegacyCandidates] = useState<LegacyImportCandidate[]>([]);
 
   // Parent PIN gate state for sensitive actions (add/edit/delete profile, parent area, reset)
@@ -444,17 +434,7 @@ export const App: React.FC = () => {
             <IconParent />
           </button>
 
-          <button
-            type="button"
-            className={`icon-btn ${musicOn && soundOn ? '' : 'is-off'}`}
-            onClick={() => setMusicOn(toggleMusic())}
-            aria-pressed={musicOn}
-            aria-label={musicOn ? 'Music on' : 'Music off'}
-            title={musicOn ? 'Music on' : 'Music off'}
-            data-silent
-          >
-            {musicOn ? <IconMusic /> : <IconMusicOff />}
-          </button>
+          <MusicControl />
 
           <button
             type="button"

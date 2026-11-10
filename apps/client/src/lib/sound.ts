@@ -305,11 +305,25 @@ export function speak(text: string): void {
 type MusicScene = 'home' | 'play';
 
 const MUSIC_KEY = 'kidsMusicOn';
+const MUSIC_VOLUME_KEY = 'kidsMusicVolume';
+const DEFAULT_MUSIC_VOLUME = 0.5;
 const BPM = 72;
 const BEAT = 60 / BPM;
 
 let musicEnabled =
   typeof localStorage !== 'undefined' ? localStorage.getItem(MUSIC_KEY) !== '0' : true;
+
+function loadMusicVolume(): number {
+  try {
+    const raw = localStorage.getItem(MUSIC_VOLUME_KEY);
+    if (raw === null) return DEFAULT_MUSIC_VOLUME;
+    const n = Number(raw);
+    return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : DEFAULT_MUSIC_VOLUME;
+  } catch {
+    return DEFAULT_MUSIC_VOLUME;
+  }
+}
+let musicVolume = loadMusicVolume();
 let musicBus: GainNode | null = null;
 let musicTimer: number | null = null;
 let nextBeatTime = 0;
@@ -332,9 +346,26 @@ export function isMusicEnabled(): boolean {
   return musicEnabled;
 }
 
+/** 0 to 1. The music's own volume, separate from sound effects and voice. */
+export function getMusicVolume(): number {
+  return musicVolume;
+}
+
+export function setMusicVolume(value: number): void {
+  musicVolume = Math.min(1, Math.max(0, Number.isFinite(value) ? value : DEFAULT_MUSIC_VOLUME));
+  try {
+    localStorage.setItem(MUSIC_VOLUME_KEY, String(musicVolume));
+  } catch {
+    // storage unavailable
+  }
+  applyMusicLevel();
+}
+
 function musicLevel(): number {
-  const base = musicScene === 'play' ? 0.16 : 0.3;
-  return musicDucked ? base * 0.35 : base;
+  // At the default volume (50%) this matches the earlier levels; 100% is twice as loud.
+  const base = (musicScene === 'play' ? 0.32 : 0.6) * musicVolume;
+  const level = musicDucked ? base * 0.35 : base;
+  return Math.max(0.0001, level);
 }
 
 function applyMusicLevel(): void {

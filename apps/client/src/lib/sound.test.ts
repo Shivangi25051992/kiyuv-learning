@@ -99,3 +99,19 @@ describe('background music', () => {
     }).not.toThrow();
   });
 });
+
+describe('music volume', () => {
+  it('is saved, limited to 0 to 100 percent, and starts at 50 percent', async () => {
+    const mod = await import('./sound.js');
+    expect(mod.getMusicVolume()).toBeGreaterThanOrEqual(0);
+    mod.setMusicVolume(0.8);
+    expect(mod.getMusicVolume()).toBe(0.8);
+    expect(localStorage.getItem('kidsMusicVolume')).toBe('0.8');
+    mod.setMusicVolume(5);
+    expect(mod.getMusicVolume()).toBe(1);
+    mod.setMusicVolume(-2);
+    expect(mod.getMusicVolume()).toBe(0);
+    mod.setMusicVolume(Number.NaN);
+    expect(mod.getMusicVolume()).toBe(0.5);
+  });
+});
