@@ -79,7 +79,11 @@ export function loadLocalProfiles(uid: string): KidProfile[] {
 }
 
 export function saveLocalProfiles(uid: string, profiles: readonly KidProfile[]): void {
-  const sorted = [...profiles].sort((a, b) => a.kidId.localeCompare(b.kidId));
+  // The child's name is never written to this device's storage; it exists only
+  // encrypted in the cloud and in memory after a parent decrypts it.
+  const sorted = [...profiles]
+    .map((p) => ({ ...p, name: '' }))
+    .sort((a, b) => a.kidId.localeCompare(b.kidId));
   localStorage.setItem(`${PROFILES_KEY_PREFIX}${uid}`, JSON.stringify(sorted));
 }
 

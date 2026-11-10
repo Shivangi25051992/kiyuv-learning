@@ -9,9 +9,14 @@ import {
 import {
   checkParentPin,
   clearParentPin,
-  hasConfiguredPin,
+  refreshPinConfigured,
   saveParentPin,
 } from './PinModal.js';
+
+// Sign-in options shown to parents. Only Google is turned on for now. Switch the
+// others on here once they are enabled in the Firebase console and tested.
+const ENABLE_APPLE_SIGN_IN = false;
+const ENABLE_EMAIL_SIGN_IN = false;
 
 interface LoginScreenProps {
   user: AuthParentUser | null;
@@ -19,10 +24,12 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) => {
-  const [step, setStep] = useState<'provider' | 'setpin' | 'verifypin'>(() => {
-    if (!user) return 'provider';
-    return hasConfiguredPin(user.uid) ? 'verifypin' : 'setpin';
-  });
+  const [step, setStep] = useState<'provider' | 'checking' | 'setpin' | 'verifypin'>(
+    user ? 'checking' : 'provider',
+  );
+  // True after "Forgot PIN": the parent signs in again with a provider and then
+  // chooses a new PIN instead of being asked for the old one.
+  const [resetting, setResetting] = useState(false);
   const [activeUser, setActiveUser] = useState<AuthParentUser | null>(user);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
@@ -33,16 +40,28 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
   const [error, setError] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
 
+  const chooseStepFor = React.useCallback(async (uid: string, forceNewPin: boolean) => {
+    if (forceNewPin) {
+      setStep('setpin');
+      return;
+    }
+    setStep('checking');
+    try {
+      setStep((await refreshPinConfigured(uid)) ? 'verifypin' : 'setpin');
+    } catch {
+      setError('Cannot reach the server. Check your connection and try again.');
+      setStep('provider');
+    }
+  }, []);
+
   React.useEffect(() => {
     setActiveUser(user);
     if (!user) {
       setStep('provider');
-    } else if (hasConfiguredPin(user.uid)) {
-      setStep('verifypin');
     } else {
-      setStep('setpin');
+      void chooseStepFor(user.uid, false);
     }
-  }, [user]);
+  }, [user, chooseStepFor]);
 
   const handleProviderAuth = async (fn: () => Promise<AuthParentUser>) => {
     setError('');
@@ -51,11 +70,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
     try {
       const signedIn = await fn();
       setActiveUser(signedIn);
-      if (hasConfiguredPin(signedIn.uid)) {
-        setStep('verifypin');
-      } else {
-        setStep('setpin');
-      }
+      await chooseStepFor(signedIn.uid, resetting);
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code === 'auth/popup-closed-by-user') {
@@ -87,11 +102,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
         return;
       }
       setActiveUser(res.user);
-      if (hasConfiguredPin(res.user.uid)) {
-        setStep('verifypin');
-      } else {
-        setStep('setpin');
-      }
+      await chooseStepFor(res.user.uid, resetting);
     } catch (err) {
       setError((err as Error)?.message || 'Email sign-in failed.');
     } finally {
@@ -112,6 +123,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
     setBusy(true);
     try {
       await saveParentPin(activeUser.uid, entered);
+      setResetting(false);
       onUnlocked(activeUser);
     } catch (err) {
       setError((err as Error)?.message || 'Failed to save PIN');
@@ -146,6 +158,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
     if (activeUser) {
       clearParentPin(activeUser.uid);
     }
+    setResetting(true);
     setPin('');
     setError('');
     setStep('provider');
@@ -163,8 +176,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
         <h2>Kiyuv Learning Academy</h2>
         <p className="sub">Parent Sign-In · 6-Digit PIN Security</p>
 
+        {step === 'checking' && <p className="sub">Checking your account…</p>}
+
         {step === 'provider' && (
           <div>
+            {resetting && (
+              <p className="sub">
+                To choose a new PIN, sign in again with your Google account.
+              </p>
+            )}
             <button
               type="button"
               className="google-btn"
@@ -198,27 +218,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
               Continue with Google
             </button>
 
-            <button
-              type="button"
-              className="google-btn"
-              style={{ marginTop: 8, background: '#111', color: '#fff', borderColor: '#111' }}
-              onClick={() => void handleProviderAuth(signInWithApple)}
-              disabled={busy}
-            >
-              🍎 Continue with Apple
-            </button>
-
-            <div style={{ marginTop: 10 }}>
+            {ENABLE_APPLE_SIGN_IN && (
               <button
                 type="button"
-                className="link-btn"
-                onClick={() => setShowEmailForm((s) => !s)}
+                className="google-btn"
+                style={{ marginTop: 8, background: '#111', color: '#fff', borderColor: '#111' }}
+                onClick={() => void handleProviderAuth(signInWithApple)}
+                disabled={busy}
               >
-                {showEmailForm ? 'Hide Email Sign-In' : 'Or sign in with verified Email'}
+                🍎 Continue with Apple
               </button>
-            </div>
+            )}
 
-            {showEmailForm && (
+            {ENABLE_EMAIL_SIGN_IN && (
+              <div style={{ marginTop: 10 }}>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => setShowEmailForm((s) => !s)}
+                >
+                  {showEmailForm ? 'Hide Email Sign-In' : 'Or sign in with verified Email'}
+                </button>
+              </div>
+            )}
+
+            {ENABLE_EMAIL_SIGN_IN && showEmailForm && (
               <form onSubmit={(e) => void handleEmailAuth(e)} style={{ marginTop: 12 }}>
                 <input
                   type="email"

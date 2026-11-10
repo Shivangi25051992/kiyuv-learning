@@ -221,6 +221,7 @@ export async function callVerifyParentPinServer(
 }
 
 export async function signOutParent(): Promise<void> {
+  clearNameCaches();
   const { auth } = ensureFirebase();
   await signOut(auth);
 }
@@ -294,10 +295,32 @@ export interface FamilyCloudSnapshot {
   kids: KidProfile[];
 }
 
-function parseCloudKidDoc(kidId: string, raw: Record<string, unknown>): KidProfile | null {
+// A child's name is stored only as encrypted `nameEnc`. The plain name lives in
+// memory (never localStorage) after a parent decrypts it with a fresh PIN.
+const nameEncCache = new Map<string, string>();
+const plainNameCache = new Map<string, string>();
+const nameKey = (uid: string, kidId: string) => `${uid}:${kidId}`;
+
+export function getCachedPlainName(uid: string, kidId: string): string {
+  return plainNameCache.get(nameKey(uid, kidId)) ?? '';
+}
+
+export function clearNameCaches(): void {
+  nameEncCache.clear();
+  plainNameCache.clear();
+}
+
+function parseCloudKidDoc(
+  uid: string,
+  kidId: string,
+  raw: Record<string, unknown>,
+): KidProfile | null {
   if (!KID_IDS.includes(kidId as KidId)) return null;
+  if (typeof raw['nameEnc'] === 'string') {
+    nameEncCache.set(nameKey(uid, kidId), raw['nameEnc']);
+  }
   const candidate: KidProfileData = {
-    name: typeof raw['name'] === 'string' ? raw['name'] : '',
+    name: plainNameCache.get(nameKey(uid, kidId)) ?? '',
     nickname:
       typeof raw['nickname'] === 'string' && raw['nickname'].length > 0
         ? raw['nickname']
@@ -355,7 +378,7 @@ export async function fetchFamilyDashboard(uid: string): Promise<FamilyCloudSnap
 
   const kids: KidProfile[] = [];
   kidsSnap.forEach((docSnap) => {
-    const k = parseCloudKidDoc(docSnap.id, docSnap.data());
+    const k = parseCloudKidDoc(uid, docSnap.id, docSnap.data());
     if (k) {
       if (k.resetEpoch > resetEpoch) resetEpoch = k.resetEpoch;
       kids.push(k);
@@ -372,7 +395,81 @@ export async function fetchSingleKidProfile(
   const { db } = ensureFirebase();
   const snap = await getDoc(doc(db, 'users', uid, 'kids', kidId));
   if (!snap.exists()) return null;
-  return parseCloudKidDoc(snap.id, snap.data());
+  return parseCloudKidDoc(uid, snap.id, snap.data());
+}
+
+/** Cloud document body: the plain name is replaced by its ciphertext. */
+function toCloudKidPayload(uid: string, profile: KidProfile): Record<string, unknown> {
+  const validated = KidProfileSchema.parse(profile);
+  const { name: _plain, ...rest } = validated;
+  return {
+    ...rest,
+    nameEnc: nameEncCache.get(nameKey(uid, profile.kidId)) ?? '',
+    updatedAt: serverTimestamp(),
+  };
+}
+
+/** Makes sure the cached ciphertext for this child is known before a full overwrite. */
+async function ensureNameEncKnown(uid: string, kidId: string): Promise<void> {
+  if (nameEncCache.has(nameKey(uid, kidId))) return;
+  const { db } = ensureFirebase();
+  const snap = await getDoc(doc(db, 'users', uid, 'kids', kidId));
+  const enc = snap.exists() ? snap.data()['nameEnc'] : '';
+  nameEncCache.set(nameKey(uid, kidId), typeof enc === 'string' ? enc : '');
+}
+
+/**
+ * Encrypts a changed name on the server (needs a PIN entered in the last 5 minutes).
+ * Does nothing when the name has not changed.
+ */
+async function applyNameChange(uid: string, profile: KidProfile): Promise<void> {
+  const key = nameKey(uid, profile.kidId);
+  await ensureNameEncKnown(uid, profile.kidId);
+  const known = plainNameCache.get(key);
+  const wanted = profile.name.trim();
+  if (known === wanted) return;
+  // The name was never decrypted on this device, so an empty value means
+  // "unchanged", not "clear it". Keep whatever is stored.
+  if (known === undefined && wanted === '') return;
+  const { functions } = ensureFirebase();
+  const fn = httpsCallable<{ kidId: string; name: string }, { nameEnc: string }>(
+    functions,
+    'encryptProfileName',
+  );
+  const res = await fn({ kidId: profile.kidId, name: wanted });
+  nameEncCache.set(key, res.data.nameEnc);
+  plainNameCache.set(key, wanted);
+}
+
+/** Decrypts names for the parent area. Needs a PIN entered in the last 5 minutes. */
+export async function loadChildNames(
+  uid: string,
+  kidIds: readonly string[],
+): Promise<Record<string, string>> {
+  const items: Array<{ kidId: string; nameEnc: string }> = [];
+  for (const kidId of kidIds) {
+    await ensureNameEncKnown(uid, kidId);
+    const nameEnc = nameEncCache.get(nameKey(uid, kidId)) ?? '';
+    if (nameEnc) items.push({ kidId, nameEnc });
+  }
+  if (items.length === 0) return {};
+  const { functions } = ensureFirebase();
+  const fn = httpsCallable<{ items: typeof items }, { names: Record<string, string> }>(
+    functions,
+    'decryptProfileNames',
+  );
+  const res = await fn({ items });
+  for (const [kidId, plain] of Object.entries(res.data.names)) {
+    plainNameCache.set(nameKey(uid, kidId), plain);
+  }
+  return res.data.names;
+}
+
+/** True when the server says this parent has set a PIN. */
+export async function fetchPinConfigured(uid: string): Promise<boolean> {
+  const { db } = ensureFirebase();
+  const snap = await getDoc(doc(db, 'users', uid));
+  return snap.exists() && snap.data()['pinConfigured'] === true;
 }
 
 export async function writeKidProfileDirect(
@@ -381,13 +478,11 @@ export async function writeKidProfileDirect(
   localResetEpoch: number,
 ): Promise<void> {
   const { db } = ensureFirebase();
-  const validated = KidProfileSchema.parse(profile);
+  KidProfileSchema.parse(profile);
   await ensureParentUserDocToday(uid, localResetEpoch);
+  await applyNameChange(uid, profile);
   const kidRef = doc(db, 'users', uid, 'kids', profile.kidId);
-  await setDoc(kidRef, {
-    ...validated,
-    updatedAt: serverTimestamp(),
-  });
+  await setDoc(kidRef, toCloudKidPayload(uid, profile));
 }
 
 export async function flushKidProfileTransaction(
@@ -401,13 +496,10 @@ export async function flushKidProfileTransaction(
 
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(kidRef);
-    const remote = snap.exists() ? parseCloudKidDoc(snap.id, snap.data()) : null;
+    const remote = snap.exists() ? parseCloudKidDoc(uid, snap.id, snap.data()) : null;
     const merged = mergeFn(localProfile, remote);
     const validated = KidProfileSchema.parse(merged);
-    tx.set(kidRef, {
-      ...validated,
-      updatedAt: serverTimestamp(),
-    });
+    tx.set(kidRef, toCloudKidPayload(uid, { kidId: localProfile.kidId, ...validated }));
     return {
       kidId: localProfile.kidId,
       ...validated,
@@ -456,14 +548,11 @@ export async function resetCloudKidsProgressBatch(
   }
 
   for (const profile of zeroedProfiles) {
-    const validated = KidProfileSchema.parse({
-      ...profile,
-      resetEpoch: nextResetEpoch,
-    });
-    batch.set(doc(db, 'users', uid, 'kids', profile.kidId), {
-      ...validated,
-      updatedAt: serverTimestamp(),
-    });
+    await ensureNameEncKnown(uid, profile.kidId);
+    batch.set(
+      doc(db, 'users', uid, 'kids', profile.kidId),
+      toCloudKidPayload(uid, { ...profile, resetEpoch: nextResetEpoch }),
+    );
   }
 
   await batch.commit();

@@ -8,11 +8,10 @@
     "node": "22"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --noEmit && esbuild src/index.ts --bundle --platform=node --format=esm --target=node22 --sourcemap --outfile=lib/index.js --external:firebase-admin --external:firebase-functions --external:zod",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@kiyuv/shared": "*",
     "firebase-admin": "^13.0.2",
     "firebase-functions": "^6.3.1",
     "zod": "^3.24.1"

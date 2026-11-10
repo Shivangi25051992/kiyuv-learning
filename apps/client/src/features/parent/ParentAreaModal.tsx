@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FAV_COLOR_THEMES,
   MAX_KIDS_PER_FAMILY,
   type KidId,
   type KidProfile,
 } from '@kiyuv/shared';
-import type { AuthParentUser } from '../../lib/firebase/index.js';
+import { loadChildNames, type AuthParentUser } from '../../lib/firebase/index.js';
 
 interface ParentAreaModalProps {
   user: AuthParentUser;
@@ -26,6 +26,26 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
 }) => {
   const [confirmResetTarget, setConfirmResetTarget] = useState<'all' | KidId | null>(null);
   const [busy, setBusy] = useState(false);
+  // Names are stored encrypted. They are decrypted here, in memory only, because
+  // this screen is only reachable with a freshly verified PIN.
+  const [names, setNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    loadChildNames(
+      user.uid,
+      profiles.map((p) => p.kidId),
+    )
+      .then((loaded) => {
+        if (!cancelled) setNames(loaded);
+      })
+      .catch(() => {
+        // Names stay hidden if the PIN is no longer fresh or the service is offline.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user.uid, profiles]);
 
   const handleConfirmReset = async () => {
     if (!confirmResetTarget) return;
@@ -80,9 +100,9 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
                     <div>
                       <div style={{ fontWeight: 700, color: theme.hex }}>
                         {p.nickname}{' '}
-                        {p.name && (
+                        {(names[p.kidId] ?? p.name) && (
                           <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 12 }}>
-                            ({p.name})
+                            ({names[p.kidId] ?? p.name})
                           </span>
                         )}
                       </div>
