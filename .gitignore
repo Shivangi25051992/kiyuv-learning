@@ -3,6 +3,7 @@ node_modules/
 
 # Firebase
 .firebase/
+.dataconnect/
 *.log
 
 # OS

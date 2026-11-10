@@ -2,7 +2,7 @@
 
 A gamified learning PWA for young kids — curriculum spans CBSE (India), US Common Core, UK National Curriculum, Australia ACARA + Olympiad prep (IMO / NSO / IEO / NCO / Spelling Bee).
 
-**Live:** https://kids-playground-5b055.web.app
+**Live:** https://kiyuv-learning.web.app
 
 Built for two kids initially — Yuvin (6, targeting Gr 3-4) and Kiki (2, targeting Pre-K/K) — but the architecture generalises to any family.
 
@@ -55,7 +55,7 @@ Single-file app at `public/index.html` (~80 KB uncompressed). Everything else is
 
 ## 🚀 Deploy
 
-Prereqs: Firebase CLI (`npm i -g firebase-tools`), authenticated (`firebase login`), and this project either linked to `kids-playground-5b055` (via `.firebaserc`) or any Firebase project you own.
+Prereqs: Firebase CLI (`npm i -g firebase-tools`), authenticated (`firebase login`), and this project either linked to `kiyuv-learning` (via `.firebaserc`) or any Firebase project you own.
 
 ```bash
 # One-time: install Firebase CLI

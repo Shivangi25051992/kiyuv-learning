@@ -1,0 +1,104 @@
+# Kiyuv Learning Academy — Authorized GraphQL Queries
+
+# Fetch the signed-in parent profile, all kid profiles, and all topic mastery records
+query GetMyFamilyDashboard @auth(level: USER) {
+  user(key: { uid_expr: "auth.uid" }) {
+    uid
+    email
+    displayName
+    photoUrl
+    lastActiveDate
+    lastSeen
+    kids: kidProfiles_on_parent(orderBy: [{ stars: DESC }]) {
+      kidId
+      name
+      emoji
+      age
+      targetGrade
+      stars
+      streak
+      bestStreak
+      totalCorrect
+      totalWrong
+      badges
+      updatedAt
+    }
+    topicStats: topicProgresses_on_parent {
+      kidId
+      topicId
+      played
+      correct
+      bestStreak
+      mastered
+      updatedAt
+    }
+  }
+}
+
+# Fetch a single child's overall progress and topic mastery records
+query GetKidProgress($kidId: String!) @auth(level: USER) {
+  kidProfile(key: { parentUid_expr: "auth.uid", kidId: $kidId }) {
+    kidId
+    name
+    emoji
+    age
+    targetGrade
+    stars
+    streak
+    bestStreak
+    totalCorrect
+    totalWrong
+    badges
+    updatedAt
+  }
+  topicProgresses(
+    where: {
+      parentUid: { eq_expr: "auth.uid" }
+      kidId: { eq: $kidId }
+    }
+  ) {
+    topicId
+    played
+    correct
+    bestStreak
+    mastered
+    updatedAt
+  }
+}
+
+# Fetch curriculum subjects and topics for a learner track ("yuvin" or "kiki")
+query GetCurriculumByTrack($kidTrack: String!)
+  @auth(level: PUBLIC, insecureReason: "Curriculum catalog is public educational metadata") {
+  curriculumSubjects(
+    where: { kidTrack: { eq: $kidTrack } }
+    orderBy: [{ sortOrder: ASC }]
+  ) {
+    id
+    kidTrack
+    emoji
+    name
+    grade
+    systems
+    sortOrder
+    topics: curriculumTopics_on_subject(orderBy: [{ sortOrder: ASC }]) {
+      id
+      name
+      difficulty
+      generatorKey
+      sortOrder
+    }
+  }
+}
+
+# Fetch question bank items for a specific curriculum topic
+query GetTopicQuestions($topicId: String!)
+  @auth(level: PUBLIC, insecureReason: "Practice questions are public curriculum content") {
+  questionBankItems(where: { topicId: { eq: $topicId } }) {
+    id
+    questionText
+    answer
+    options
+    hint
+    difficulty
+  }
+}

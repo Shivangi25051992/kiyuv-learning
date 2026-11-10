@@ -19,6 +19,18 @@
 <!-- Favicons -->
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
+<!-- ES Module Import Map for Firebase & Generated SQL Connect SDK -->
+<script type="importmap">
+{
+  "imports": {
+    "firebase/app": "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js",
+    "firebase/data-connect": "https://www.gstatic.com/firebasejs/12.11.0/firebase-data-connect.js",
+    "@kiyuv-learning/dataconnect": "/dataconnect-generated/esm/index.esm.js"
+  }
+}
+</script>
 <style>
   :root{
     --blue:#4f8bff; --rose:#ff86c8; --violet:#c084fc; --green:#3ddc97;
@@ -370,31 +382,58 @@
 })();
 </script>
 
-<!-- Firebase SDK (modular) -->
+<!-- Firebase SDK (modular) + Firebase SQL Connect (Data Connect) -->
 <script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+  import { initializeApp } from 'firebase/app';
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged }
-    from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+    from 'firebase/auth';
   import { getFirestore, doc, getDoc, setDoc, serverTimestamp, enableIndexedDbPersistence }
-    from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+    from 'firebase/firestore';
+  import { getDataConnect, connectDataConnectEmulator }
+    from 'firebase/data-connect';
+  import {
+    connectorConfig,
+    upsertParentProfile,
+    upsertKidProgress,
+    upsertTopicProgress,
+    resetMyKidsProgress,
+    getMyFamilyDashboard,
+    getKidProgress,
+    getCurriculumByTrack,
+    getTopicQuestions
+  } from '@kiyuv-learning/dataconnect';
 
   const firebaseConfig = {
-    apiKey: "AIzaSyBjk8W82VcWzoxqeR7uTobpM2wT92gfpqA",
-    authDomain: "kids-playground-5b055.firebaseapp.com",
-    projectId: "kids-playground-5b055",
-    storageBucket: "kids-playground-5b055.firebasestorage.app",
-    messagingSenderId: "266803710188",
-    appId: "1:266803710188:web:1c92a9959e043b9742bdc9",
-    measurementId: "G-EZMG7YJ3E1"
+    apiKey: "AIzaSyBS8PdHxWs5MkiZGco0Z6njbeq-C98GUOo",
+    authDomain: "kiyuv-learning.firebaseapp.com",
+    projectId: "kiyuv-learning",
+    storageBucket: "kiyuv-learning.firebasestorage.app",
+    messagingSenderId: "312015583553",
+    appId: "1:312015583553:web:a04711e9523a2e90b409c0",
+    measurementId: "G-CDZEHTR04R"
   };
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const dataConnect = getDataConnect(app, connectorConfig);
+
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    try { connectDataConnectEmulator(dataConnect, 'localhost', 9399); } catch(e) {}
+  }
   try { setPersistence(auth, browserLocalPersistence); } catch(e) {}
   try { enableIndexedDbPersistence(db); } catch(e) {}
 
-  // Expose minimal helpers to global scope
+  const KID_META = {
+    yuvin: { name: 'Yuvin', emoji: '👦', age: 6, targetGrade: 'Grade 3-4' },
+    kiki:  { name: 'Kiki',  emoji: '👧', age: 2, targetGrade: 'Pre-K / K' }
+  };
+
+  // Expose Firebase Auth + SQL Connect + Firestore helpers to global scope
   window.__fb = {
+    app,
+    auth,
+    db,
+    dataConnect,
     signIn: async () => {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
@@ -411,6 +450,45 @@
     saveProgress: async (kid, data) => {
       const u = auth.currentUser;
       if(!u) return;
+      const meta = KID_META[kid] || { name: kid, emoji: '🧒', age: null, targetGrade: null };
+
+      // 1. Sync to Firebase SQL Connect (PostgreSQL)
+      const dcTasks = [
+        upsertParentProfile(dataConnect, {
+          email: u.email || '',
+          displayName: u.displayName || null,
+          photoUrl: u.photoURL || null,
+          lastActiveDate: new Date().toISOString().slice(0, 10)
+        }),
+        upsertKidProgress(dataConnect, {
+          kidId: kid,
+          name: meta.name,
+          emoji: meta.emoji,
+          age: meta.age,
+          targetGrade: meta.targetGrade,
+          stars: data.stars || 0,
+          streak: data.streak || 0,
+          bestStreak: data.bestStreak || 0,
+          totalCorrect: data.totalCorrect || 0,
+          totalWrong: data.totalWrong || 0,
+          badges: data.badges || []
+        })
+      ];
+      for (const [topicId, stat] of Object.entries(data.games || {})) {
+        dcTasks.push(
+          upsertTopicProgress(dataConnect, {
+            kidId: kid,
+            topicId,
+            played: stat.played || 0,
+            correct: stat.correct || 0,
+            bestStreak: stat.best || 0,
+            mastered: (stat.best || 0) >= 10
+          })
+        );
+      }
+      Promise.allSettled(dcTasks).catch(() => {});
+
+      // 2. Also sync to Cloud Firestore for offline IndexedDB cache
       await setDoc(doc(db, 'users', u.uid, 'progress', kid), {
         ...data, updatedAt: serverTimestamp(), email: u.email
       }, { merge: true });
@@ -418,16 +496,58 @@
     loadProgress: async (kid) => {
       const u = auth.currentUser;
       if(!u) return null;
+
+      // Try Firebase SQL Connect first, then merge/fall back to Firestore
+      try {
+        const { data } = await getKidProgress(dataConnect, { kidId: kid });
+        if (data?.kidProfile) {
+          const games = {};
+          for (const tp of data.topicProgresses || []) {
+            games[tp.topicId] = {
+              played: tp.played || 0,
+              correct: tp.correct || 0,
+              best: tp.bestStreak || 0,
+              sessionBest: 0
+            };
+          }
+          return {
+            stars: data.kidProfile.stars || 0,
+            streak: data.kidProfile.streak || 0,
+            bestStreak: data.kidProfile.bestStreak || 0,
+            totalCorrect: data.kidProfile.totalCorrect || 0,
+            totalWrong: data.kidProfile.totalWrong || 0,
+            badges: data.kidProfile.badges || [],
+            games
+          };
+        }
+      } catch (dcErr) {
+        console.debug('SQL Connect read fallback to Firestore:', dcErr?.message || dcErr);
+      }
+
       const snap = await getDoc(doc(db, 'users', u.uid, 'progress', kid));
       return snap.exists() ? snap.data() : null;
     },
     saveProfile: async (data) => {
       const u = auth.currentUser;
       if(!u) return;
+      upsertParentProfile(dataConnect, {
+        email: u.email || '',
+        displayName: u.displayName || null,
+        photoUrl: u.photoURL || null,
+        lastActiveDate: data.lastActiveDate || new Date().toISOString().slice(0, 10)
+      }).catch(() => {});
       await setDoc(doc(db, 'users', u.uid), {
         ...data, email: u.email, lastSeen: serverTimestamp()
       }, { merge: true });
     },
+    resetProgress: async () => {
+      const u = auth.currentUser;
+      if(!u) return;
+      await resetMyKidsProgress(dataConnect).catch(() => {});
+    },
+    getFamilyDashboard: () => getMyFamilyDashboard(dataConnect),
+    getCurriculumByTrack: (kidTrack) => getCurriculumByTrack(dataConnect, { kidTrack }),
+    getTopicQuestions: (topicId) => getTopicQuestions(dataConnect, { topicId }),
     onAuthChange: (cb) => onAuthStateChanged(auth, cb),
   };
   window.dispatchEvent(new Event('fb-ready'));
@@ -459,8 +579,13 @@ async function doGoogleSignIn(){
   btn.disabled = true;
   btn.innerHTML = '<span style="margin-right:8px">⏳</span> Opening Google...';
   try {
-    // Wait for Firebase SDK to be ready
-    if(!window.__fb) await new Promise(r => window.addEventListener('fb-ready', r, {once:true}));
+    // Wait for Firebase SDK to be ready (with 8s timeout so it never hangs)
+    if(!window.__fb){
+      await Promise.race([
+        new Promise(r => window.addEventListener('fb-ready', r, {once:true})),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Firebase SDK timed out loading — please hard refresh (Cmd+Shift+R).')), 8000))
+      ]);
+    }
     const user = await window.__fb.signIn();
 
     // Check if this device already has a session for this email
@@ -493,7 +618,9 @@ async function doGoogleSignIn(){
     console.error(e);
     err.textContent = e.code === 'auth/popup-closed-by-user'
       ? 'Sign-in cancelled — please try again.'
-      : 'Sign-in failed. Check your internet and try again.';
+      : (e.code === 'auth/operation-not-allowed'
+        ? 'Google Sign-In is being enabled in Firebase Auth — please try again in a moment.'
+        : (e.message || 'Sign-in failed. Check your internet and try again.'));
     btn.disabled = false;
     btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 48 48" style="margin-right:10px"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Sign in with Google';
   }
@@ -1475,7 +1602,7 @@ function showLeader(){
     </div>
   `;
 }
-function resetAll(){ if(confirm("Reset BOTH kids' progress?")){ localStorage.removeItem('kidsAcad_yuvin'); localStorage.removeItem('kidsAcad_kiki'); showLeader(); } }
+function resetAll(){ if(confirm("Reset BOTH kids' progress?")){ localStorage.removeItem('kidsAcad_yuvin'); localStorage.removeItem('kidsAcad_kiki'); if(window.__fb && window.__fb.resetProgress) window.__fb.resetProgress(); showLeader(); } }
 
 // ========================================================================
 // BOOTSTRAP

@@ -1,0 +1,82 @@
+# Kiyuv Learning Academy — Authorized GraphQL Mutations
+
+# Create or update the authenticated parent's profile
+mutation UpsertParentProfile(
+  $email: String!
+  $displayName: String
+  $photoUrl: String
+  $lastActiveDate: String
+) @auth(level: USER) {
+  user_upsert(
+    data: {
+      uid_expr: "auth.uid"
+      email: $email
+      displayName: $displayName
+      photoUrl: $photoUrl
+      lastActiveDate: $lastActiveDate
+      lastSeen_expr: "request.time"
+    }
+  )
+}
+
+# Create or update a child's overall gamified progress
+mutation UpsertKidProgress(
+  $kidId: String!
+  $name: String!
+  $emoji: String
+  $age: Int
+  $targetGrade: String
+  $stars: Int!
+  $streak: Int!
+  $bestStreak: Int!
+  $totalCorrect: Int!
+  $totalWrong: Int!
+  $badges: [String!]
+) @auth(level: USER) {
+  kidProfile_upsert(
+    data: {
+      parentUid_expr: "auth.uid"
+      kidId: $kidId
+      name: $name
+      emoji: $emoji
+      age: $age
+      targetGrade: $targetGrade
+      stars: $stars
+      streak: $streak
+      bestStreak: $bestStreak
+      totalCorrect: $totalCorrect
+      totalWrong: $totalWrong
+      badges: $badges
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+# Create or update a child's per-topic mastery statistics
+mutation UpsertTopicProgress(
+  $kidId: String!
+  $topicId: String!
+  $played: Int!
+  $correct: Int!
+  $bestStreak: Int!
+  $mastered: Boolean!
+) @auth(level: USER) {
+  topicProgress_upsert(
+    data: {
+      parentUid_expr: "auth.uid"
+      kidId: $kidId
+      topicId: $topicId
+      played: $played
+      correct: $correct
+      bestStreak: $bestStreak
+      mastered: $mastered
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+# Reset all progress for the authenticated family account
+mutation ResetMyKidsProgress @auth(level: USER) @transaction {
+  topicProgress_deleteMany(where: { parentUid: { eq_expr: "auth.uid" } })
+  kidProfile_deleteMany(where: { parentUid: { eq_expr: "auth.uid" } })
+}
