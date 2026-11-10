@@ -19,15 +19,13 @@
 <!-- Favicons -->
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
 <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
-<!-- ES Module Import Map for Firebase & Generated SQL Connect SDK -->
+<!-- ES Module Import Map for Firebase SDK -->
 <script type="importmap">
 {
   "imports": {
     "firebase/app": "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js",
     "firebase/auth": "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js",
-    "firebase/data-connect": "https://www.gstatic.com/firebasejs/12.11.0/firebase-data-connect.js",
-    "@kiyuv-learning/dataconnect": "/dataconnect-generated/esm/index.esm.js"
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js"
   }
 }
 </script>
@@ -382,26 +380,25 @@
 })();
 </script>
 
-<!-- Firebase SDK (modular) + Firebase SQL Connect (Data Connect) -->
+<!-- Firebase SDK (modular) — Cloud Firestore Only -->
 <script type="module">
   import { initializeApp } from 'firebase/app';
   import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserLocalPersistence, onAuthStateChanged }
     from 'firebase/auth';
-  import { getFirestore, doc, getDoc, setDoc, serverTimestamp, enableIndexedDbPersistence }
-    from 'firebase/firestore';
-  import { getDataConnect, connectDataConnectEmulator }
-    from 'firebase/data-connect';
   import {
-    connectorConfig,
-    upsertParentProfile,
-    upsertKidProgress,
-    upsertTopicProgress,
-    resetMyKidsProgress,
-    getMyFamilyDashboard,
-    getKidProgress,
-    getCurriculumByTrack,
-    getTopicQuestions
-  } from '@kiyuv-learning/dataconnect';
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager,
+    getFirestore,
+    doc,
+    getDoc,
+    getDocs,
+    setDoc,
+    updateDoc,
+    writeBatch,
+    collection,
+    serverTimestamp
+  } from 'firebase/firestore';
 
   const firebaseConfig = {
     apiKey: "AIzaSyBS8PdHxWs5MkiZGco0Z6njbeq-C98GUOo",
@@ -414,26 +411,139 @@
   };
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app);
-  const dataConnect = getDataConnect(app, connectorConfig);
-
-  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-    try { connectDataConnectEmulator(dataConnect, 'localhost', 9399); } catch(e) {}
+  let db;
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  } catch (e) {
+    db = getFirestore(app);
   }
   try { setPersistence(auth, browserLocalPersistence); } catch(e) {}
-  try { enableIndexedDbPersistence(db); } catch(e) {}
 
+  const KID_ID_MAP = { yuvin: 'k1', kiki: 'k2' };
+  const KID_BY_ID = { k1: 'yuvin', k2: 'kiki' };
   const KID_META = {
-    yuvin: { name: 'Yuvin', emoji: '👦', age: 6, targetGrade: 'Grade 3-4' },
-    kiki:  { name: 'Kiki',  emoji: '👧', age: 2, targetGrade: 'Pre-K / K' }
+    yuvin: { kidId: 'k1', nickname: 'Yuvin', avatar: '👦', ageBand: '5-7', track: 'primary' },
+    kiki:  { kidId: 'k2', nickname: 'Kiki',  avatar: '👧', ageBand: '2-4', track: 'early' }
   };
 
-  // Expose Firebase Auth + SQL Connect + Firestore helpers to global scope
+  let _userDocExists = false;
+  const _lastKidWriteAt = { yuvin: 0, kiki: 0 };
+
+  function getLocale() {
+    const raw = (navigator.language || 'en').slice(0, 16);
+    return raw.length >= 2 ? raw : 'en';
+  }
+
+  function getLocalResetEpoch() {
+    const v = parseInt(localStorage.getItem('kidsAcad_resetEpoch') || '0', 10);
+    return Number.isFinite(v) && v >= 0 ? v : 0;
+  }
+
+  function setLocalResetEpoch(epoch) {
+    const safe = Math.max(0, Math.trunc(epoch || 0));
+    localStorage.setItem('kidsAcad_resetEpoch', String(safe));
+    return safe;
+  }
+
+  function toCloudTopics(games) {
+    const topics = {};
+    for (const [topicId, stat] of Object.entries(games || {})) {
+      const p = Math.max(0, Math.trunc(stat.played || 0));
+      const c = Math.max(0, Math.trunc(stat.correct || 0));
+      const b = Math.max(0, Math.trunc(stat.best || 0));
+      topics[topicId] = { p, c, b, m: b >= 10 };
+    }
+    return topics;
+  }
+
+  function fromCloudTopics(topics) {
+    const games = {};
+    for (const [topicId, t] of Object.entries(topics || {})) {
+      games[topicId] = {
+        played: t?.p || 0,
+        correct: t?.c || 0,
+        best: t?.b || 0,
+        sessionBest: 0
+      };
+    }
+    return games;
+  }
+
+  function buildKidPayload(kid, data, resetEpoch) {
+    const meta = KID_META[kid] || {
+      kidId: KID_ID_MAP[kid] || 'k1',
+      nickname: String(kid).slice(0, 20),
+      avatar: '🧒',
+      ageBand: '5-7',
+      track: 'primary'
+    };
+    const computedBadges = typeof BADGES !== 'undefined'
+      ? BADGES.filter(b => b.check(data)).map(b => b.id)
+      : (Array.isArray(data.badges) ? data.badges : []);
+    return {
+      nickname: meta.nickname,
+      avatar: meta.avatar,
+      ageBand: meta.ageBand,
+      track: meta.track,
+      stars: Math.max(0, Math.trunc(data.stars || 0)),
+      streak: Math.max(0, Math.trunc(data.streak || 0)),
+      bestStreak: Math.max(0, Math.trunc(data.bestStreak || 0)),
+      totalCorrect: Math.max(0, Math.trunc(data.totalCorrect || 0)),
+      totalWrong: Math.max(0, Math.trunc(data.totalWrong || 0)),
+      badges: computedBadges.slice(0, 100),
+      topics: toCloudTopics(data.games),
+      resetEpoch: Math.max(0, Math.trunc(resetEpoch || 0)),
+      updatedAt: serverTimestamp()
+    };
+  }
+
+  async function ensureUserDocToday(u) {
+    if (!u) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const cacheKey = 'kidsAcad_lastActive_' + u.uid;
+    if (_userDocExists && localStorage.getItem(cacheKey) === today) return;
+
+    const userRef = doc(db, 'users', u.uid);
+    if (!_userDocExists) {
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        _userDocExists = true;
+        const d = snap.data();
+        if (typeof d.resetEpoch === 'number' && d.resetEpoch > getLocalResetEpoch()) {
+          setLocalResetEpoch(d.resetEpoch);
+        }
+        if (d.lastActiveDate === today) {
+          localStorage.setItem(cacheKey, today);
+          return;
+        }
+      }
+    }
+
+    if (!_userDocExists) {
+      await setDoc(userRef, {
+        createdAt: serverTimestamp(),
+        lastActiveDate: today,
+        locale: getLocale(),
+        resetEpoch: getLocalResetEpoch(),
+        schemaVersion: 1
+      });
+      _userDocExists = true;
+    } else {
+      await updateDoc(userRef, {
+        lastActiveDate: today,
+        locale: getLocale()
+      });
+    }
+    localStorage.setItem(cacheKey, today);
+  }
+
+  // Expose Firebase Auth + Firestore helpers to global scope
   window.__fb = {
     app,
     auth,
     db,
-    dataConnect,
     signIn: async () => {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
@@ -449,105 +559,96 @@
     uid: () => auth.currentUser?.uid || null,
     saveProgress: async (kid, data) => {
       const u = auth.currentUser;
-      if(!u) return;
-      const meta = KID_META[kid] || { name: kid, emoji: '🧒', age: null, targetGrade: null };
+      if (!u) return false;
+      const kidId = KID_ID_MAP[kid];
+      if (!kidId) return false;
 
-      // 1. Sync to Firebase SQL Connect (PostgreSQL)
-      const dcTasks = [
-        upsertParentProfile(dataConnect, {
-          email: u.email || '',
-          displayName: u.displayName || null,
-          photoUrl: u.photoURL || null,
-          lastActiveDate: new Date().toISOString().slice(0, 10)
-        }),
-        upsertKidProgress(dataConnect, {
-          kidId: kid,
-          name: meta.name,
-          emoji: meta.emoji,
-          age: meta.age,
-          targetGrade: meta.targetGrade,
-          stars: data.stars || 0,
-          streak: data.streak || 0,
-          bestStreak: data.bestStreak || 0,
-          totalCorrect: data.totalCorrect || 0,
-          totalWrong: data.totalWrong || 0,
-          badges: data.badges || []
-        })
-      ];
-      for (const [topicId, stat] of Object.entries(data.games || {})) {
-        dcTasks.push(
-          upsertTopicProgress(dataConnect, {
-            kidId: kid,
-            topicId,
-            played: stat.played || 0,
-            correct: stat.correct || 0,
-            bestStreak: stat.best || 0,
-            mastered: (stat.best || 0) >= 10
-          })
-        );
+      const now = Date.now();
+      if (now - (_lastKidWriteAt[kid] || 0) < 5500) {
+        return false; // Caller will retry after cooldown
       }
-      Promise.allSettled(dcTasks).catch(() => {});
+      _lastKidWriteAt[kid] = now;
 
-      // 2. Also sync to Cloud Firestore for offline IndexedDB cache
-      await setDoc(doc(db, 'users', u.uid, 'progress', kid), {
-        ...data, updatedAt: serverTimestamp(), email: u.email
-      }, { merge: true });
+      await ensureUserDocToday(u);
+      const resetEpoch = getLocalResetEpoch();
+      const payload = buildKidPayload(kid, data, resetEpoch);
+      await setDoc(doc(db, 'users', u.uid, 'kids', kidId), payload);
+      return true;
     },
-    loadProgress: async (kid) => {
+    loadFamily: async () => {
       const u = auth.currentUser;
-      if(!u) return null;
-
-      // Try Firebase SQL Connect first, then merge/fall back to Firestore
-      try {
-        const { data } = await getKidProgress(dataConnect, { kidId: kid });
-        if (data?.kidProfile) {
-          const games = {};
-          for (const tp of data.topicProgresses || []) {
-            games[tp.topicId] = {
-              played: tp.played || 0,
-              correct: tp.correct || 0,
-              best: tp.bestStreak || 0,
-              sessionBest: 0
-            };
-          }
-          return {
-            stars: data.kidProfile.stars || 0,
-            streak: data.kidProfile.streak || 0,
-            bestStreak: data.kidProfile.bestStreak || 0,
-            totalCorrect: data.kidProfile.totalCorrect || 0,
-            totalWrong: data.kidProfile.totalWrong || 0,
-            badges: data.kidProfile.badges || [],
-            games
-          };
+      if (!u) return null;
+      const userRef = doc(db, 'users', u.uid);
+      const [userSnap, kidsSnap] = await Promise.all([
+        getDoc(userRef),
+        getDocs(collection(db, 'users', u.uid, 'kids'))
+      ]);
+      let cloudResetEpoch = 0;
+      if (userSnap.exists()) {
+        _userDocExists = true;
+        const ud = userSnap.data();
+        cloudResetEpoch = typeof ud.resetEpoch === 'number' ? ud.resetEpoch : 0;
+        if (ud.lastActiveDate) {
+          localStorage.setItem('kidsAcad_lastActive_' + u.uid, ud.lastActiveDate);
         }
-      } catch (dcErr) {
-        console.debug('SQL Connect read fallback to Firestore:', dcErr?.message || dcErr);
       }
-
-      const snap = await getDoc(doc(db, 'users', u.uid, 'progress', kid));
-      return snap.exists() ? snap.data() : null;
-    },
-    saveProfile: async (data) => {
-      const u = auth.currentUser;
-      if(!u) return;
-      upsertParentProfile(dataConnect, {
-        email: u.email || '',
-        displayName: u.displayName || null,
-        photoUrl: u.photoURL || null,
-        lastActiveDate: data.lastActiveDate || new Date().toISOString().slice(0, 10)
-      }).catch(() => {});
-      await setDoc(doc(db, 'users', u.uid), {
-        ...data, email: u.email, lastSeen: serverTimestamp()
-      }, { merge: true });
+      const kids = {};
+      kidsSnap.forEach(docSnap => {
+        const kidKey = KID_BY_ID[docSnap.id];
+        if (!kidKey) return;
+        const kd = docSnap.data();
+        if (typeof kd.resetEpoch === 'number' && kd.resetEpoch > cloudResetEpoch) {
+          cloudResetEpoch = kd.resetEpoch;
+        }
+        kids[kidKey] = {
+          stars: kd.stars || 0,
+          streak: kd.streak || 0,
+          bestStreak: kd.bestStreak || 0,
+          totalCorrect: kd.totalCorrect || 0,
+          totalWrong: kd.totalWrong || 0,
+          badges: kd.badges || [],
+          games: fromCloudTopics(kd.topics),
+          resetEpoch: kd.resetEpoch || 0
+        };
+      });
+      return { resetEpoch: cloudResetEpoch, kids };
     },
     resetProgress: async () => {
       const u = auth.currentUser;
-      if(!u) return;
-      await resetMyKidsProgress(dataConnect).catch(() => {});
+      const nextEpoch = setLocalResetEpoch(getLocalResetEpoch() + 1);
+      if (!u) return;
+      const today = new Date().toISOString().slice(0, 10);
+      const userRef = doc(db, 'users', u.uid);
+      if (!_userDocExists) {
+        const snap = await getDoc(userRef);
+        _userDocExists = snap.exists();
+      }
+      const batch = writeBatch(db);
+      if (_userDocExists) {
+        batch.update(userRef, {
+          lastActiveDate: today,
+          locale: getLocale(),
+          resetEpoch: nextEpoch
+        });
+      } else {
+        batch.set(userRef, {
+          createdAt: serverTimestamp(),
+          lastActiveDate: today,
+          locale: getLocale(),
+          resetEpoch: nextEpoch,
+          schemaVersion: 1
+        });
+        _userDocExists = true;
+      }
+      const emptyData = { stars: 0, streak: 0, bestStreak: 0, totalCorrect: 0, totalWrong: 0, badges: [], games: {} };
+      for (const kid of ['yuvin', 'kiki']) {
+        const kidId = KID_ID_MAP[kid];
+        batch.set(doc(db, 'users', u.uid, 'kids', kidId), buildKidPayload(kid, emptyData, nextEpoch));
+        _lastKidWriteAt[kid] = Date.now();
+      }
+      await batch.commit();
+      localStorage.setItem('kidsAcad_lastActive_' + u.uid, today);
     },
-    getFamilyDashboard: () => getMyFamilyDashboard(dataConnect),
-    getCurriculumByTrack: (kidTrack) => getCurriculumByTrack(dataConnect, { kidTrack }),
-    getTopicQuestions: (topicId) => getTopicQuestions(dataConnect, { topicId }),
     onAuthChange: (cb) => onAuthStateChanged(auth, cb),
   };
   window.dispatchEvent(new Event('fb-ready'));
@@ -1082,27 +1183,69 @@ const BADGES = [
 const DEFAULT = {stars:0, streak:0, bestStreak:0, totalCorrect:0, totalWrong:0, games:{}, badges:[]};
 function loadProg(kid){ try{ return JSON.parse(localStorage.getItem('kidsAcad_'+kid)) || structuredClone(DEFAULT); }catch(e){ return structuredClone(DEFAULT); } }
 
-// Debounced cloud sync — writes to Firestore 2s after last change
+// Local save on every answer; flush to Firestore when a topic finishes, when the page is hidden, and at most once every 30s
+const _dirtyKids = new Set();
 const _syncTimers = {};
-function saveProg(kid, p){
-  localStorage.setItem('kidsAcad_'+kid, JSON.stringify(p));
-  if(window.__fb && window.__fb.uid()){
-    clearTimeout(_syncTimers[kid]);
-    _syncTimers[kid] = setTimeout(()=>{
-      window.__fb.saveProgress(kid, p).catch(e=>console.warn('Cloud sync failed:', e.message));
-      // Also update "last active" ping on the parent profile
-      const today = new Date().toISOString().slice(0,10);
-      window.__fb.saveProfile({ lastActiveDate: today }).catch(()=>{});
-    }, 1500);
+
+async function flushKidSync(kid){
+  clearTimeout(_syncTimers[kid]);
+  delete _syncTimers[kid];
+  if(!_dirtyKids.has(kid)) return;
+  if(!window.__fb || !window.__fb.uid()) return;
+  const p = loadProg(kid);
+  try {
+    const wrote = await window.__fb.saveProgress(kid, p);
+    if(wrote){
+      _dirtyKids.delete(kid);
+    } else {
+      // Cooldown active (5.5s spacing); retry after 6s
+      _syncTimers[kid] = setTimeout(()=>flushKidSync(kid), 6000);
+    }
+  } catch(e){
+    console.warn('Cloud sync failed:', e.message);
   }
 }
 
-// Pull cloud progress on login; merge with local (take higher star count as tiebreaker)
+function flushAllDirtyKids(){
+  for(const kid of [..._dirtyKids]){
+    flushKidSync(kid);
+  }
+}
+
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden') flushAllDirtyKids();
+});
+
+function saveProg(kid, p, flushNow = false){
+  localStorage.setItem('kidsAcad_'+kid, JSON.stringify(p));
+  _dirtyKids.add(kid);
+  if(window.__fb && window.__fb.uid()){
+    if(flushNow){
+      flushKidSync(kid);
+    } else if(!_syncTimers[kid]){
+      _syncTimers[kid] = setTimeout(()=>flushKidSync(kid), 30000);
+    }
+  }
+}
+
+// Pull cloud progress on login; merge with local (higher cloud resetEpoch discards local progress)
 async function syncFromCloud(){
   if(!window.__fb || !window.__fb.uid()) return;
-  for(const kid of ['yuvin','kiki']){
-    try {
-      const cloud = await window.__fb.loadProgress(kid);
+  try {
+    const family = await window.__fb.loadFamily();
+    if(!family) return;
+    const localEpoch = parseInt(localStorage.getItem('kidsAcad_resetEpoch') || '0', 10) || 0;
+    const cloudEpoch = family.resetEpoch || 0;
+    if(cloudEpoch > localEpoch){
+      localStorage.setItem('kidsAcad_resetEpoch', String(cloudEpoch));
+      localStorage.setItem('kidsAcad_yuvin', JSON.stringify(structuredClone(DEFAULT)));
+      localStorage.setItem('kidsAcad_kiki', JSON.stringify(structuredClone(DEFAULT)));
+      _dirtyKids.clear();
+    } else if(localEpoch > cloudEpoch){
+      localStorage.setItem('kidsAcad_resetEpoch', String(localEpoch));
+    }
+    for(const kid of ['yuvin','kiki']){
+      const cloud = family.kids?.[kid];
       if(!cloud) continue;
       const local = loadProg(kid);
       const merged = {
@@ -1114,7 +1257,6 @@ async function syncFromCloud(){
         games: {...(local.games||{}), ...(cloud.games||{})},
         badges: cloud.badges || local.badges || [],
       };
-      // For each game, take the best "best" and sum "played"/"correct" from cloud (cloud is source of truth after sync)
       Object.keys(merged.games).forEach(gid=>{
         const l = local.games[gid] || {played:0,correct:0,best:0,sessionBest:0};
         const c = cloud.games[gid] || {played:0,correct:0,best:0};
@@ -1126,8 +1268,8 @@ async function syncFromCloud(){
         };
       });
       localStorage.setItem('kidsAcad_'+kid, JSON.stringify(merged));
-    } catch(e){ console.warn('Cloud load failed for',kid,e.message); }
-  }
+    }
+  } catch(e){ console.warn('Cloud family load failed:', e.message); }
 }
 
 let who = 'yuvin';
@@ -1289,11 +1431,12 @@ function startTopic(topicId){
   const p = loadProg(who);
   if(!p.games[topicId]) p.games[topicId]={played:0, correct:0, best:0, sessionBest:0};
   p.games[topicId].sessionBest = 0;
-  saveProg(who, p);
+  localStorage.setItem('kidsAcad_'+who, JSON.stringify(p));
   nextQuestion();
 }
 
 function finishTopic(){
+  flushKidSync(who);
   const p = loadProg(who);
   const stat = p.games[currentTopic];
   const correctThis = stat?.sessionBest || 0;
@@ -1602,7 +1745,19 @@ function showLeader(){
     </div>
   `;
 }
-function resetAll(){ if(confirm("Reset BOTH kids' progress?")){ localStorage.removeItem('kidsAcad_yuvin'); localStorage.removeItem('kidsAcad_kiki'); if(window.__fb && window.__fb.resetProgress) window.__fb.resetProgress(); showLeader(); } }
+function resetAll(){
+  if(confirm("Reset BOTH kids' progress?")){
+    clearTimeout(_syncTimers.yuvin);
+    clearTimeout(_syncTimers.kiki);
+    _dirtyKids.clear();
+    localStorage.setItem('kidsAcad_yuvin', JSON.stringify(structuredClone(DEFAULT)));
+    localStorage.setItem('kidsAcad_kiki', JSON.stringify(structuredClone(DEFAULT)));
+    if(window.__fb && window.__fb.resetProgress){
+      window.__fb.resetProgress().catch(e=>console.warn('Reset sync failed:', e.message));
+    }
+    showLeader();
+  }
+}
 
 // ========================================================================
 // BOOTSTRAP
