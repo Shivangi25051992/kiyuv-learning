@@ -4,7 +4,11 @@ node_modules/
 # Build output
 dist/
 apps/client/dist/
+functions/lib/
 coverage/
+
+# Local agent directories
+.claude/
 
 # Firebase
 .firebase/

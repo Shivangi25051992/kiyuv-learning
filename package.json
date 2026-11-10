@@ -5,11 +5,12 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "functions"
   ],
   "scripts": {
     "dev": "npm --workspace @kiyuv/client run dev",
-    "build": "npm --workspace @kiyuv/shared run build && npm --workspace @kiyuv/content run build && npm --workspace @kiyuv/client run build",
+    "build": "npm --workspace @kiyuv/shared run build && npm --workspace @kiyuv/content run build && npm --workspace @kiyuv/functions run build && npm --workspace @kiyuv/client run build",
     "typecheck": "npm --workspaces run typecheck",
     "lint": "eslint .",
     "test": "vitest run",
