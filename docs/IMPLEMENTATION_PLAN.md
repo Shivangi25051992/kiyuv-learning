@@ -392,15 +392,16 @@ Rules cannot loop over the `topics` map, so per-topic numbers are bounded only b
 ### Tasks
 
 - [x] **3.1 Run spikes S1 and S2** and record the result. Stop if both the design and the fallback fail.
-- [ ] **3.2 Enable providers:** Google, Apple, and email with verification required (client UI & SDK wired; enable Apple & Email/Password in Firebase Console). Upgrade to Identity Platform if not already done. Turn on email enumeration protection and a strong password policy.
+- [ ] **3.2 Enable providers:** Google, Apple, and email with verification required (client UI & SDK wired; enable Apple & Email/Password in Firebase Console). Upgrade to Identity Platform if not already done. Turn on email enumeration protection and a strong password policy. **Decision 2026-11-10: Google only for now.** Apple and Email/Password (and the Identity Platform upgrade, enumeration protection and password policy that go with them) are deferred until the app is proven. The login screen hides them behind flags.
 - [x] **3.3 Build `setPin` and `verifyPin`** with unit tests for lockout, parallel attempts, expiry, pepper rotation and blocked PINs.
 - [x] **3.4 Build PIN screens** with idle lock and the 5-minute parent-area check. Make the "Who's learning?" picker the screen shown after unlock, and add the 5-minute PIN check in front of Add, Edit and Delete profile.
-- [ ] **3.5 Deploy the rules** with real `pinFresh`, plus emulator tests for every allow and deny path. Include another user's data, a missing claim, an expired claim, oversized data, extra fields and direct `pinSecrets` access. Add the profile cases listed under "How the rules support profiles and several devices".
-- [ ] **3.6 Turn on App Check** in monitor mode (client SDK wired via `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`). Enforce it on Firestore and Functions once metrics show legitimate traffic is passing. Authentication enforcement is in Preview, so decide separately.
+- [ ] **3.5 Deploy the rules** with real `pinFresh`, plus emulator tests for every allow and deny path. Include another user's data, a missing claim, an expired claim, oversized data, extra fields and direct `pinSecrets` access. Add the profile cases listed under "How the rules support profiles and several devices". **Code done on branch `phase-3/complete-pin-and-encryption`:** real `pinFresh()`, rules tests for every PIN case, browser-side PIN fallback and local PIN hash removed, no default pepper. **Still open:** deploy functions, hosting, then rules in that order (see `docs/PHASE3_CONSOLE_STEPS.md`), and run the rules tests in CI (Java 21 is not installed on this machine). **Functions are deployed (2026-11-10) but blocked by the organization policy `iam.allowedPolicyMemberDomains`; the organization owner must override it for this project. Do not deploy hosting or the new rules until that is done.**
+- [ ] **3.6 Turn on App Check** in monitor mode (client SDK wired via `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`). Enforce it on Firestore and Functions once metrics show legitimate traffic is passing. Authentication enforcement is in Preview, so decide separately. **Decision 2026-11-10: backlog; do it before launching to the public.** It stays off until then (no key set, `enforceAppCheck: false`).
 - [x] **3.7 Add a Content-Security-Policy** in report-only mode, then enforce it, with no `unsafe-inline` for scripts. Add `object-src 'none'`, `base-uri 'self'` and an allowlist for Firebase, reCAPTCHA and the auth domain.
 - [ ] **3.8 Lock down the project.** Restrict API keys by referrer and app. Remove `localhost` from production authorized domains. Require 2-step verification on every account with project access, and grant least-privilege IAM roles.
 - [x] **3.9 Write `docs/threat-model.md`** and an incident runbook covering breach notification timelines.
 - [ ] **3.10 Get an independent security review or penetration test** before public launch.
+- [x] **3.11 Encrypt the child's name.** The name is stored only as `nameEnc` (AES-256-GCM, key derived per family from the `NAME_KEY` secret, bound to the family and child), through the `encryptProfileName` and `decryptProfileNames` functions, both needing a PIN from the last 5 minutes. The plain name is never written to Firestore or to this device's storage. Nickname, age, country, state and colour stay readable because the app and rules need them. The PIN was already stored only as a salted scrypt hash with a secret pepper, on the server.
 
 ### Acceptance checks
 
@@ -518,6 +519,9 @@ Firebase has no hard spending cap for Firestore, so the guardrails combine alert
 
 ### Launch checklist
 
+- [ ] App Check is set up, monitored for 3 to 7 days, then enforced on Firestore and Functions (task 3.6, backlog).
+- [ ] Apple and Email/Password sign-in are added only if wanted (task 3.2, backlog).
+- [ ] All test accounts and test profiles are deleted.
 - [ ] Phase 3 security review findings are closed.
 - [ ] Lawyer sign-off is recorded.
 - [ ] A restore and the spending stop have both been tested.
