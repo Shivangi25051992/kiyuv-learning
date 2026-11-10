@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mascot } from '../../ui/Mascot.js';
+import { useModalFocus } from '../../ui/useModalFocus.js';
 import {
   PIN_FRESH_PARENT_MS,
   PIN_LENGTH,
@@ -114,6 +115,7 @@ export const PinPromptModal: React.FC<PinPromptModalProps> = ({
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const dialogRef = useModalFocus<HTMLDivElement>(onCancel);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,8 +143,15 @@ export const PinPromptModal: React.FC<PinPromptModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="modal-card pop-in">
+    <div className="modal-backdrop">
+      <div
+        className="modal-card pop-in"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        ref={dialogRef}
+        tabIndex={-1}
+      >
         <Mascot mood="think" size={88} className="modal-mascot" />
         <h3 className="modal-title">{title}</h3>
         <p className="modal-sub">

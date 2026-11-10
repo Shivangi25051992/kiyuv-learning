@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BADGES,
   evaluateEarnedBadgeIds,
@@ -12,7 +12,7 @@ import {
   type KidProfile,
 } from '@kiyuv/shared';
 import { confettiBlast, floatEmoji, showTrophy, starBurst } from '../../lib/effects.js';
-import { canSpeak, initAudio, setMusicScene, sfx, speak } from '../../lib/sound.js';
+import { canSpeak, initAudio, setMusicScene, sfx, speak, stopSpeaking } from '../../lib/sound.js';
 import { Mascot, type MascotMood } from '../../ui/Mascot.js';
 import { IconBack, IconFlame, IconRefresh, IconSpeaker, IconStar, IconBook } from '../../ui/Icons.js';
 
@@ -60,6 +60,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   const [feedbackMsg, setFeedbackMsg] = useState<string>('');
   const [locked, setLocked] = useState(false);
 
+  const questionRef = useRef<HTMLDivElement>(null);
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
   const isEarly = profile.track === 'early';
 
@@ -100,7 +101,13 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   useEffect(() => {
     if (finished || !isEarly) return;
     speak(speechFor(question));
+    return () => stopSpeaking();
   }, [question, finished, isEarly]);
+
+  // Keyboard and screen-reader users land on each new question.
+  useEffect(() => {
+    if (questionIndex > 1 && !finished) questionRef.current?.focus();
+  }, [questionIndex, finished]);
 
   const advanceOrFinish = (latestProfile: KidProfile, nextSessionCorrect: number) => {
     if (questionIndex >= QUESTIONS_PER_SESSION) {
@@ -206,7 +213,11 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
           setFeedbackMsg(`New badge: ${newlyUnlockedBadge.emoji} ${newlyUnlockedBadge.name}!`);
         }, 250);
       } else {
-        setFeedbackMsg(`${praise}${nextStreak >= 3 ? ` ${nextStreak} in a row!` : ''}`);
+        setFeedbackMsg(
+          `${praise}${nextStreak >= 3 ? ` ${nextStreak} in a row!` : ''} You earned ${earnedStars} ${
+            earnedStars === 1 ? 'star' : 'stars'
+          }.`,
+        );
         if (isEarly) speak(praise);
       }
 
@@ -229,12 +240,19 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       };
       onUpdateProfile(updatedProfile, false);
       sfx.wrong();
-      setFeedbackMsg(isEarly ? 'Oopsie! Try again!' : 'Not quite. Try again!');
+      const chosen = question.options.find((o) => o.value === optionValue)?.label;
+      setFeedbackMsg(
+        chosen && chosen.length <= 20
+          ? `${chosen} is not right. Try again!`
+          : isEarly
+            ? 'Oopsie! Try again!'
+            : 'Not quite. Try again!',
+      );
       if (isEarly) speak('Try again!');
+      // The message stays until the next answer, so it can be read at any pace.
       setTimeout(() => {
         setSelectedOption(null);
         setOptionState('idle');
-        setFeedbackMsg('');
       }, 900);
     }
   };
@@ -257,7 +275,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         <div className="finish-medal" aria-hidden="true">
           {medal}
         </div>
-        <h2 className="finish-title">Great practice, {profile.nickname}!</h2>
+        <h1 className="finish-title">Great practice, {profile.nickname}!</h1>
         <div className="finish-score" aria-label={`${sessionCorrect} out of ${QUESTIONS_PER_SESSION}`}>
           <span className="finish-num">{sessionCorrect}</span>
           <span className="finish-of">/ {QUESTIONS_PER_SESSION}</span>
@@ -288,6 +306,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         ['--run-bg' as string]: theme.bgLight,
       }}
     >
+      <h1 className="sr-only">Practice round, question {questionIndex} of {QUESTIONS_PER_SESSION}</h1>
       <div className="game-top">
         <button
           type="button"
@@ -298,13 +317,13 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
           <IconBack />
         </button>
         <div className="game-pills">
-          <div className="pill score-pill" aria-label={`${profile.stars} stars`}>
+          <div className="pill score-pill" role="img" aria-label={`${profile.stars} stars`}>
             <IconStar size={18} />
             <span key={profile.stars} className="bump">
               {profile.stars}
             </span>
           </div>
-          <div className="pill streak-pill" aria-label={`${profile.streak} in a row`}>
+          <div className="pill streak-pill" role="img" aria-label={`${profile.streak} in a row`}>
             <IconFlame size={18} />
             <span key={profile.streak} className="bump">
               {profile.streak}
@@ -334,7 +353,12 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
 
         {question.subPrompt && <div className="q-sub">{question.subPrompt}</div>}
 
-        <div className="q" style={question.topicId.startsWith('y-spell') ? { letterSpacing: 6 } : undefined}>
+        <div
+          className="q"
+          ref={questionRef}
+          tabIndex={-1}
+          style={question.topicId.startsWith('y-spell') ? { letterSpacing: 6 } : undefined}
+        >
           {question.highlightText && question.highlightColor ? (
             <>
               Tap <span style={{ color: question.highlightColor }}>{question.highlightText}</span>!
@@ -357,13 +381,13 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         )}
 
         {question.heroEmoji && (
-          <div className="hero-emoji" aria-hidden="true">
+          <div className="hero-emoji" role="img" aria-label={question.heroEmoji}>
             {question.heroEmoji}
           </div>
         )}
 
         {question.visualEmojis && (
-          <div className="count-row" aria-label="Things to count">
+          <div className="count-row" role="group" aria-label="Things to count">
             {question.visualEmojis.map((em, idx) => (
               <span key={idx} className="count-item" style={{ ['--i' as string]: idx }}>
                 {em}
