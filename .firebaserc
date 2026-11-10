@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "kiyuv-learning"
+    "default": "kiyuv-learning",
+    "dev": "kiyuv-learning-dev",
+    "prod": "kiyuv-learning"
   }
 }

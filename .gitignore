@@ -1,6 +1,11 @@
 # Dependencies
 node_modules/
 
+# Build output
+dist/
+apps/client/dist/
+coverage/
+
 # Firebase
 .firebase/
 *.log
@@ -15,6 +20,7 @@ Thumbs.db
 *.swp
 *.swo
 
-# Env (if ever added)
+# Env
 .env
 .env.local
+.env.*.local
