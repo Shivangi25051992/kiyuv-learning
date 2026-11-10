@@ -1,8 +1,7 @@
-const CACHE = 'kids-academy-v3';
+const CACHE = 'kids-academy-v4';
 const SHELL = [
   '/',
   '/index.html',
-  '/dataconnect-generated/esm/index.esm.js',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -26,7 +25,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Never cache Firebase auth/firestore/dataconnect or Google CDN — always network
+  // Never cache Firebase auth/firestore or Google CDN — always network
   if (url.hostname.includes('googleapis.com') ||
       url.hostname.includes('gstatic.com') ||
       url.hostname.includes('firebaseapp.com') ||

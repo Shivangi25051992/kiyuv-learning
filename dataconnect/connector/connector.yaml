@@ -1,5 +1,0 @@
-connectorId: "default"
-generate:
-  javascriptSdk:
-    outputDir: "../../public/dataconnect-generated"
-    package: "@kiyuv-learning/dataconnect"
