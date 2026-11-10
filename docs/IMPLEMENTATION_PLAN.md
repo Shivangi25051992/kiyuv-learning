@@ -224,12 +224,12 @@ This phase moves the existing behavior into the target structure without adding 
 
 ### Tasks
 
-- [ ] **2.1 Create the workspace** using the layout above, with strict TypeScript, ESLint and Prettier.
-- [ ] **2.2 Resolve D6.** Make the repo private and scrub history if approved. Delete the empty inner `kiyuv-learning` folder.
-- [ ] **2.3 Set up environments.** Use the emulators locally, a new `kiyuv-learning-dev` project for testing, and `kiyuv-learning` for production. Add `.firebaserc` aliases and per-environment Vite config.
-- [ ] **2.4 Extract content.** Move `KIKI_*`, `YUVIN_*`, `mathGen`, `CURRICULUM` and `BADGES` into `packages/content`. Generators stay as code. Add a schema check for every question.
-- [ ] **2.5 Remove personal hard-coding.** Replace `yuvin` and `kiki` branches with a `track` of `early` or `primary` and data-driven star values. Remove children's names and ages from the README, manifest, code and comments.
-- [ ] **2.6 Build onboarding and the "Who's learning?" picker.**
+- [x] **2.1 Create the workspace** using the layout above, with strict TypeScript, ESLint and Prettier.
+- [ ] **2.2 Resolve D6.** Make the repo private and scrub history if approved. Delete the empty inner `kiyuv-learning` folder (inner folder deleted).
+- [x] **2.3 Set up environments.** Use the emulators locally, a new `kiyuv-learning-dev` project for testing, and `kiyuv-learning` for production. Add `.firebaserc` aliases and per-environment Vite config.
+- [x] **2.4 Extract content.** Move `KIKI_*`, `YUVIN_*`, `mathGen`, `CURRICULUM` and `BADGES` into `packages/content`. Generators stay as code. Add a schema check for every question.
+- [x] **2.5 Remove personal hard-coding.** Replace `yuvin` and `kiki` branches with a `track` of `early` or `primary` and data-driven star values. Remove children's names and ages from the README, manifest, code and comments.
+- [x] **2.6 Build onboarding and the "Who's learning?" picker.**
   - Onboarding form: name, nickname, age, country, state and favourite colour, as defined in the data model. Use dropdowns and swatches, with no free text except name and nickname. Validate with the shared Zod schema, the same one the rules mirror. Compute `ageBand` and suggest a `track` from `age`.
   - The form is shown after the parent's PIN unlock. It is used for the first child during account setup and for every later "Add profile".
   - Picker: a Netflix-style grid of profile tiles, each showing the avatar, nickname and favourite-colour ring. Include "Add profile" while fewer than 6 exist and a parent-only "Manage profiles" action.
@@ -237,14 +237,14 @@ This phase moves the existing behavior into the target structure without adding 
   - Add an "Switch profile" control in the play header, with no PIN. Return to the picker after 10 minutes idle or when the app resumes after a long pause.
   - Profile edit and delete need a PIN under 5 minutes old and warn that deleting removes the child's progress.
   - The family leaderboard reads from these profiles.
-- [ ] **2.7 Rebuild screens as components:** curriculum, play, finish, leaderboard, parent area. Remove all `innerHTML` and inline handlers.
-- [ ] **2.8 Isolate Firebase.** Only `src/lib/firebase` may import the SDK. Add an ESLint rule that forbids it elsewhere and forbids `onSnapshot`.
-- [ ] **2.9 Build the sync engine** in `src/lib/sync`: local-first, with Zod validation before every write, a queue per `kidId` that survives restarts, transactional merge on flush, and the `resetEpoch` logic from Phase 1. Reads of the active child happen at start, on foreground and before each flush. Never use listeners.
-- [ ] **2.10 Import local progress once.** On first sign-in, offer to import legacy `kidsAcad_*` data into a new profile through the onboarding form, then delete the old keys, including `kidsAcad_session`. There is no D1 export to import.
-- [ ] **2.11 Replace the service worker** with a generated Workbox precache of hashed assets. Never cache authentication or API responses.
-- [ ] **2.12 Retire `simple.html`** unless you choose to keep it. No quoted link to it was found in `index.html`, and it has no sign-in.
-- [ ] **2.13 Fix Hosting headers.** Serve hashed assets with `max-age=31536000, immutable`. Serve HTML and the service worker with `no-cache`, matching clean URLs as well as `*.html`.
-- [ ] **2.14 Add CI** that runs lint, typecheck, unit tests, emulator rules tests and the build on every pull request. Deploy with Workload Identity Federation, not stored JSON keys. Enable Dependabot and secret scanning.
+- [x] **2.7 Rebuild screens as components:** curriculum, play, finish, leaderboard, parent area. Remove all `innerHTML` and inline handlers.
+- [x] **2.8 Isolate Firebase.** Only `src/lib/firebase` may import the SDK. Add an ESLint rule that forbids it elsewhere and forbids `onSnapshot`.
+- [x] **2.9 Build the sync engine** in `src/lib/sync`: local-first, with Zod validation before every write, a queue per `kidId` that survives restarts, transactional merge on flush, and the `resetEpoch` logic from Phase 1. Reads of the active child happen at start, on foreground and before each flush. Never use listeners.
+- [x] **2.10 Import local progress once.** On first sign-in, offer to import legacy `kidsAcad_*` data into a new profile through the onboarding form, then delete the old keys, including `kidsAcad_session`. There is no D1 export to import.
+- [x] **2.11 Replace the service worker** with a generated Workbox precache of hashed assets. Never cache authentication or API responses.
+- [x] **2.12 Retire `simple.html`** unless you choose to keep it. No quoted link to it was found in `index.html`, and it has no sign-in.
+- [x] **2.13 Fix Hosting headers.** Serve hashed assets with `max-age=31536000, immutable`. Serve HTML and the service worker with `no-cache`, matching clean URLs as well as `*.html`.
+- [x] **2.14 Add CI** that runs lint, typecheck, unit tests, emulator rules tests and the build on every pull request. Deploy with Workload Identity Federation, not stored JSON keys. Enable Dependabot and secret scanning.
 
 ### Acceptance checks
 

@@ -1,12 +1,13 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "apps/client/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "cleanUrls": true,
     "trailingSlash": false,
     "rewrites": [
       { "source": "/learn", "destination": "/index.html" },
-      { "source": "/academy", "destination": "/index.html" }
+      { "source": "/academy", "destination": "/index.html" },
+      { "source": "**", "destination": "/index.html" }
     ],
     "headers": [
       {
@@ -16,13 +17,26 @@
           { "key": "X-Content-Type-Options", "value": "nosniff" },
           { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
           { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-          { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" }
+          { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
+          { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" }
         ]
       },
       {
-        "source": "**/*.html",
+        "source": "/assets/**",
         "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }
+          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        ]
+      },
+      {
+        "source": "**/*.@(html|json|webmanifest)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
+      {
+        "source": "/@(sw.js|registerSW.js|index.html|learn|academy)",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
         ]
       }
     ]
@@ -30,5 +44,11 @@
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "auth": { "port": 9099 },
+    "firestore": { "port": 8080 },
+    "hosting": { "port": 5000 },
+    "ui": { "enabled": true }
   }
 }
