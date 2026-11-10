@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { signInWithGoogle, type AuthParentUser } from '../../lib/firebase/index.js';
+import { PIN_LENGTH, validateStrongPin } from '@kiyuv/shared';
+import {
+  signInOrRegisterWithEmail,
+  signInWithApple,
+  signInWithGoogle,
+  type AuthParentUser,
+} from '../../lib/firebase/index.js';
 import {
   checkParentPin,
   clearParentPin,
@@ -13,19 +19,24 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) => {
-  const [step, setStep] = useState<'google' | 'setpin' | 'verifypin'>(() => {
-    if (!user) return 'google';
+  const [step, setStep] = useState<'provider' | 'setpin' | 'verifypin'>(() => {
+    if (!user) return 'provider';
     return hasConfiguredPin(user.uid) ? 'verifypin' : 'setpin';
   });
   const [activeUser, setActiveUser] = useState<AuthParentUser | null>(user);
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [isRegister, setIsRegister] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
 
   React.useEffect(() => {
     setActiveUser(user);
     if (!user) {
-      setStep('google');
+      setStep('provider');
     } else if (hasConfiguredPin(user.uid)) {
       setStep('verifypin');
     } else {
@@ -33,11 +44,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
     }
   }, [user]);
 
-  const handleGoogleSignIn = async () => {
+  const handleProviderAuth = async (fn: () => Promise<AuthParentUser>) => {
     setError('');
+    setInfoMsg('');
     setBusy(true);
     try {
-      const signedIn = await signInWithGoogle();
+      const signedIn = await fn();
       setActiveUser(signedIn);
       if (hasConfiguredPin(signedIn.uid)) {
         setStep('verifypin');
@@ -56,43 +68,87 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
     }
   };
 
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setInfoMsg('');
+    if (!email.trim() || password.length < 8) {
+      setError('Enter a valid email and a password of at least 8 characters.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await signInOrRegisterWithEmail(email.trim(), password, isRegister);
+      setPassword('');
+      if (res.verificationSent && !res.user.emailVerified) {
+        setInfoMsg(
+          'A verification link has been sent to your email. Please verify your email, then sign in.',
+        );
+        return;
+      }
+      setActiveUser(res.user);
+      if (hasConfiguredPin(res.user.uid)) {
+        setStep('verifypin');
+      } else {
+        setStep('setpin');
+      }
+    } catch (err) {
+      setError((err as Error)?.message || 'Email sign-in failed.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleSetPin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeUser) return;
-    if (!/^[0-9]{4}$/.test(pin)) {
-      setError('Enter a 4-digit PIN');
+    const entered = pin.trim();
+    setPin('');
+    const check = validateStrongPin(entered);
+    if (!check.valid) {
+      setError(check.reason ?? 'Invalid 6-digit PIN');
       return;
     }
-    const entered = pin;
-    setPin('');
-    await saveParentPin(activeUser.uid, entered);
-    onUnlocked(activeUser);
+    setBusy(true);
+    try {
+      await saveParentPin(activeUser.uid, entered);
+      onUnlocked(activeUser);
+    } catch (err) {
+      setError((err as Error)?.message || 'Failed to save PIN');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleVerifyPin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeUser) return;
-    if (!/^[0-9]{4}$/.test(pin)) {
-      setError('Enter your 4-digit PIN');
-      return;
-    }
-    const entered = pin;
+    const entered = pin.trim();
     setPin('');
-    const ok = await checkParentPin(activeUser.uid, entered);
-    if (!ok) {
-      setError('Wrong PIN. Try again.');
+    if (!/^[0-9]{6}$/.test(entered)) {
+      setError('Enter your 6-digit Parent PIN');
       return;
     }
-    onUnlocked(activeUser);
+    setBusy(true);
+    try {
+      const res = await checkParentPin(activeUser.uid, entered);
+      if (!res.ok) {
+        setError(res.message || 'Wrong PIN. Try again.');
+        return;
+      }
+      onUnlocked(activeUser);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleForgotPin = async () => {
+  const handleForgotPin = () => {
     if (activeUser) {
       clearParentPin(activeUser.uid);
     }
     setPin('');
     setError('');
-    await handleGoogleSignIn();
+    setStep('provider');
   };
 
   const firstName =
@@ -105,14 +161,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
       <div className="login-card">
         <div className="emoji">🌈</div>
         <h2>Kiyuv Learning Academy</h2>
-        <p className="sub">Parent Sign-In · Multi-Profile Family Learning</p>
+        <p className="sub">Parent Sign-In · 6-Digit PIN Security</p>
 
-        {step === 'google' && (
+        {step === 'provider' && (
           <div>
             <button
               type="button"
               className="google-btn"
-              onClick={handleGoogleSignIn}
+              onClick={() => void handleProviderAuth(signInWithGoogle)}
               disabled={busy}
             >
               <svg
@@ -139,48 +195,110 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
                   d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
                 />
               </svg>
-              {busy ? 'Opening Google...' : 'Sign in with Google'}
+              Continue with Google
             </button>
+
+            <button
+              type="button"
+              className="google-btn"
+              style={{ marginTop: 8, background: '#111', color: '#fff', borderColor: '#111' }}
+              onClick={() => void handleProviderAuth(signInWithApple)}
+              disabled={busy}
+            >
+              🍎 Continue with Apple
+            </button>
+
+            <div style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => setShowEmailForm((s) => !s)}
+              >
+                {showEmailForm ? 'Hide Email Sign-In' : 'Or sign in with verified Email'}
+              </button>
+            </div>
+
+            {showEmailForm && (
+              <form onSubmit={(e) => void handleEmailAuth(e)} style={{ marginTop: 12 }}>
+                <input
+                  type="email"
+                  placeholder="Parent email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="login-input"
+                  required
+                />
+                <input
+                  type="password"
+                  placeholder="Password (min 8 chars)"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="login-input"
+                  required
+                />
+                <button type="submit" className="login-btn" disabled={busy}>
+                  {isRegister ? 'Create Parent Account' : 'Sign In with Email'}
+                </button>
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={() => setIsRegister((r) => !r)}
+                  >
+                    {isRegister
+                      ? 'Already have an account? Sign in'
+                      : 'Need an email account? Register'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {infoMsg && (
+              <div style={{ color: '#059669', fontSize: 12, marginTop: 8, fontWeight: 600 }}>
+                {infoMsg}
+              </div>
+            )}
             {error && <div className="login-err">{error}</div>}
             <div className="login-note">
               Parents sign in once per device and create up to 6 child profiles.
               <br />
-              Kids can play simultaneously on different devices under the same parent account.
+              Kids never sign in and can play simultaneously across devices.
             </div>
           </div>
         )}
 
         {step === 'setpin' && activeUser && (
-          <form onSubmit={handleSetPin}>
+          <form onSubmit={(e) => void handleSetPin(e)}>
             <p className="sub">
-              👋 Hi <b>{firstName}</b>! Set a 4-digit Parent PIN
+              👋 Hi <b>{firstName}</b>! Set a 6-digit Parent PIN
             </p>
             <input
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={4}
+              maxLength={PIN_LENGTH}
               autoFocus
               value={pin}
               onChange={(e) => {
                 setError('');
-                setPin(e.target.value.replace(/\D/g, '').slice(0, 4));
+                setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH));
               }}
-              placeholder="• • • •"
+              placeholder="• • • • • •"
               className="login-input pin"
             />
-            <button type="submit" className="login-btn">
-              Save PIN & Continue →
+            <button type="submit" className="login-btn" disabled={busy}>
+              {busy ? 'Saving PIN...' : 'Save 6-Digit PIN & Continue →'}
             </button>
             {error && <div className="login-err">{error}</div>}
             <div className="login-note">
-              Your PIN protects adding/editing profiles and resetting progress.
+              Avoid repeated digits (111111) or sequences (123456). Your PIN unlocks this
+              device for 12 hours and protects profile &amp; parent settings.
             </div>
           </form>
         )}
 
         {step === 'verifypin' && activeUser && (
-          <form onSubmit={handleVerifyPin}>
+          <form onSubmit={(e) => void handleVerifyPin(e)}>
             {activeUser.photoURL && (
               <div style={{ marginBottom: 8 }}>
                 <img
@@ -196,33 +314,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
               </div>
             )}
             <p className="sub">
-              Welcome back, <b>{firstName}</b>! Enter Parent PIN
+              Welcome back, <b>{firstName}</b>! Enter 6-digit Parent PIN
             </p>
             <input
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={4}
+              maxLength={PIN_LENGTH}
               autoFocus
               value={pin}
               onChange={(e) => {
                 setError('');
-                setPin(e.target.value.replace(/\D/g, '').slice(0, 4));
+                setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH));
               }}
-              placeholder="• • • •"
+              placeholder="• • • • • •"
               className="login-input pin"
             />
-            <button type="submit" className="login-btn">
-              Unlock 🔓
+            <button type="submit" className="login-btn" disabled={busy}>
+              {busy ? 'Verifying...' : 'Unlock 🔓'}
             </button>
             {error && <div className="login-err">{error}</div>}
             <div className="login-note">
-              <button
-                type="button"
-                onClick={handleForgotPin}
-                className="link-btn"
-              >
-                Forgot PIN? Re-verify with Google
+              <button type="button" onClick={handleForgotPin} className="link-btn">
+                Forgot or upgrading PIN? Re-authenticate with provider
               </button>
             </div>
           </form>

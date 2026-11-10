@@ -391,15 +391,15 @@ Rules cannot loop over the `topics` map, so per-topic numbers are bounded only b
 
 ### Tasks
 
-- [ ] **3.1 Run spikes S1 and S2** and record the result. Stop if both the design and the fallback fail.
-- [ ] **3.2 Enable providers:** Google, Apple, and email with verification required. Upgrade to Identity Platform if not already done. Turn on email enumeration protection and a strong password policy.
-- [ ] **3.3 Build `setPin` and `verifyPin`** with unit tests for lockout, parallel attempts, expiry, pepper rotation and blocked PINs.
-- [ ] **3.4 Build PIN screens** with idle lock and the 5-minute parent-area check. Make the "Who's learning?" picker the screen shown after unlock, and add the 5-minute PIN check in front of Add, Edit and Delete profile.
+- [x] **3.1 Run spikes S1 and S2** and record the result. Stop if both the design and the fallback fail.
+- [ ] **3.2 Enable providers:** Google, Apple, and email with verification required (client UI & SDK wired; enable Apple & Email/Password in Firebase Console). Upgrade to Identity Platform if not already done. Turn on email enumeration protection and a strong password policy.
+- [x] **3.3 Build `setPin` and `verifyPin`** with unit tests for lockout, parallel attempts, expiry, pepper rotation and blocked PINs.
+- [x] **3.4 Build PIN screens** with idle lock and the 5-minute parent-area check. Make the "Who's learning?" picker the screen shown after unlock, and add the 5-minute PIN check in front of Add, Edit and Delete profile.
 - [ ] **3.5 Deploy the rules** with real `pinFresh`, plus emulator tests for every allow and deny path. Include another user's data, a missing claim, an expired claim, oversized data, extra fields and direct `pinSecrets` access. Add the profile cases listed under "How the rules support profiles and several devices".
-- [ ] **3.6 Turn on App Check** in monitor mode. Enforce it on Firestore and Functions once metrics show legitimate traffic is passing. Authentication enforcement is in Preview, so decide separately.
-- [ ] **3.7 Add a Content-Security-Policy** in report-only mode, then enforce it, with no `unsafe-inline` for scripts. Add `object-src 'none'`, `base-uri 'self'` and an allowlist for Firebase, reCAPTCHA and the auth domain.
+- [ ] **3.6 Turn on App Check** in monitor mode (client SDK wired via `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`). Enforce it on Firestore and Functions once metrics show legitimate traffic is passing. Authentication enforcement is in Preview, so decide separately.
+- [x] **3.7 Add a Content-Security-Policy** in report-only mode, then enforce it, with no `unsafe-inline` for scripts. Add `object-src 'none'`, `base-uri 'self'` and an allowlist for Firebase, reCAPTCHA and the auth domain.
 - [ ] **3.8 Lock down the project.** Restrict API keys by referrer and app. Remove `localhost` from production authorized domains. Require 2-step verification on every account with project access, and grant least-privilege IAM roles.
-- [ ] **3.9 Write `docs/threat-model.md`** and an incident runbook covering breach notification timelines.
+- [x] **3.9 Write `docs/threat-model.md`** and an incident runbook covering breach notification timelines.
 - [ ] **3.10 Get an independent security review or penetration test** before public launch.
 
 ### Acceptance checks
