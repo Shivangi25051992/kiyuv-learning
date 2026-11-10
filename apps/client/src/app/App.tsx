@@ -393,7 +393,7 @@ export const App: React.FC = () => {
         </div>
 
         {screenMode === 'app' && activeProfile && (
-          <div className="star-counter" aria-label={`${activeProfile.stars} stars`}>
+          <div className="star-counter" role="img" aria-label={`${activeProfile.stars} stars`}>
             <IconStar size={20} />
             <span key={activeProfile.stars} className="star-count bump">
               {activeProfile.stars}
@@ -415,7 +415,7 @@ export const App: React.FC = () => {
                 setCurrentTopicId(null);
                 setScreenMode('picker');
               }}
-              aria-label="Switch learner"
+              aria-label={`Switch learner, now ${activeProfile.nickname}`}
               title="Switch learner (no PIN needed)"
             >
               <span className="who-avatar">{activeProfile.avatar}</span>
@@ -441,7 +441,7 @@ export const App: React.FC = () => {
             className={`icon-btn ${soundOn ? '' : 'is-off'}`}
             onClick={() => setSoundOn(toggleSound())}
             aria-pressed={soundOn}
-            aria-label={soundOn ? 'Sound on' : 'Sound off'}
+            aria-label="Sound effects"
             title={soundOn ? 'Sound on' : 'Sound off'}
             data-silent
           >

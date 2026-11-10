@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AVATAR_PRESETS,
   COUNTRIES,
@@ -57,6 +57,7 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
   onDelete,
 }) => {
   const [step, setStep] = useState(0);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const [nickname, setNickname] = useState(existingProfile?.nickname ?? '');
   const [name, setName] = useState(existingProfile?.name ?? '');
   const [age, setAge] = useState<number>(existingProfile?.age ?? 6);
@@ -80,6 +81,11 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
   );
 
   const computedBand = computeAgeBand(age);
+
+  // Move the reader to the new step's title when the step changes.
+  useEffect(() => {
+    if (step > 0) titleRef.current?.focus();
+  }, [step]);
   const activeTheme = FAV_COLOR_THEMES[favColor];
   const stepInfo = STEP_TITLES[step] ?? STEP_TITLES[0]!;
   const isLastStep = step === STEP_COUNT - 1;
@@ -150,7 +156,7 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
   };
 
   return (
-    <div className="wizard-wrap screen-enter">
+    <main className="wizard-wrap screen-enter" id="main">
       <div
         className="wizard-card"
         style={{
@@ -179,14 +185,24 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
               className={`step-dot ${i === step ? 'current' : ''} ${i < step ? 'done' : ''}`}
               aria-current={i === step ? 'step' : undefined}
             >
-              {i < step ? <IconCheck size={16} /> : i + 1}
+              {i < step ? (
+                <>
+                  <IconCheck size={16} />
+                  <span className="sr-only">Step {i + 1}, done</span>
+                </>
+              ) : (
+                <>
+                  <span className="sr-only">Step </span>
+                  {i + 1}
+                </>
+              )}
             </li>
           ))}
         </ol>
 
-        <h2 className="wizard-title">
+        <h1 className="wizard-title" ref={titleRef} tabIndex={-1}>
           {existingProfile && step === 0 ? `Edit ${existingProfile.nickname}` : stepInfo.title}
-        </h2>
+        </h1>
         <p className="wizard-hint">
           {isFirstProfile && step === 0 ? 'Let’s set up your first learner. It takes a minute.' : stepInfo.hint}
         </p>
@@ -212,7 +228,8 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
                     setNickname(e.target.value);
                   }}
                   className="text-input"
-                  aria-describedby="ob-nickname-hint"
+                  aria-describedby={error ? 'ob-nickname-hint ob-error' : 'ob-nickname-hint'}
+                  aria-invalid={error && nickname.trim().length === 0 ? true : undefined}
                 />
                 <span id="ob-nickname-hint" className="field-hint">
                   This is the name your child sees on screen.
@@ -382,7 +399,7 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
           )}
 
           {error && (
-            <div className="form-error" role="alert">
+            <div className="form-error" role="alert" id="ob-error">
               {error}
             </div>
           )}
@@ -440,6 +457,6 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
           )}
         </form>
       </div>
-    </div>
+    </main>
   );
 };

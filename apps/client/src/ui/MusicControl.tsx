@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import {
   getMusicVolume,
   initAudio,
@@ -15,6 +15,9 @@ export const MusicControl: React.FC = () => {
   const [on, setOn] = useState<boolean>(() => isMusicEnabled());
   const [volume, setVolume] = useState<number>(() => getMusicVolume());
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
+  const titleId = useId();
 
   // Close when tapping elsewhere or pressing Escape.
   useEffect(() => {
@@ -23,7 +26,10 @@ export const MusicControl: React.FC = () => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKey);
@@ -40,8 +46,9 @@ export const MusicControl: React.FC = () => {
       <button
         type="button"
         className={`icon-btn ${on ? '' : 'is-off'}`}
+        ref={triggerRef}
         aria-expanded={open}
-        aria-haspopup="true"
+        aria-controls={open ? panelId : undefined}
         aria-label="Music settings"
         title="Music"
         data-silent
@@ -51,14 +58,16 @@ export const MusicControl: React.FC = () => {
       </button>
 
       {open && (
-        <div className="popover" role="group" aria-label="Music settings">
+        <div className="popover" id={panelId} role="group" aria-label="Music settings">
           <div className="popover-row">
-            <span className="popover-title">Music</span>
+            <span className="popover-title" id={titleId}>
+              Music
+            </span>
             <button
               type="button"
               role="switch"
               aria-checked={on}
-              aria-label="Music on or off"
+              aria-labelledby={titleId}
               className={`switch ${on ? 'on' : ''}`}
               data-silent
               onClick={() => setOn(toggleMusic())}

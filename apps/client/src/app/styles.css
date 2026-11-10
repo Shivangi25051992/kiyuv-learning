@@ -75,6 +75,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  scroll-padding: 90px 0 130px;
 }
 
 html,
@@ -284,7 +285,7 @@ svg {
 }
 
 .danger-btn {
-  background: var(--red);
+  background: #c62828;
   color: #fff;
   border-color: rgba(0, 0, 0, 0.12);
   box-shadow: 0 5px 0 rgba(0, 0, 0, 0.2);
@@ -403,7 +404,8 @@ select.text-input {
 .text-input:focus,
 .pin-input:focus,
 .login-input:focus {
-  outline: none;
+  outline: 3px solid #1d4ed8;
+  outline-offset: 2px;
   border-color: var(--kid-primary);
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--kid-primary) 25%, transparent);
 }
@@ -618,6 +620,7 @@ select.text-input {
   top: 0;
   z-index: 40;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--s3);
   padding: calc(var(--s3) + var(--safe-top)) var(--s4) var(--s3);
@@ -1030,7 +1033,7 @@ select.text-input {
   color: #fff;
   border-radius: 50%;
   border: 4px solid #fff;
-  box-shadow: 0 0 0 3px var(--border), 0 4px 0 rgba(0, 0, 0, 0.18);
+  box-shadow: 0 0 0 3px #7f8bb5, 0 4px 0 rgba(0, 0, 0, 0.18);
   transition: transform var(--t-fast) var(--ease-bounce);
 }
 .color-choice:hover {
@@ -1238,7 +1241,7 @@ select.text-input {
   background: linear-gradient(135deg, var(--next-accent, #4f8bff), var(--next-color, #2563eb));
 }
 .surprise-btn {
-  background: linear-gradient(135deg, #ff9f43, #ff5f9e 60%, #8e5cf0);
+  background: linear-gradient(135deg, #c2410c, #be185d 60%, #6d28d9);
 }
 .next-btn:active,
 .surprise-btn:active {
@@ -1300,7 +1303,7 @@ select.text-input {
 .subject-card h3 {
   font-size: 24px;
   font-weight: 700;
-  color: var(--card-main);
+  color: var(--card-text, var(--card-main));
 }
 .subject-card .meta {
   display: flex;
@@ -1365,7 +1368,7 @@ select.text-input {
   color: var(--muted);
 }
 .diff {
-  color: #e6a100;
+  color: #8a5a00;
   letter-spacing: 1px;
 }
 .topic-done {
@@ -1487,7 +1490,7 @@ select.text-input {
   gap: 4px;
   padding: 4px 16px;
   border-radius: 999px;
-  background: var(--card-main);
+  background: var(--card-text, var(--card-main));
   color: #fff;
   font-family: var(--font-display);
   font-weight: 600;
@@ -1543,7 +1546,7 @@ select.text-input {
   height: 22px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid var(--border);
+  border: 3px solid #8f9bc6;
   transition: all var(--t-med) var(--ease-bounce);
 }
 .pdot.done {
@@ -1879,9 +1882,8 @@ select.text-input {
   background: #eef0f8;
   border-color: var(--border);
   box-shadow: 0 4px 0 var(--border);
-  color: #8088ad;
+  color: #5a6491;
   filter: grayscale(1);
-  opacity: 0.8;
 }
 
 /* ==========================================================================
@@ -2378,11 +2380,11 @@ select.text-input {
   position: relative;
 }
 .popover {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 12px);
+  position: fixed;
+  right: 12px;
+  top: 76px;
   z-index: 60;
-  width: 250px;
+  width: min(250px, calc(100vw - 24px));
   padding: var(--s4);
   border-radius: var(--radius);
   background: #fff;
@@ -2415,7 +2417,7 @@ select.text-input {
   width: 62px;
   height: 36px;
   border-radius: 999px;
-  border: var(--edge) solid var(--border);
+  border: var(--edge) solid #7f8bb5;
   background: #e8ecf8;
   transition: background var(--t-med) var(--ease-out);
 }
@@ -2449,7 +2451,7 @@ select.text-input {
 .slider::-webkit-slider-runnable-track {
   height: 16px;
   border-radius: 999px;
-  border: 2px solid var(--border);
+  border: 2px solid #7f8bb5;
   background: linear-gradient(90deg, var(--kid-primary) var(--p), #e8ecf8 var(--p));
 }
 .slider::-moz-range-track {
@@ -2480,4 +2482,32 @@ select.text-input {
   border-radius: 50%;
   background: #fff;
   border: 4px solid var(--kid-primary);
+}
+
+/* Calm play screen: only motion that answers a tap (cheer, shake) stays. */
+.game .mascot-happy .mascot-bob,
+.game .mascot-think .mascot-bob,
+.game .mascot-sleepy .mascot-bob,
+.game .mascot-sprout,
+.game .hero-emoji {
+  animation: none;
+}
+
+.q:focus {
+  outline: none;
+}
+
+/* Windows high-contrast mode: gradient text would disappear. */
+@media (forced-colors: active) {
+  .login-title {
+    background: none;
+    -webkit-text-fill-color: CanvasText;
+    color: CanvasText;
+  }
+  .primary-btn,
+  .login-btn,
+  .icon-btn,
+  .tabbar button.active {
+    border: 2px solid ButtonText;
+  }
 }

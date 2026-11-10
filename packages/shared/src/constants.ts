@@ -43,7 +43,7 @@ export const FAV_COLOR_THEMES: Record<FavColor, ColorTheme> = {
   rose: {
     key: 'rose',
     label: 'Berry Rose',
-    hex: '#db2777',
+    hex: '#be185d',
     accent: '#ff86c8',
     bgLight: '#fdf2f8',
     border: '#f9a8d4',
@@ -51,7 +51,7 @@ export const FAV_COLOR_THEMES: Record<FavColor, ColorTheme> = {
   green: {
     key: 'green',
     label: 'Emerald Green',
-    hex: '#059669',
+    hex: '#047857',
     accent: '#3ddc97',
     bgLight: '#ecfdf5',
     border: '#6ee7b7',
@@ -59,7 +59,7 @@ export const FAV_COLOR_THEMES: Record<FavColor, ColorTheme> = {
   orange: {
     key: 'orange',
     label: 'Sunset Orange',
-    hex: '#d97706',
+    hex: '#c2410c',
     accent: '#ff9f43',
     bgLight: '#fffbeb',
     border: '#fcd34d',
@@ -75,7 +75,7 @@ export const FAV_COLOR_THEMES: Record<FavColor, ColorTheme> = {
   teal: {
     key: 'teal',
     label: 'Lagoon Teal',
-    hex: '#0d9488',
+    hex: '#0f766e',
     accent: '#14b8a6',
     bgLight: '#f0fdfa',
     border: '#5eead4',
@@ -83,7 +83,7 @@ export const FAV_COLOR_THEMES: Record<FavColor, ColorTheme> = {
   red: {
     key: 'red',
     label: 'Ruby Red',
-    hex: '#dc2626',
+    hex: '#c62828',
     accent: '#ff6b6b',
     bgLight: '#fef2f2',
     border: '#fca5a5',

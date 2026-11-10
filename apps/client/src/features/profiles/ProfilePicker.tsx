@@ -25,7 +25,7 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
   const [manageMode, setManageMode] = useState(false);
 
   return (
-    <div className="picker-screen screen-enter">
+    <main className="picker-screen screen-enter" id="main">
       <div className="picker-container">
         <Mascot mood={manageMode ? 'think' : 'cheer'} size={104} className="picker-mascot" />
         <h1 className="picker-title">
@@ -122,6 +122,6 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
           </button>
         )}
       </div>
-    </div>
+    </main>
   );
 };
