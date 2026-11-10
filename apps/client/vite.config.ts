@@ -10,7 +10,9 @@ export default defineConfig({
       injectRegister: 'auto',
       manifest: false, // Uses /manifest.webmanifest from public
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,woff2}'],
+        // Only the Latin letters of the two fonts are needed offline.
+        globIgnores: ['**/*-ext-*', '**/*cyrillic*', '**/*vietnamese*', '**/*greek*'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,

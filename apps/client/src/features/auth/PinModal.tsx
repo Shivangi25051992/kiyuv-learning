@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Mascot } from '../../ui/Mascot.js';
 import {
   PIN_FRESH_PARENT_MS,
   PIN_LENGTH,
@@ -141,19 +142,24 @@ export const PinPromptModal: React.FC<PinPromptModalProps> = ({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="modal-card">
-        <div style={{ fontSize: 44, marginBottom: 8 }}>🔒</div>
-        <h3 style={{ margin: '0 0 6px', fontSize: 22 }}>{title}</h3>
-        <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 16px' }}>
+      <div className="modal-card pop-in">
+        <Mascot mood="think" size={88} className="modal-mascot" />
+        <h3 className="modal-title">{title}</h3>
+        <p className="modal-sub">
           {hasConfiguredPin(uid)
             ? subtitle
-            : 'Create a 6-digit Parent PIN (avoid sequences or repeated digits)'}
+            : 'Create a 6-digit parent PIN (not 111111 or 123456)'}
         </p>
         <form onSubmit={(e) => void handleSubmit(e)}>
+          <label className="sr-only" htmlFor="pin-prompt">
+            6-digit parent PIN
+          </label>
           <input
+            id="pin-prompt"
             type="password"
             inputMode="numeric"
             pattern="[0-9]*"
+            autoComplete="current-password"
             maxLength={PIN_LENGTH}
             autoFocus
             value={pin}
@@ -161,26 +167,20 @@ export const PinPromptModal: React.FC<PinPromptModalProps> = ({
               setError('');
               setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH));
             }}
-            placeholder="• • • • • •"
-            className="login-input pin"
+            placeholder="······"
+            className="pin-input"
           />
-          {error && <div className="login-err">{error}</div>}
-          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="secondary-btn"
-              style={{ flex: 1 }}
-            >
+          {error && (
+            <div className="form-error" role="alert">
+              {error}
+            </div>
+          )}
+          <div className="modal-actions">
+            <button type="button" onClick={onCancel} className="secondary-btn">
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="login-btn"
-              style={{ flex: 1, marginTop: 0 }}
-            >
-              {busy ? 'Checking...' : 'Unlock'}
+            <button type="submit" disabled={busy} className="primary-btn">
+              {busy ? 'Checking…' : 'Unlock'}
             </button>
           </div>
         </form>
