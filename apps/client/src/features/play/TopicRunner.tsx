@@ -12,7 +12,9 @@ import {
   type KidProfile,
 } from '@kiyuv/shared';
 import { confettiBlast, floatEmoji, showTrophy, starBurst } from '../../lib/effects.js';
-import { initAudio, sfx } from '../../lib/sound.js';
+import { canSpeak, initAudio, setMusicScene, sfx, speak } from '../../lib/sound.js';
+import { Mascot, type MascotMood } from '../../ui/Mascot.js';
+import { IconBack, IconFlame, IconRefresh, IconSpeaker, IconStar, IconBook } from '../../ui/Icons.js';
 
 interface TopicRunnerProps {
   profile: KidProfile;
@@ -35,6 +37,12 @@ const PRIMARY_PRAISES = [
 
 const EARLY_PRAISES = ['Yay!', 'Clever!', 'Woohoo!', 'Amazing!', 'Super!', 'Hooray!'] as const;
 
+/** The sentence read out loud for a question (kept short for little listeners). */
+function speechFor(q: GeneratedQuestion): string {
+  if (q.highlightText && q.highlightColor) return `Tap ${q.highlightText}!`;
+  return [q.subPrompt, q.prompt].filter(Boolean).join('. ');
+}
+
 export const TopicRunner: React.FC<TopicRunnerProps> = ({
   profile,
   topicId,
@@ -53,9 +61,11 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   const [locked, setLocked] = useState(false);
 
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
+  const isEarly = profile.track === 'early';
 
   const startRound = useCallback(() => {
     initAudio();
+    sfx.start();
     setQuestionIndex(1);
     setSessionCorrect(0);
     setFinished(false);
@@ -66,19 +76,36 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     setQuestion(generateQuestionForTopic(topicId));
   }, [topicId]);
 
+  // Finishing a round always gets a fanfare; a near-perfect round also gets the trophy.
   useEffect(() => {
-    if (finished && sessionCorrect >= 9) {
+    if (!finished) return;
+    if (sessionCorrect >= 9) {
       showTrophy();
       sfx.trophy();
       confettiBlast();
       confettiBlast();
+    } else {
+      sfx.fanfare();
+      if (sessionCorrect >= 6) confettiBlast();
     }
   }, [finished, sessionCorrect]);
+
+  // The background music gets quieter during a round, so it never competes with thinking.
+  useEffect(() => {
+    setMusicScene('play');
+    return () => setMusicScene('home');
+  }, []);
+
+  // The youngest learners cannot read yet, so their questions are read aloud.
+  useEffect(() => {
+    if (finished || !isEarly) return;
+    speak(speechFor(question));
+  }, [question, finished, isEarly]);
 
   const advanceOrFinish = (latestProfile: KidProfile, nextSessionCorrect: number) => {
     if (questionIndex >= QUESTIONS_PER_SESSION) {
       setFinished(true);
-      onUpdateProfile(latestProfile, true); // Immediate cloud sync on finishTopic()
+      onUpdateProfile(latestProfile, true); // Immediate cloud sync when a round finishes
       return;
     }
     setQuestionIndex((q) => q + 1);
@@ -161,6 +188,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       if (nextStreak >= 5) sfx.streak();
       else if (nextStreak >= 3) sfx.mega();
       else sfx.correct();
+      setTimeout(() => sfx.star(), 320);
 
       if (nextStars % 25 === 0) {
         confettiBlast();
@@ -169,18 +197,17 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         confettiBlast();
       }
 
+      const praise = pick(isEarly ? EARLY_PRAISES : PRIMARY_PRAISES);
       if (newlyUnlockedBadge) {
         setTimeout(() => {
           showTrophy();
           sfx.trophy();
           confettiBlast();
-          setFeedbackMsg(`🏅 New Badge: ${newlyUnlockedBadge.emoji} ${newlyUnlockedBadge.name}!`);
+          setFeedbackMsg(`New badge: ${newlyUnlockedBadge.emoji} ${newlyUnlockedBadge.name}!`);
         }, 250);
       } else {
-        const praisePool = profile.track === 'early' ? EARLY_PRAISES : PRIMARY_PRAISES;
-        setFeedbackMsg(
-          `🎉 ${pick(praisePool)}${nextStreak >= 3 ? ` (${nextStreak}🔥)` : ''}`,
-        );
+        setFeedbackMsg(`${praise}${nextStreak >= 3 ? ` ${nextStreak} in a row!` : ''}`);
+        if (isEarly) speak(praise);
       }
 
       setTimeout(() => {
@@ -202,7 +229,8 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       };
       onUpdateProfile(updatedProfile, false);
       sfx.wrong();
-      setFeedbackMsg(profile.track === 'early' ? '💫 Oopsie!' : '🤔 Try again!');
+      setFeedbackMsg(isEarly ? 'Oopsie! Try again!' : 'Not quite. Try again!');
+      if (isEarly) speak('Try again!');
       setTimeout(() => {
         setSelectedOption(null);
         setOptionState('idle');
@@ -211,134 +239,144 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     }
   };
 
+  // ------------------------------------------------------------ Finish screen
   if (finished) {
     const medal =
       sessionCorrect >= 9 ? '🏆' : sessionCorrect >= 7 ? '🥇' : sessionCorrect >= 5 ? '🥈' : '🥉';
     const message =
       sessionCorrect >= 9
-        ? "Mastered! You're ready for the next level 🚀"
+        ? 'Mastered! You are ready for the next level.'
         : sessionCorrect >= 7
-          ? 'Excellent work — one more round for mastery!'
-          : 'Try again — practice makes perfect!';
+          ? 'Great work! One more round to master it.'
+          : 'Good try! Practice makes perfect.';
+    const mood: MascotMood = sessionCorrect >= 7 ? 'cheer' : 'happy';
 
     return (
-      <div className="game">
-        <button
-          type="button"
-          className="back-btn"
-          onClick={onExitToMap}
-          aria-label="Back to Curriculum"
-        >
-          ←
-        </button>
-        <div style={{ fontSize: 64 }}>{medal}</div>
-        <div className="q">Great practice, {profile.nickname}!</div>
-        <div style={{ fontSize: 48, color: 'var(--gold)', fontWeight: 700 }}>
-          {sessionCorrect} / {QUESTIONS_PER_SESSION}
+      <div className="finish pop-in" style={{ ['--run-color' as string]: theme.hex }}>
+        <Mascot mood={mood} size={140} className="finish-mascot" />
+        <div className="finish-medal" aria-hidden="true">
+          {medal}
         </div>
-        <div className="hint" style={{ marginTop: 16 }}>
-          {message}
+        <h2 className="finish-title">Great practice, {profile.nickname}!</h2>
+        <div className="finish-score" aria-label={`${sessionCorrect} out of ${QUESTIONS_PER_SESSION}`}>
+          <span className="finish-num">{sessionCorrect}</span>
+          <span className="finish-of">/ {QUESTIONS_PER_SESSION}</span>
         </div>
-        <div
-          style={{
-            marginTop: 20,
-            display: 'flex',
-            gap: 12,
-            flexWrap: 'wrap',
-            justifyContent: 'center',
-          }}
-        >
-          <button
-            type="button"
-            className="op"
-            style={{ minWidth: 140, borderColor: theme.accent, color: theme.hex }}
-            onClick={startRound}
-          >
-            🔄 Play Again
+        <p className="finish-msg">{message}</p>
+        <div className="finish-actions">
+          <button type="button" className="primary-btn big" onClick={startRound} data-silent>
+            <IconRefresh size={22} /> Play again
           </button>
-          <button
-            type="button"
-            className="op"
-            style={{
-              minWidth: 140,
-              background: '#f0f0f0',
-              borderColor: '#ccc',
-              color: '#555',
-            }}
-            onClick={onExitToMap}
-          >
-            📚 Back to Map
+          <button type="button" className="secondary-btn big" onClick={onExitToMap}>
+            <IconBook size={22} /> Back to topics
           </button>
         </div>
       </div>
     );
   }
 
+  // -------------------------------------------------------------- Game screen
+  const mascotMood: MascotMood =
+    optionState === 'correct' ? 'cheer' : optionState === 'wrong' ? 'oops' : 'think';
+
   return (
-    <div className={`game ${profile.track === 'early' ? 'early-track' : ''}`}>
-      <div className="bar">
+    <div
+      className={`game ${isEarly ? 'early-track' : ''}`}
+      style={{
+        ['--run-color' as string]: theme.hex,
+        ['--run-accent' as string]: theme.accent,
+        ['--run-bg' as string]: theme.bgLight,
+      }}
+    >
+      <div className="game-top">
         <button
           type="button"
-          className="back-btn"
-          style={{ position: 'static' }}
+          className="icon-btn"
           onClick={onExitToMap}
-          aria-label="Back to Curriculum"
+          aria-label="Back to topics"
         >
-          ←
+          <IconBack />
         </button>
-        <div className="level-pill" style={{ color: theme.hex }}>
-          Q {questionIndex}/{QUESTIONS_PER_SESSION}
+        <div className="game-pills">
+          <div className="pill score-pill" aria-label={`${profile.stars} stars`}>
+            <IconStar size={18} />
+            <span key={profile.stars} className="bump">
+              {profile.stars}
+            </span>
+          </div>
+          <div className="pill streak-pill" aria-label={`${profile.streak} in a row`}>
+            <IconFlame size={18} />
+            <span key={profile.streak} className="bump">
+              {profile.streak}
+            </span>
+          </div>
         </div>
-        <div className="score-pill">⭐ {profile.stars}</div>
-        <div className="streak-pill">🔥 {profile.streak}</div>
       </div>
-
-      <div className="progress-bar">
-        <div
-          style={{
-            width: `${((questionIndex - 1) / QUESTIONS_PER_SESSION) * 100}%`,
-            background: `linear-gradient(90deg, var(--green), ${theme.accent})`,
-          }}
-        />
-      </div>
-
-      {question.subPrompt && (
-        <div className="q small" style={{ color: 'var(--muted)', fontSize: 15, marginBottom: 4 }}>
-          {question.subPrompt}
-        </div>
-      )}
 
       <div
-        className="q"
-        style={
-          question.topicId.startsWith('y-spell') ? { letterSpacing: 6 } : undefined
-        }
+        className="progress-dots"
+        role="progressbar"
+        aria-label="Questions"
+        aria-valuemin={1}
+        aria-valuemax={QUESTIONS_PER_SESSION}
+        aria-valuenow={questionIndex}
+        aria-valuetext={`Question ${questionIndex} of ${QUESTIONS_PER_SESSION}`}
       >
-        {question.highlightText && question.highlightColor ? (
-          <>
-            Tap <span style={{ color: question.highlightColor }}>{question.highlightText}</span>! 🎨
-          </>
-        ) : (
-          question.prompt
-        )}
+        {Array.from({ length: QUESTIONS_PER_SESSION }, (_, i) => {
+          const n = i + 1;
+          const state = n < questionIndex ? 'done' : n === questionIndex ? 'current' : '';
+          return <span key={n} className={`pdot ${state}`} />;
+        })}
       </div>
 
-      {question.heroEmoji && <div style={{ fontSize: 80, marginBottom: 12 }}>{question.heroEmoji}</div>}
+      <div className="question-card" key={`${questionIndex}-${question.prompt}`}>
+        <Mascot mood={mascotMood} size={isEarly ? 96 : 76} className="game-mascot" />
 
-      {question.visualEmojis && (
-        <div style={{ margin: '10px 0 18px' }}>
-          {question.visualEmojis.map((em, idx) => (
-            <span key={idx} className="count-item">
-              {em}
-            </span>
-          ))}
+        {question.subPrompt && <div className="q-sub">{question.subPrompt}</div>}
+
+        <div className="q" style={question.topicId.startsWith('y-spell') ? { letterSpacing: 6 } : undefined}>
+          {question.highlightText && question.highlightColor ? (
+            <>
+              Tap <span style={{ color: question.highlightColor }}>{question.highlightText}</span>!
+            </>
+          ) : (
+            question.prompt
+          )}
         </div>
-      )}
 
-      {question.hint && <div className="hint">💡 {question.hint}</div>}
+        {canSpeak() && (
+          <button
+            type="button"
+            className="listen-btn"
+            onClick={() => speak(speechFor(question))}
+            aria-label="Read the question out loud"
+            data-silent
+          >
+            <IconSpeaker size={22} /> Listen
+          </button>
+        )}
+
+        {question.heroEmoji && (
+          <div className="hero-emoji" aria-hidden="true">
+            {question.heroEmoji}
+          </div>
+        )}
+
+        {question.visualEmojis && (
+          <div className="count-row" aria-label="Things to count">
+            {question.visualEmojis.map((em, idx) => (
+              <span key={idx} className="count-item" style={{ ['--i' as string]: idx }}>
+                {em}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {question.hint && <div className="hint">Hint: {question.hint}</div>}
+      </div>
 
       <div className="ops">
-        {question.options.map((opt) => {
+        {question.options.map((opt, optIndex) => {
           const isSelected = selectedOption === opt.value;
           const stateCls =
             isSelected && optionState === 'correct'
@@ -352,8 +390,9 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
               <button
                 key={opt.value}
                 type="button"
+                data-silent
                 className={`color-btn ${stateCls}`}
-                style={{ background: opt.colorHex }}
+                style={{ background: opt.colorHex, ['--i' as string]: optIndex }}
                 onClick={(e) => handleOptionClick(e, opt.value)}
                 aria-label={opt.label}
               />
@@ -365,7 +404,9 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
               <button
                 key={opt.value}
                 type="button"
+                data-silent
                 className={`kiki-obj-btn ${stateCls}`}
+                style={{ ['--i' as string]: optIndex }}
                 onClick={(e) => handleOptionClick(e, opt.value)}
               >
                 {opt.label}
@@ -377,12 +418,9 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
             <button
               key={opt.value}
               type="button"
+              data-silent
               className={`op ${stateCls}`}
-              style={{
-                borderColor: theme.accent,
-                color: theme.hex,
-                background: theme.bgLight,
-              }}
+              style={{ ['--i' as string]: optIndex }}
               onClick={(e) => handleOptionClick(e, opt.value)}
             >
               {opt.label}
@@ -391,7 +429,11 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         })}
       </div>
 
-      <div className={`msg ${optionState === 'wrong' ? 'wrong-msg' : ''}`}>
+      <div
+        className={`msg ${optionState === 'wrong' ? 'wrong-msg' : ''} ${optionState === 'correct' ? 'right-msg' : ''}`}
+        role="status"
+        aria-live="polite"
+      >
         {feedbackMsg}
       </div>
     </div>

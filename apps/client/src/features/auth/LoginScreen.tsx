@@ -12,6 +12,12 @@ import {
   hasConfiguredPin,
   saveParentPin,
 } from './PinModal.js';
+import { Mascot } from '../../ui/Mascot.js';
+
+// Sign-in options shown to parents. Only Google is turned on for now. Switch the
+// others on here once they are enabled in the Firebase console and tested.
+const ENABLE_APPLE_SIGN_IN = false;
+const ENABLE_EMAIL_SIGN_IN = false;
 
 interface LoginScreenProps {
   user: AuthParentUser | null;
@@ -32,6 +38,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
+  const [resettingHint, setResettingHint] = useState(false);
 
   React.useEffect(() => {
     setActiveUser(user);
@@ -148,6 +155,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
     }
     setPin('');
     setError('');
+    setResettingHint(true);
     setStep('provider');
   };
 
@@ -158,26 +166,34 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
 
   return (
     <div className="login-screen">
-      <div className="login-card">
-        <div className="emoji">🌈</div>
-        <h2>Kiyuv Learning Academy</h2>
-        <p className="sub">Parent Sign-In · 6-Digit PIN Security</p>
+      <div className="bg-floaties" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
+
+      <div className="login-card pop-in">
+        <Mascot
+          mood={step === 'provider' ? 'cheer' : step === 'verifypin' ? 'happy' : 'think'}
+          size={132}
+          className="login-mascot"
+        />
+        <h1 className="login-title">Kiyuv Learning</h1>
+        <p className="login-sub">A happy place to learn and play</p>
 
         {step === 'provider' && (
-          <div>
+          <div className="login-body">
+            {resettingHint && <p className="login-hint">Sign in again to choose a new PIN.</p>}
+
             <button
               type="button"
               className="google-btn"
               onClick={() => void handleProviderAuth(signInWithGoogle)}
               disabled={busy}
             >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 48 48"
-                style={{ marginRight: 10 }}
-                aria-hidden="true"
-              >
+              <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
                 <path
                   fill="#EA4335"
                   d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
@@ -198,84 +214,100 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
               Continue with Google
             </button>
 
-            <button
-              type="button"
-              className="google-btn"
-              style={{ marginTop: 8, background: '#111', color: '#fff', borderColor: '#111' }}
-              onClick={() => void handleProviderAuth(signInWithApple)}
-              disabled={busy}
-            >
-              🍎 Continue with Apple
-            </button>
-
-            <div style={{ marginTop: 10 }}>
+            {ENABLE_APPLE_SIGN_IN && (
               <button
                 type="button"
-                className="link-btn"
-                onClick={() => setShowEmailForm((s) => !s)}
+                className="google-btn apple-btn"
+                onClick={() => void handleProviderAuth(signInWithApple)}
+                disabled={busy}
               >
-                {showEmailForm ? 'Hide Email Sign-In' : 'Or sign in with verified Email'}
+                Continue with Apple
               </button>
-            </div>
+            )}
 
-            {showEmailForm && (
-              <form onSubmit={(e) => void handleEmailAuth(e)} style={{ marginTop: 12 }}>
+            {ENABLE_EMAIL_SIGN_IN && (
+              <div className="login-more">
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => setShowEmailForm((s) => !s)}
+                >
+                  {showEmailForm ? 'Hide email sign-in' : 'Or sign in with email'}
+                </button>
+              </div>
+            )}
+
+            {ENABLE_EMAIL_SIGN_IN && showEmailForm && (
+              <form onSubmit={(e) => void handleEmailAuth(e)} className="login-email-form">
+                <label className="sr-only" htmlFor="login-email">
+                  Parent email
+                </label>
                 <input
+                  id="login-email"
                   type="email"
                   placeholder="Parent email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="login-input"
+                  autoComplete="email"
                   required
                 />
+                <label className="sr-only" htmlFor="login-password">
+                  Password
+                </label>
                 <input
+                  id="login-password"
                   type="password"
-                  placeholder="Password (min 8 chars)"
+                  placeholder="Password (8 or more characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="login-input"
+                  autoComplete={isRegister ? 'new-password' : 'current-password'}
                   required
                 />
                 <button type="submit" className="login-btn" disabled={busy}>
-                  {isRegister ? 'Create Parent Account' : 'Sign In with Email'}
+                  {isRegister ? 'Create parent account' : 'Sign in'}
                 </button>
-                <div style={{ marginTop: 8 }}>
-                  <button
-                    type="button"
-                    className="link-btn"
-                    onClick={() => setIsRegister((r) => !r)}
-                  >
-                    {isRegister
-                      ? 'Already have an account? Sign in'
-                      : 'Need an email account? Register'}
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => setIsRegister((r) => !r)}
+                >
+                  {isRegister ? 'Already have an account? Sign in' : 'Need an account? Register'}
+                </button>
               </form>
             )}
 
             {infoMsg && (
-              <div style={{ color: '#059669', fontSize: 12, marginTop: 8, fontWeight: 600 }}>
+              <div className="login-info" role="status">
                 {infoMsg}
               </div>
             )}
-            {error && <div className="login-err">{error}</div>}
-            <div className="login-note">
-              Parents sign in once per device and create up to 6 child profiles.
-              <br />
-              Kids never sign in and can play simultaneously across devices.
-            </div>
+            {error && (
+              <div className="login-err" role="alert">
+                {error}
+              </div>
+            )}
+            <p className="login-note">
+              Grown-ups sign in once and add the children. Kids never need an account.
+            </p>
           </div>
         )}
 
         {step === 'setpin' && activeUser && (
-          <form onSubmit={(e) => void handleSetPin(e)}>
-            <p className="sub">
-              👋 Hi <b>{firstName}</b>! Set a 6-digit Parent PIN
+          <form className="login-body" onSubmit={(e) => void handleSetPin(e)}>
+            <p className="login-lead">
+              Hi <b>{firstName}</b>! Choose a secret 6-digit PIN for grown-ups.
             </p>
+            <label className="sr-only" htmlFor="set-pin">
+              New 6-digit parent PIN
+            </label>
             <input
+              id="set-pin"
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
+              autoComplete="new-password"
               maxLength={PIN_LENGTH}
               autoFocus
               value={pin}
@@ -283,43 +315,40 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
                 setError('');
                 setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH));
               }}
-              placeholder="• • • • • •"
-              className="login-input pin"
+              placeholder="······"
+              className="pin-input"
             />
             <button type="submit" className="login-btn" disabled={busy}>
-              {busy ? 'Saving PIN...' : 'Save 6-Digit PIN & Continue →'}
+              {busy ? 'Saving…' : 'Save PIN and start'}
             </button>
-            {error && <div className="login-err">{error}</div>}
-            <div className="login-note">
-              Avoid repeated digits (111111) or sequences (123456). Your PIN unlocks this
-              device for 12 hours and protects profile &amp; parent settings.
-            </div>
+            {error && (
+              <div className="login-err" role="alert">
+                {error}
+              </div>
+            )}
+            <p className="login-note">
+              Not 111111 or 123456. The PIN keeps kids out of the grown-up settings.
+            </p>
           </form>
         )}
 
         {step === 'verifypin' && activeUser && (
-          <form onSubmit={(e) => void handleVerifyPin(e)}>
+          <form className="login-body" onSubmit={(e) => void handleVerifyPin(e)}>
             {activeUser.photoURL && (
-              <div style={{ marginBottom: 8 }}>
-                <img
-                  src={activeUser.photoURL}
-                  alt=""
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: '50%',
-                    border: '3px solid var(--border)',
-                  }}
-                />
-              </div>
+              <img className="login-photo" src={activeUser.photoURL} alt="" />
             )}
-            <p className="sub">
-              Welcome back, <b>{firstName}</b>! Enter 6-digit Parent PIN
+            <p className="login-lead">
+              Welcome back, <b>{firstName}</b>! Enter your PIN.
             </p>
+            <label className="sr-only" htmlFor="verify-pin">
+              6-digit parent PIN
+            </label>
             <input
+              id="verify-pin"
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
+              autoComplete="current-password"
               maxLength={PIN_LENGTH}
               autoFocus
               value={pin}
@@ -327,18 +356,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
                 setError('');
                 setPin(e.target.value.replace(/\D/g, '').slice(0, PIN_LENGTH));
               }}
-              placeholder="• • • • • •"
-              className="login-input pin"
+              placeholder="······"
+              className="pin-input"
             />
             <button type="submit" className="login-btn" disabled={busy}>
-              {busy ? 'Verifying...' : 'Unlock 🔓'}
+              {busy ? 'Checking…' : 'Unlock'}
             </button>
-            {error && <div className="login-err">{error}</div>}
-            <div className="login-note">
-              <button type="button" onClick={handleForgotPin} className="link-btn">
-                Forgot or upgrading PIN? Re-authenticate with provider
-              </button>
-            </div>
+            {error && (
+              <div className="login-err" role="alert">
+                {error}
+              </div>
+            )}
+            <button type="button" onClick={handleForgotPin} className="link-btn">
+              Forgot your PIN? Sign in again
+            </button>
           </form>
         )}
       </div>

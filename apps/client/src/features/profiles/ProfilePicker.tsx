@@ -4,6 +4,8 @@ import {
   MAX_KIDS_PER_FAMILY,
   type KidProfile,
 } from '@kiyuv/shared';
+import { Mascot } from '../../ui/Mascot.js';
+import { IconCheck, IconLock, IconPencil, IconPlus, IconStar, IconFlame } from '../../ui/Icons.js';
 
 interface ProfilePickerProps {
   profiles: readonly KidProfile[];
@@ -23,99 +25,101 @@ export const ProfilePicker: React.FC<ProfilePickerProps> = ({
   const [manageMode, setManageMode] = useState(false);
 
   return (
-    <div className="picker-screen">
+    <div className="picker-screen screen-enter">
       <div className="picker-container">
-        <div className="picker-badge">👨‍👩‍👧‍👦 FAMILY LEARNING PROFILES</div>
+        <Mascot mood={manageMode ? 'think' : 'cheer'} size={104} className="picker-mascot" />
         <h1 className="picker-title">
-          {manageMode ? 'Manage Learner Profiles' : "Who's learning today?"}
+          {manageMode ? 'Edit learners' : "Who's learning today?"}
         </h1>
         <p className="picker-subtitle">
           {manageMode
-            ? 'Select a profile to edit its details or remove it (requires Parent PIN)'
-            : 'Tap your profile to jump into your personal curriculum & colour theme'}
+            ? 'Tap a learner to change their details. A grown-up PIN is needed.'
+            : 'Tap your picture to start.'}
         </p>
 
-        <div className="picker-grid">
-          {profiles.map((profile) => {
+        <ul className="picker-grid" aria-label="Learners">
+          {profiles.map((profile, index) => {
             const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
             const isCurrentDevice = profile.kidId === activeKidId;
             return (
-              <button
-                key={profile.kidId}
-                type="button"
-                className="picker-tile"
-                onClick={() =>
-                  manageMode ? onRequestEditProfile(profile) : onSelectProfile(profile)
-                }
-                style={{
-                  borderColor: theme.accent,
-                  background: manageMode ? '#fff' : theme.bgLight,
-                }}
-              >
-                <div
-                  className="picker-avatar-ring"
+              <li key={profile.kidId} style={{ ['--i' as string]: index }} className="stagger-item">
+                <button
+                  type="button"
+                  className="picker-tile"
+                  onClick={() =>
+                    manageMode ? onRequestEditProfile(profile) : onSelectProfile(profile)
+                  }
                   style={{
-                    borderColor: theme.accent,
-                    boxShadow: `0 6px 20px ${theme.border}`,
+                    ['--tile-color' as string]: theme.hex,
+                    ['--tile-accent' as string]: theme.accent,
+                    ['--tile-bg' as string]: theme.bgLight,
+                    ['--tile-border' as string]: theme.border,
                   }}
+                  aria-label={
+                    manageMode ? `Edit ${profile.nickname}` : `Start learning as ${profile.nickname}`
+                  }
                 >
-                  <span>{profile.avatar}</span>
-                  {manageMode && (
-                    <span className="picker-edit-badge" title="Edit profile">
-                      ✏️
+                  <span className="picker-avatar">
+                    <span className="picker-avatar-emoji">{profile.avatar}</span>
+                    {manageMode && (
+                      <span className="picker-edit-badge" aria-hidden="true">
+                        <IconPencil size={16} />
+                      </span>
+                    )}
+                  </span>
+                  <span className="picker-nickname">{profile.nickname}</span>
+                  <span className="picker-stats">
+                    <span className="stat-pill star">
+                      <IconStar size={16} /> {profile.stars}
                     </span>
+                    <span className="stat-pill fire">
+                      <IconFlame size={16} /> {profile.bestStreak}
+                    </span>
+                  </span>
+                  {isCurrentDevice && !manageMode && (
+                    <span className="picker-device-pill">Playing here</span>
                   )}
-                </div>
-                <div className="picker-nickname" style={{ color: theme.hex }}>
-                  {profile.nickname}
-                </div>
-                <div className="picker-meta">
-                  Ages {profile.ageBand} ·{' '}
-                  {profile.track === 'early' ? '🌱 Early' : '🚀 Primary'}
-                </div>
-                <div className="picker-stats">
-                  <span>⭐ {profile.stars}</span>
-                  <span>🔥 {profile.bestStreak}</span>
-                </div>
-                {isCurrentDevice && !manageMode && (
-                  <div
-                    className="picker-device-pill"
-                    style={{ background: theme.hex, color: '#fff' }}
-                  >
-                    Last active on this device
-                  </div>
-                )}
-              </button>
+                </button>
+              </li>
             );
           })}
 
           {profiles.length < MAX_KIDS_PER_FAMILY && (
-            <button
-              type="button"
-              className="picker-tile add-tile"
-              onClick={onRequestAddProfile}
-            >
-              <div className="picker-avatar-ring add-ring">
-                <span>＋</span>
-              </div>
-              <div className="picker-nickname">Add Profile</div>
-              <div className="picker-meta">
-                {MAX_KIDS_PER_FAMILY - profiles.length} of {MAX_KIDS_PER_FAMILY} slots free
-              </div>
-            </button>
+            <li style={{ ['--i' as string]: profiles.length }} className="stagger-item">
+              <button
+                type="button"
+                className="picker-tile add-tile"
+                onClick={onRequestAddProfile}
+                aria-label="Add a learner (grown-up PIN needed)"
+              >
+                <span className="picker-avatar add-ring">
+                  <IconPlus size={44} />
+                </span>
+                <span className="picker-nickname">Add a learner</span>
+                <span className="picker-meta">
+                  <IconLock size={14} /> Grown-ups only
+                </span>
+              </button>
+            </li>
           )}
-        </div>
+        </ul>
 
         {profiles.length > 0 && (
-          <div style={{ marginTop: 28 }}>
-            <button
-              type="button"
-              className="manage-profiles-btn"
-              onClick={() => setManageMode((m) => !m)}
-            >
-              {manageMode ? '✓ Done Managing' : '⚙️ Manage Profiles (Parent PIN)'}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="manage-profiles-btn"
+            onClick={() => setManageMode((m) => !m)}
+          >
+            {manageMode ? (
+              <>
+                <IconCheck size={18} /> Done
+              </>
+            ) : (
+              <>
+                <IconPencil size={18} /> Edit learners
+              </>
+            )}
+          </button>
         )}
       </div>
     </div>
