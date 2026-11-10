@@ -4,6 +4,8 @@ Nov 10, 2026 · @Vinod Kumar Palanisamy
 
 Move to Firestore first: it is low-risk because both databases hold no data today. Then replace the browser-only PIN, which currently protects nothing, before adding any other feature. A free launch should cost about $0 a month up to roughly 4,000 daily users.
 
+**Status update (2026-11-10).** The Phase 1 code changes to `public/index.html`, `public/sw.js`, `firebase.json`, `firestore.rules` and `firestore.indexes.json` are merged into `main` but not deployed. D1 is resolved: this is a fresh start, with no migration from `kids-playground-5b055`. A new requirement was added: a simple onboarding form and a "Who's learning?" multi-profile experience, where several children share one parent account across different devices. It touches Phases 1 to 7 and adds decision D8.
+
 ## Where things stand
 
 The app is one 1,628-line HTML file, and neither database holds any user data. These findings come from reading the repo and the live `kiyuv-learning` project on 2026-11-10.
@@ -28,29 +30,30 @@ The app is one 1,628-line HTML file, and neither database holds any user data. T
 
 ## Decisions needed
 
-D1 blocks Phase 1, and the rest block the phase shown. The plan assumes the recommended option unless you say otherwise.
+D1 is resolved. The rest block the phase shown. The plan assumes the recommended option unless you say otherwise.
 
 | ID | Decision | Recommended | Why | Blocks |
 | --- | --- | --- | --- | --- |
-| D1 | Does real progress in the old project, `kids-playground-5b055`, need to be kept? | Export it once if your children's history matters, then shut that project down. | The account now signed in cannot see that project. Someone with access must export it. | Phase 1 |
+| D1 | Does real progress in the old project, `kids-playground-5b055`, need to be kept? | **Resolved: fresh start.** No data is migrated. Shut that project down when convenient. | Decided by the owner on 2026-11-10. | Nothing |
 | D2 | Where should curriculum and questions live? | Ship them as versioned JSON in the app, not in Firestore. | They are not user data. Firestore would charge a read per question. This narrows "everything to Firestore" to user data. | Phase 2 |
 | D3 | PIN length and scope | 6 digits, required for every account, unlocking a device for 12 hours. | 4 digits has 10,000 combinations. Parent-only actions need a PIN from the last 5 minutes. | Phase 3 |
 | D4 | Which Apple store category? | Decide with counsel. Default to Education, age-rated for parents and children, with all kids-safe rules applied anyway. | Kids Category limits third-party data flows, and Google sign-in needs review against that. | Phase 6 |
 | D5 | Parental consent method and privacy review | Hire a children's-privacy lawyer before public launch. | COPPA, India's DPDP Rules and GDPR apply differently. This plan is not legal advice. | Phase 4 |
 | D6 | Repo visibility and history | Make the repo private and scrub children's names from history. | History rewrites affect everyone with a clone. | Phase 2 |
 | D7 | Automatic stop at what spend? | Block writes at $25 a month. Remove billing only at $100. | Removing billing can take the whole app offline and risks data. | Phase 7 |
+| D8 | What does each onboarding field collect, and what is it used for? | Name: first name only, shown to the parent only. Nickname: shown to the child. Age: whole years, 2 to 13, never a birthdate. Country: ISO code. State: optional, region only, never city or address. Colour: one of 8 fixed choices. | The form is called non-PII, but name, age, country and state together are personal information under COPPA and DPDP. Each field needs a stated purpose or it is dropped. Counsel confirms in D5. | Phase 1 deploy, Phase 4 |
 
 ## Phases at a glance
 
-The full programme is about 7 to 10 weeks with an agent doing the work and one person reviewing. Estimates are judgment calls, not measurements. Phases 5 and 6 can overlap.
+The full programme is about 7.5 to 11 weeks with an agent doing the work and one person reviewing. Estimates are judgment calls, not measurements. Phases 5 and 6 can overlap.
 
 | Phase | Outcome | Estimate | Human gate before the next phase |
 | --- | --- | --- | --- |
-| 1. Firestore only | SQL Connect and Cloud SQL are gone. Writes are cut by about 90%. | 2 to 3 days | Approve deleting the service and instance. |
-| 2. Codebase | TypeScript app, tests, CI and separate dev and production projects. | 1 to 2 weeks | Review the structure and the dev deploy. |
-| 3. Sign-in and security | Real sign-in, server-verified PIN, strict rules and App Check. | 2 weeks | Independent security review. |
-| 4. Privacy | Consent, data export, account deletion and retention. | 1 week | Lawyer sign-off. |
-| 5. Phone and tablet | Layouts pass the device matrix and accessibility checks. | 1 week | Test on real devices. |
+| 1. Firestore only | SQL Connect and Cloud SQL are gone. Writes are cut by about 90%. The kid schema carries the onboarding fields. | 2 to 3 days | Approve deleting the service and instance. |
+| 2. Codebase | TypeScript app, tests, CI, separate dev and production projects, onboarding form and "Who's learning?" picker. | 1.5 to 2.5 weeks | Review the structure and the dev deploy. |
+| 3. Sign-in and security | Real sign-in, server-verified PIN, strict rules, App Check, and profile-aware rules. | 2 weeks | Independent security review. |
+| 4. Privacy | Consent per child profile, data export, profile and account deletion, retention. | 1 week | Lawyer sign-off. |
+| 5. Phone and tablet | Layouts, picker and colour themes pass the device matrix and accessibility checks. | 1 week | Test on real devices. |
 | 6. Native apps | Android and iOS builds in internal testing, then store review. | 1 to 2 weeks, plus review time | Store accounts and final listing approval. |
 | 7. Guardrails and launch | Spend controls tested, monitoring on, staged rollout. | 3 to 4 days | Go or no-go. |
 
@@ -66,7 +69,8 @@ One TypeScript web codebase ships to web, Android and iOS, with Firestore for us
 | Native shell | Capacitor, with assets bundled in the app. | One codebase. Bundling also avoids per-user Hosting transfer. |
 | Database | Cloud Firestore, Standard edition, `asia-south1`. | Already provisioned and on the free tier. |
 | Server logic | Cloud Functions 2nd gen, `asia-south1`, callable only. | PIN checks, account deletion and data export need a trusted server. |
-| Identity | Firebase Auth: Google, Apple, and email with verification. | Parents sign in. Children have no accounts. |
+| Identity | Firebase Auth: Google, Apple, and email with verification. | Parents sign in. Children have no accounts; each child is a profile under the parent account. |
+| Active profile | Chosen per device and kept in local storage (Capacitor Preferences in the apps). Never stored in Firestore. | Lets each device run a different child at the same time with no shared "current child" to fight over. |
 | App integrity | App Check: reCAPTCHA Enterprise, Play Integrity, App Attest. | Rejects most traffic that is not from your apps. |
 | Content | Versioned JSON packs and math generators in the bundle. | No database reads for questions, and full offline play. |
 
@@ -75,7 +79,7 @@ One TypeScript web codebase ships to web, Android and iOS, with Firestore for us
 ```text
 apps/client/            React app, Capacitor config, android/, ios/
   src/app/              routing, providers, error boundary
-  src/features/         auth, pin, kids, play, progress, parent, consent
+  src/features/         auth, pin, onboarding, profiles, play, progress, parent, consent
   src/lib/firebase/     the only code that imports Firebase SDKs
   src/lib/sync/         local-first queue and merge logic
 packages/shared/        Zod schemas, types, limits, used by client and functions
@@ -93,7 +97,7 @@ Each family needs one profile document and one document per child. All topic pro
 | Current Postgres item | Firestore location | Notes |
 | --- | --- | --- |
 | `User` | `users/{uid}` | Keep `createdAt`, `lastActiveDate`, `schemaVersion`, `locale`, `resetEpoch`. Drop email, name and photo; read them from Auth. |
-| `KidProfile` | `users/{uid}/kids/{kidId}` | `kidId` is `k1` to `k6`, which caps children per family with no extra read. Store nickname, avatar emoji, age band, track, stats, badges. |
+| `KidProfile` | `users/{uid}/kids/{kidId}` | `kidId` is `k1` to `k6`, which caps children per family with no extra read. One document per child, so two children on two devices never write the same document. Store the onboarding fields below, plus avatar emoji, age band, track, stats, badges. |
 | `TopicProgress` | `topics` map in the kid document | Key is `topicId`. Fields shortened to `p`, `c`, `b`, `m`. Exempt `topics` from indexing. |
 | `CurriculumSubject`, `CurriculumTopic`, `QuestionBankItem` | `packages/content` JSON | Empty tables. See D2. |
 | None (new) | `pinSecrets/{uid}` | Server only. Clients are denied all access. |
@@ -110,7 +114,40 @@ Add this to `firestore.indexes.json`:
 }
 ```
 
-A kid document stays far under the 1 MiB limit, even at several hundred topics. Replace age with an age band and replace real names with parent-chosen nicknames.
+A kid document stays far under the 1 MiB limit, even at several hundred topics.
+
+#### Onboarding profile fields
+
+The onboarding form collects six fields and no email, phone, address, school, photo or birthdate. Treat them as personal information anyway, not as "non-PII". See D8.
+
+| Field | Stored as | Limits and purpose |
+| --- | --- | --- |
+| Name | `name`, string | First name only, 1 to 30 characters. Shown only in the parent area. Optional if counsel prefers (D8). |
+| Nickname | `nickname`, string | 1 to 20 characters. The only name the child sees, on the picker and leaderboard. |
+| Age | `age`, whole number | 2 to 13 years. `ageBand` is computed from it and must agree. No birthdate is ever stored. |
+| Country | `country`, string | Two-letter ISO code from a fixed list. Sets locale and content defaults. |
+| State | `state`, string | Region name or code from the chosen country's list, or empty. Never a city, postcode or address. |
+| Favourite colour | `favColor`, string | One of 8 fixed keys, such as `blue` or `rose`. Each maps to a theme whose contrast has been checked (task 5.7). Not free text. |
+
+The form is entered by the parent, never by the child, and sits behind the PIN. Names, nicknames and ages are never written to logs, URLs, analytics or error reports.
+
+#### Profiles, devices and the active child
+
+- One parent account has up to 6 child profiles, `k1` to `k6`. A new profile takes the lowest free slot.
+- The active child is chosen per device. It is saved in local storage under `activeKid:{uid}` and is never written to Firestore, so one child switching profile cannot move another child's device.
+- A device that is not signed in, or whose unlock has expired, shows the parent sign-in and PIN first. Once unlocked, it shows the "Who's learning?" picker.
+- Switching profile needs no PIN, so the children can swap on a shared tablet. Creating, editing or deleting a profile, and resetting progress, need a PIN entered in the last 5 minutes.
+- Every device keeps its own offline queue, keyed by `kidId`.
+
+#### Syncing one child across devices
+
+Nothing listens for changes. Each device reads its active child's document at start, on returning to the foreground, and before each flush.
+
+- A flush is a transaction on that one kid document: read it, merge, write. That is 1 read and 1 write.
+- Merge rules: take the larger of `stars`, `bestStreak`, `totalCorrect` and `totalWrong`. Per topic, keep the higher `p`, `c` and `b`. Union `badges`. Take the newer value for profile fields.
+- A higher `resetEpoch` always wins over local progress, as in Phase 1.
+- Children on different profiles never touch the same document, so they cannot overwrite each other.
+- Two devices on the same child can only lose a few seconds of unflushed play. A dropped write is retried after the 5-second spacing rule.
 
 ### Operation mapping
 
@@ -119,7 +156,10 @@ A kid document stays far under the 1 MiB limit, even at several hundred topics. 
 | `UpsertParentProfile` | `setDoc(users/{uid}, ..., {merge:true})`, at most once per day | 1 write |
 | `UpsertKidProgress` plus every `UpsertTopicProgress` | One `setDoc` on the kid document | 1 write per finished topic |
 | `GetKidProgress` | Not needed separately; the family load returns it | 0 |
-| `GetMyFamilyDashboard` | `getDoc(users/{uid})` plus `getDocs(kids)` | 1 + children |
+| `GetMyFamilyDashboard` | `getDoc(users/{uid})` plus `getDocs(kids)`. Also fills the "Who's learning?" picker. | 1 + children |
+| None (new): create or edit a profile | `setDoc` on the kid document, PIN under 5 minutes old | 1 write |
+| None (new): delete a profile | `deleteDoc` on the kid document, PIN under 5 minutes old | 1 delete |
+| None (new): switch profile | Local only. Then read that child's document if it is not cached. | 0 to 1 |
 | `ResetMyKidsProgress` | Batch zeroing kid documents and incrementing `resetEpoch` | 1 + children |
 | `GetCurriculumByTrack`, `GetTopicQuestions` | Import from `packages/content` | 0 |
 
@@ -132,7 +172,7 @@ Follow these in every phase. A task is done only when its acceptance check has b
 1. Work from `C:\Kiyuv\kiyuv-learning`, on one branch per phase, with one commit per task.
 2. Stop at every human gate. Never delete a cloud resource, deploy to production, or change billing without written approval for that specific action.
 3. Never run a bare `firebase deploy`. Always pass `--only` with named targets.
-4. Never log, store or send a PIN, PIN hash, token, email or child nickname outside the paths this plan defines.
+4. Never log, store or send a PIN, PIN hash, token, email, or any child profile field (name, nickname, age, country, state, colour) outside the paths this plan defines.
 5. Never add analytics, ads, crash reporting or other third-party SDKs without an approved decision.
 6. Develop against the Firebase emulators. Do not touch production data.
 7. Check prices, CLI commands and store rules against current official pages when you reach them, because they change.
@@ -142,19 +182,22 @@ Follow these in every phase. A task is done only when its acceptance check has b
 
 This phase changes the existing `public/index.html` directly and leaves restructuring for Phase 2. Deploy the new client first, then delete the Postgres resources, because deletion cannot be undone.
 
+**State on 2026-11-10:** tasks 1.2 to 1.10 are merged into `main` but nothing is deployed. Because nothing is live, the kid schema can still change at no migration cost. Task 1.12 does that before the first deploy.
+
 ### Tasks
 
 - [ ] **1.1 Set safety nets.** In Google Cloud Billing, create budget alerts at $1, $5, $10 and $25. Turn on Firestore delete protection.
-- [ ] **1.2 Resolve D1.** If old data is wanted, export it from `kids-playground-5b055` and keep it offline until Phase 2 can import it.
-- [ ] **1.3 Replace the data adapter** in the `window.__fb` block. Remove the `firebase/data-connect` and `@kiyuv-learning/dataconnect` imports, the import map entries, `getDataConnect`, the emulator connection and all SQL Connect calls.
-- [ ] **1.4 Use the new model.** Write to `users/{uid}` and `users/{uid}/kids/{kidId}` as defined in the data model. Map `yuvin` to `k1` and `kiki` to `k2` in one constant. Stop copying `email` into progress documents.
-- [ ] **1.5 Cut writes.** Replace the 1.5-second debounce with a flush when a topic finishes, when the page is hidden, and at most once every 30 seconds. Write `lastActiveDate` once per day. Keep local saves on every answer.
-- [ ] **1.6 Fix reset.** Zero the kid documents and increment `resetEpoch` in one batch. During merge, a higher cloud `resetEpoch` discards local progress on every device.
-- [ ] **1.7 Replace the deprecated cache call.** Use `initializeFirestore` with `persistentLocalCache` instead of `enableIndexedDbPersistence`.
-- [ ] **1.8 Remove SQL Connect from the repo.** Delete `dataconnect/` and `public/dataconnect-generated/`. Remove the `dataconnect` and `emulators.dataconnect` entries from `firebase.json`.
-- [ ] **1.9 Update the service worker in the same commit.** Remove `/dataconnect-generated/esm/index.esm.js` from the precache list and bump the cache to `kids-academy-v4`. A precached file that no longer exists can break service worker installation.
-- [ ] **1.10 Add rules and index exemption.** Use the rules in Phase 3 with `pinFresh()` temporarily returning `true`, and add the `topics` index exemption. Test them in the emulator.
-- [ ] **1.11 Deploy after approval.** Run `firebase deploy --only hosting,firestore`.
+- [x] **1.2 Resolve D1.** Resolved as a fresh start. No export or import is needed.
+- [x] **1.3 Replace the data adapter** in the `window.__fb` block. Remove the `firebase/data-connect` and `@kiyuv-learning/dataconnect` imports, the import map entries, `getDataConnect`, the emulator connection and all SQL Connect calls.
+- [x] **1.4 Use the new model.** Write to `users/{uid}` and `users/{uid}/kids/{kidId}` as defined in the data model. Map `yuvin` to `k1` and `kiki` to `k2` in one constant. Stop copying `email` into progress documents.
+- [x] **1.5 Cut writes.** Replace the 1.5-second debounce with a flush when a topic finishes, when the page is hidden, and at most once every 30 seconds. Write `lastActiveDate` once per day. Keep local saves on every answer.
+- [x] **1.6 Fix reset.** Zero the kid documents and increment `resetEpoch` in one batch. During merge, a higher cloud `resetEpoch` discards local progress on every device.
+- [x] **1.7 Replace the deprecated cache call.** Use `initializeFirestore` with `persistentLocalCache` instead of `enableIndexedDbPersistence`.
+- [x] **1.8 Remove SQL Connect from the repo.** Delete `dataconnect/` and `public/dataconnect-generated/`. Remove the `dataconnect` and `emulators.dataconnect` entries from `firebase.json`.
+- [x] **1.9 Update the service worker in the same commit.** Remove `/dataconnect-generated/esm/index.esm.js` from the precache list and bump the cache to `kids-academy-v4`. A precached file that no longer exists can break service worker installation.
+- [x] **1.10 Add rules and index exemption.** Use the rules in Phase 3 with `pinFresh()` temporarily returning `true`, and add the `topics` index exemption. Test them in the emulator.
+- [ ] **1.12 Extend the kid schema before the first deploy.** In the merged `firestore.rules`, add `name`, `age`, `country`, `state` and `favColor` to `validKid` as in Phase 3, update the header comment, and add emulator tests for each new field. In `index.html`, write these fields with safe defaults for the two existing profiles (`k1`, `k2`), so the schema is final on day one. The onboarding form itself is built in Phase 2.
+- [ ] **1.11 Deploy after approval.** Run `firebase deploy --only hosting,firestore`, after 1.12 is merged.
 
 ### Acceptance checks
 
@@ -162,6 +205,7 @@ This phase changes the existing `public/index.html` directly and leaves restruct
 - Signing in and finishing a 10-question topic produces one kid-document write in the browser network log.
 - Progress appears on a second browser. Reset stays reset on both after reloading.
 - No request goes to `firebasedataconnect.googleapis.com`.
+- The emulator rules tests reject a kid document with a missing, oversized or out-of-list onboarding field, and an `age` that does not match `ageBand`.
 
 ### Decommission (human gate)
 
@@ -185,11 +229,18 @@ This phase moves the existing behavior into the target structure without adding 
 - [ ] **2.3 Set up environments.** Use the emulators locally, a new `kiyuv-learning-dev` project for testing, and `kiyuv-learning` for production. Add `.firebaserc` aliases and per-environment Vite config.
 - [ ] **2.4 Extract content.** Move `KIKI_*`, `YUVIN_*`, `mathGen`, `CURRICULUM` and `BADGES` into `packages/content`. Generators stay as code. Add a schema check for every question.
 - [ ] **2.5 Remove personal hard-coding.** Replace `yuvin` and `kiki` branches with a `track` of `early` or `primary` and data-driven star values. Remove children's names and ages from the README, manifest, code and comments.
-- [ ] **2.6 Add child profiles.** Parents add up to 6 children with a nickname, avatar emoji, age band and track. The family leaderboard reads from these profiles.
+- [ ] **2.6 Build onboarding and the "Who's learning?" picker.**
+  - Onboarding form: name, nickname, age, country, state and favourite colour, as defined in the data model. Use dropdowns and swatches, with no free text except name and nickname. Validate with the shared Zod schema, the same one the rules mirror. Compute `ageBand` and suggest a `track` from `age`.
+  - The form is shown after the parent's PIN unlock. It is used for the first child during account setup and for every later "Add profile".
+  - Picker: a Netflix-style grid of profile tiles, each showing the avatar, nickname and favourite-colour ring. Include "Add profile" while fewer than 6 exist and a parent-only "Manage profiles" action.
+  - Choosing a tile saves `activeKid:{uid}` on that device only and applies the child's colour theme and track.
+  - Add an "Switch profile" control in the play header, with no PIN. Return to the picker after 10 minutes idle or when the app resumes after a long pause.
+  - Profile edit and delete need a PIN under 5 minutes old and warn that deleting removes the child's progress.
+  - The family leaderboard reads from these profiles.
 - [ ] **2.7 Rebuild screens as components:** curriculum, play, finish, leaderboard, parent area. Remove all `innerHTML` and inline handlers.
 - [ ] **2.8 Isolate Firebase.** Only `src/lib/firebase` may import the SDK. Add an ESLint rule that forbids it elsewhere and forbids `onSnapshot`.
-- [ ] **2.9 Build the sync engine** in `src/lib/sync`: local-first, with Zod validation before every write, a queue that survives restarts, and the merge and `resetEpoch` logic from Phase 1.
-- [ ] **2.10 Import local progress once.** On first sign-in, offer to import legacy `kidsAcad_*` data and any D1 export, then delete the old keys, including `kidsAcad_session`.
+- [ ] **2.9 Build the sync engine** in `src/lib/sync`: local-first, with Zod validation before every write, a queue per `kidId` that survives restarts, transactional merge on flush, and the `resetEpoch` logic from Phase 1. Reads of the active child happen at start, on foreground and before each flush. Never use listeners.
+- [ ] **2.10 Import local progress once.** On first sign-in, offer to import legacy `kidsAcad_*` data into a new profile through the onboarding form, then delete the old keys, including `kidsAcad_session`. There is no D1 export to import.
 - [ ] **2.11 Replace the service worker** with a generated Workbox precache of hashed assets. Never cache authentication or API responses.
 - [ ] **2.12 Retire `simple.html`** unless you choose to keep it. No quoted link to it was found in `index.html`, and it has no sign-in.
 - [ ] **2.13 Fix Hosting headers.** Serve hashed assets with `max-age=31536000, immutable`. Serve HTML and the service worker with `no-cache`, matching clean URLs as well as `*.html`.
@@ -201,6 +252,11 @@ This phase moves the existing behavior into the target structure without adding 
 - CI passes from a clean clone.
 - `git grep -E "Yuvin|Kiki"` returns nothing in the working tree.
 - The app plays a full topic with the network turned off, and syncs on reconnect.
+- Onboarding rejects an empty nickname, an age outside 2 to 13, an unknown country and a free-text colour.
+- Two real devices (for example an iPad and an Android phone) signed into one account run different profiles at once. Each child's stars, topics and colour theme appear correctly on both devices after reload, and neither child's play changes the other's data.
+- Two devices on the same child, played offline and then reconnected, merge with no lost topic and no decrease in any stat.
+- Resetting a child on one device clears that child on the other device after its next read, and leaves other children untouched.
+- Restarting the app returns to the same active profile on that device only.
 
 ## Phase 3: Sign-in, Parent PIN and security
 
@@ -213,6 +269,8 @@ The PIN must be checked on the server, and Firestore rules must refuse access wi
 3. A returning parent enters the PIN. The app calls `verifyPin`, then signs in with the short-lived token it returns.
 4. The device stays unlocked for 12 hours. Parent-area actions ask for the PIN again if the last entry is over 5 minutes old.
 5. Forgot PIN requires signing in with the provider again, then setting a new PIN.
+6. After unlock, the device shows "Who's learning?". A first-time parent goes through onboarding to create the first profile. Picking a profile needs no PIN and is remembered on that device only.
+7. Each device has its own sign-in session and PIN unlock, so one parent account can be signed in on several devices at once. A PIN change signs the other devices out (see below), and a child's profile then reappears after the parent unlocks that device again.
 
 Use `signInWithPopup` on the web and the native Capacitor plugin in the apps. Set `Cross-Origin-Opener-Policy: same-origin-allow-popups` so web popups work.
 
@@ -265,14 +323,26 @@ service cloud.firestore {
         > request.time.toMillis() - seconds * 1000;
     }
     function count(v) { return v is int && v >= 0 && v <= 100000000; }
+    function ageBandOk(age, band) {
+      return (age <= 4 && band == '2-4') || (age >= 5 && age <= 7 && band == '5-7')
+        || (age >= 8 && age <= 10 && band == '8-10') || (age >= 11 && band == '11-13');
+    }
     function validKid(d) {
-      return d.keys().hasAll(['nickname','avatar','ageBand','track','stars','streak',
+      return d.keys().hasAll(['name','nickname','age','country','state','favColor',
+          'avatar','ageBand','track','stars','streak',
           'bestStreak','totalCorrect','totalWrong','badges','topics','resetEpoch','updatedAt'])
-        && d.keys().hasOnly(['nickname','avatar','ageBand','track','stars','streak',
+        && d.keys().hasOnly(['name','nickname','age','country','state','favColor',
+          'avatar','ageBand','track','stars','streak',
           'bestStreak','totalCorrect','totalWrong','badges','topics','resetEpoch','updatedAt'])
+        && d.name is string && d.name.size() <= 30
         && d.nickname is string && d.nickname.size() >= 1 && d.nickname.size() <= 20
+        && d.age is int && d.age >= 2 && d.age <= 13
+        && d.country is string && d.country.matches('^[A-Z]{2}$')
+        && d.state is string && d.state.size() <= 40
+        && d.favColor in ['blue','rose','green','orange','purple','teal','red','yellow']
         && d.avatar is string && d.avatar.size() <= 16
         && d.ageBand in ['2-4','5-7','8-10','11-13']
+        && ageBandOk(d.age, d.ageBand)
         && d.track in ['early','primary']
         && count(d.stars) && count(d.streak) && count(d.bestStreak)
         && count(d.totalCorrect) && count(d.totalWrong) && count(d.resetEpoch)
@@ -294,7 +364,10 @@ service cloud.firestore {
         allow update: if isOwner(uid) && pinFresh(43200)
           && validKid(request.resource.data)
           && request.time > resource.data.updatedAt + duration.value(5, 's')
-          && (request.resource.data.resetEpoch == resource.data.resetEpoch || pinFresh(300));
+          && (request.resource.data.resetEpoch == resource.data.resetEpoch || pinFresh(300))
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(
+              ['name','nickname','age','country','state','favColor','avatar','ageBand','track'])
+              || pinFresh(300));
         allow delete: if isOwner(uid) && pinFresh(300);
       }
     }
@@ -307,13 +380,22 @@ service cloud.firestore {
 
 Rules cannot loop over the `topics` map, so per-topic numbers are bounded only by the client and the map size. That is acceptable while leaderboards stay within one family. A public leaderboard would need server-computed scores.
 
+#### How the rules support profiles and several devices
+
+- The profile lives entirely under the parent's `uid`. There is no child sign-in and no shared access, so another family can never read or write these documents.
+- Profile fields (name, nickname, age, country, state, colour, avatar, age band, track) change only with a PIN under 5 minutes old. Progress changes need only the 12-hour unlock. A child on an unlocked device can therefore play and switch profile, but cannot edit or add a profile, or change another profile's data without the parent's recent PIN.
+- The "active child" is not in Firestore, so there is nothing for two devices to contend over. Concurrent play on different children writes different documents. The 5-second spacing applies per child document.
+- Two devices on one child both pass the same rules. The client transaction does the merge, and the rules still validate the final document. The rules cannot prove a merge was correct, which is acceptable while data stays within one family.
+- `users/{uid}` still denies delete and list, and `list` on `kids` returns only that parent's children.
+- Rules tests must show: a child on an unlocked device cannot edit a profile field, an `age` that disagrees with `ageBand` is refused, a seventh profile is refused, and two kid documents can be written back to back without the spacing rule firing across them.
+
 ### Tasks
 
 - [ ] **3.1 Run spikes S1 and S2** and record the result. Stop if both the design and the fallback fail.
 - [ ] **3.2 Enable providers:** Google, Apple, and email with verification required. Upgrade to Identity Platform if not already done. Turn on email enumeration protection and a strong password policy.
 - [ ] **3.3 Build `setPin` and `verifyPin`** with unit tests for lockout, parallel attempts, expiry, pepper rotation and blocked PINs.
-- [ ] **3.4 Build PIN screens** with idle lock and the 5-minute parent-area check.
-- [ ] **3.5 Deploy the rules** with real `pinFresh`, plus emulator tests for every allow and deny path. Include another user's data, a missing claim, an expired claim, oversized data, extra fields and direct `pinSecrets` access.
+- [ ] **3.4 Build PIN screens** with idle lock and the 5-minute parent-area check. Make the "Who's learning?" picker the screen shown after unlock, and add the 5-minute PIN check in front of Add, Edit and Delete profile.
+- [ ] **3.5 Deploy the rules** with real `pinFresh`, plus emulator tests for every allow and deny path. Include another user's data, a missing claim, an expired claim, oversized data, extra fields and direct `pinSecrets` access. Add the profile cases listed under "How the rules support profiles and several devices".
 - [ ] **3.6 Turn on App Check** in monitor mode. Enforce it on Firestore and Functions once metrics show legitimate traffic is passing. Authentication enforcement is in Preview, so decide separately.
 - [ ] **3.7 Add a Content-Security-Policy** in report-only mode, then enforce it, with no `unsafe-inline` for scripts. Add `object-src 'none'`, `base-uri 'self'` and an allowlist for Firebase, reCAPTCHA and the auth domain.
 - [ ] **3.8 Lock down the project.** Restrict API keys by referrer and app. Remove `localhost` from production authorized domains. Require 2-step verification on every account with project access, and grant least-privilege IAM roles.
@@ -326,6 +408,8 @@ Rules cannot loop over the `topics` map, so per-topic numbers are bounded only b
 - A direct Firestore REST call using a token without a fresh `pin_at` is refused.
 - Six rapid wrong guesses trigger lockout, even when sent in parallel.
 - No PIN or hash appears in logs, client storage or Firestore client responses.
+- With a 12-hour unlock but no recent PIN, creating, editing or deleting a profile is refused, while playing and switching profile still work.
+- A second signed-in device cannot read or change this family's profiles after the parent's account is deleted or its refresh tokens are revoked.
 
 Optional later: parent TOTP multi-factor, and biometric unlock on devices. SMS is excluded because each message is billed.
 
@@ -336,19 +420,21 @@ A children's app needs consent, minimal data, deletion and a retention limit bef
 ### Tasks
 
 - [ ] **4.1 Map the data** in `docs/data-inventory.md`: each field, purpose, location, retention and processor.
-- [ ] **4.2 Minimize.** Keep to a nickname, avatar, age band and learning stats. Never collect a child's full name, photo, exact birthdate, school or location.
+- [ ] **4.2 Minimize.** Keep to the six onboarding fields (first name, nickname, age in years, country, optional region, colour), an avatar and learning stats. Never collect a child's surname, photo, birthdate, school, city, address, email or phone. Record the purpose of each onboarding field in the inventory, and drop any field with no purpose (D8). Because name, age, country and state together can identify a child, treat the form as collecting personal information, and show the parent a plain-language notice next to it.
 - [ ] **4.3 Remove tracking.** Delete `measurementId` from the config and confirm no Analytics link is active. No ads, advertising IDs, profiling or behavioral tracking of children.
 - [ ] **4.4 Publish** a parent-readable privacy policy and terms, in the languages you launch in, including a children's data notice.
-- [ ] **4.5 Build consent.** The parent reviews the notice and gives consent through the method counsel approves. `recordConsent` stores policy version, method and time. Bumping the policy version asks again.
-- [ ] **4.6 Add a parent area** behind a fresh PIN, with a view of stored data, export, reset, consent withdrawal, and account deletion.
-- [ ] **4.7 Build `exportMyData` and `deleteAccount`.** Deletion removes `users/{uid}` recursively, `pinSecrets/{uid}`, consents as counsel directs, and the Auth user.
-- [ ] **4.8 Write and enforce a retention policy.** COPPA now requires a written one and forbids indefinite retention. Suggested: a scheduled job warns after 21 months of inactivity and deletes at 24.
+- [ ] **4.5 Build consent.** The parent reviews the notice and gives consent through the method counsel approves, before the first profile is created. `recordConsent` stores policy version, method, time and the `kidId`s covered. Adding a new profile asks the parent to confirm consent for that child. Bumping the policy version asks again.
+- [ ] **4.6 Add a parent area** behind a fresh PIN, with a view of each child's stored data, export, reset, consent withdrawal, profile deletion, and account deletion.
+- [ ] **4.7 Build `exportMyData` and `deleteAccount`.** Deletion removes `users/{uid}` recursively, `pinSecrets/{uid}`, consents as counsel directs, and the Auth user. Add `deleteKidProfile` (or the client rule in Phase 3 plus a consent-record note) so one child's data can be removed without ending the account. Export lists every profile separately.
+- [ ] **4.8 Write and enforce a retention policy.** COPPA now requires a written one and forbids indefinite retention. Suggested: a scheduled job warns after 21 months of inactivity and deletes at 24. Apply it per child profile, using that profile's `updatedAt`, so an unused sibling profile is removed on its own.
 - [ ] **4.9 Add a parental gate** in front of every external link, settings area and sign-in entry.
 
 ### Acceptance checks
 
 - Deleting a test account leaves no document or Auth record, confirmed by an admin query.
-- A network capture of a full session shows requests only to approved domains.
+- Deleting one child profile removes that child's document and leaves the siblings and the account intact.
+- A data export lists each child's fields and progress separately, and includes no field outside the inventory.
+- A network capture of a full session shows requests only to approved domains, and no child profile field appears in any URL, header or request to a third party.
 - The lawyer has signed off the policy, consent flow and retention period.
 
 ## Phase 5: Phone and tablet experience
@@ -365,7 +451,9 @@ The layout must adapt to width and orientation, not device type, so one set of c
 - [ ] **5.6 Bundle an open-licensed rounded font**, because Comic Sans is not available on Android.
 - [ ] **5.7 Meet WCAG 2.2 AA:** contrast, screen-reader labels, focus order and a reduced-motion setting that calms confetti and animation.
 - [ ] **5.8 Keep the first load under 300 KB compressed** and add a bundle-size check to CI. This limit also controls Hosting costs.
-- [ ] **5.9 Add Playwright visual tests** at the widths below.
+- [ ] **5.9 Add Playwright visual tests** at the widths below, including the onboarding form and the "Who's learning?" picker.
+- [ ] **5.10 Make the picker and form responsive.** Profile tiles are a 2-column grid on phones and up to 3 by 2 on tablets, at least 96px wide, with the nickname under each avatar. The onboarding form is a single column on phones and two columns in landscape on tablets. Use native selects for country and state, and large swatches for the colour.
+- [ ] **5.11 Build the 8 colour themes** as design tokens that each pass WCAG 2.2 AA for text and controls on their background, in light and reduced-motion modes. Never rely on colour alone to show the active profile; add a ring and a label.
 
 ### Device matrix
 
@@ -389,6 +477,7 @@ Capacitor packages the same web code, and the apps must feel native because both
 - [ ] **6.2 Register Android and iOS apps** in Firebase, and add SHA-256 fingerprints and the iOS bundle ID.
 - [ ] **6.3 Add native sign-in** with `@capacitor-firebase/authentication` for Google and Apple, then pass the credential to the Firebase JS SDK. Popup sign-in does not work reliably in the app web view.
 - [ ] **6.4 Add native App Check** with `@capacitor-firebase/app-check`, using Play Integrity and App Attest. Pass tokens to the JS SDK through a `CustomProvider`, and test that they refresh. These plugins are community-maintained, so pin versions and review updates.
+- [ ] **6.4a Support cross-device profiles in the apps.** Store `activeKid:{uid}` with Capacitor Preferences. Confirm the same parent account signs in on an iPad and an Android phone or tablet at once, each on a different child, with sign-in, App Check and PIN unlock working independently on each device. Test background and resume on both.
 - [ ] **6.5 Add native behavior:** splash screen, app icons, haptics, audio that handles interruptions, Android back button, offline start and secure storage where needed.
 - [ ] **6.6 Configure large screens.** iOS: all four orientations and multitasking on iPad, with `UIRequiresFullScreen` off. Android: resizable activity, tested on tablets and foldables.
 - [ ] **6.7 Resolve D4 and apply store rules** from the table below.
@@ -424,6 +513,7 @@ Firebase has no hard spending cap for Firestore, so the guardrails combine alert
 - [ ] **7.7 Keep cost limits in code:** no listeners, no unbounded queries, a 300 KB first load, 5-second write spacing and `maxInstances: 10`.
 - [ ] **7.8 Back up.** Schedule daily Firestore backups with 7-day retention. Perform one restore into the dev project and record the steps.
 - [ ] **7.9 Set up monitoring** without third-party SDKs: function logs with no personal data, uptime checks, and a parent-initiated bug report.
+- [ ] **7.9a Run a multi-device soak test** in `kiyuv-learning-dev`: one account, three children, three devices, a day of simulated play with offline gaps. Confirm no lost progress, no write-spacing rejections beyond the retry, and that reads and writes per family stay inside the cost model below.
 - [ ] **7.10 Roll out in stages:** family testers, then 100 families, then 1,000, reviewing costs and errors at each step.
 
 ### Launch checklist
@@ -432,6 +522,8 @@ Firebase has no hard spending cap for Firestore, so the guardrails combine alert
 - [ ] Lawyer sign-off is recorded.
 - [ ] A restore and the spending stop have both been tested.
 - [ ] Rules tests, CI and the device matrix all pass on the release build.
+- [ ] The multi-device test passes on real hardware: two children on two platforms under one account.
+- [ ] D8 is decided and every onboarding field has a written purpose in `docs/data-inventory.md`.
 - [ ] `X-Robots-Tag: noindex` and `robots.txt` are changed for any public marketing page, and kept for app routes.
 
 ## Costs and scaling
@@ -440,7 +532,7 @@ Expect $0 a month up to about 4,000 daily users once writes are batched. Today's
 
 ### Estimated monthly bill
 
-These are estimates, not quotes. The model assumes each daily user makes 10 reads, 5 writes and 1.5 PIN checks a day. Monthly users are 2.5 to 3 times daily users. 10% of daily users download about 300 KB from the web each day.
+These are estimates, not quotes. The model assumes each daily user makes 10 reads, 5 writes and 1.5 PIN checks a day. Multi-profile families change this: loading a family reads 1 + children documents (up to 7), and each flush adds 1 read for the merge transaction. A family with three active children may therefore use about 20 to 30 reads a day, so the 4,000-user figure should be re-checked against families rather than parents (task 7.9a). Monthly users are 2.5 to 3 times daily users. 10% of daily users download about 300 KB from the web each day.
 
 | Daily users | Monthly users | Firestore | Hosting | Functions | Authentication | Total (USD) |
 | --- | --- | --- | --- | --- | --- | --- |
