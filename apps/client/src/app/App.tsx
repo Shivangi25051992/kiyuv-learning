@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTopicBackButton } from './useTopicBackButton.js';
 import {
   FAV_COLOR_THEMES,
   IDLE_PICKER_TIMEOUT_MS,
@@ -184,6 +185,8 @@ export const App: React.FC = () => {
       saveView(authUser.uid, { mode: 'picker' });
     }
   }, [authUser, unlocked, resuming, screenMode, activeKidId, activeTab, currentTopicId]);
+
+  useTopicBackButton(currentTopicId, () => setCurrentTopicId(null));
 
   // Subscribe to Firebase Auth state. After a refresh, a parent who unlocked within
   // the last 12 hours goes straight back in instead of seeing the PIN screen.

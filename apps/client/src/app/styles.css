@@ -3099,3 +3099,26 @@ select.text-input {
     animation: none;
   }
 }
+
+/* Clear, labelled way out of a round */
+.back-topics {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 0 var(--s4) 0 var(--s3);
+  border-radius: 999px;
+  background: var(--run-color, #4f8bff);
+  color: #fff;
+  border: var(--edge) solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  cursor: pointer;
+  transition: transform var(--t-fast) var(--ease-out);
+}
+.back-topics:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
