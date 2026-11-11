@@ -24,6 +24,7 @@ import {
   collection,
   connectFirestoreEmulator,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -309,6 +310,7 @@ export function clearNameCaches(): void {
   nameEncCache.clear();
   plainNameCache.clear();
   childIdCache.clear();
+  legacyNameCache.clear();
 }
 
 /**
@@ -316,6 +318,24 @@ export function clearNameCaches(): void {
  * re-created in the same slot is a new child and does not inherit sharing.
  */
 const childIdCache = new Map<string, string>();
+
+/**
+ * Profiles saved before names were encrypted still hold the first name in plain
+ * text (`name`) and have no `nameEnc`. The current rules refuse every update to such
+ * a document, so they are converted by `migrateLegacyNames`.
+ */
+const legacyNameCache = new Map<string, string>();
+
+function rememberLegacyName(uid: string, kidId: string, raw: Record<string, unknown>): void {
+  const key = nameKey(uid, kidId);
+  const hasEnc = typeof raw['nameEnc'] === 'string' && raw['nameEnc'].length > 0;
+  if (typeof raw['name'] === 'string' && !hasEnc && 'name' in raw) {
+    legacyNameCache.set(key, raw['name']);
+    if (raw['name'].length > 0) plainNameCache.set(key, raw['name']);
+  } else {
+    legacyNameCache.delete(key);
+  }
+}
 
 function newChildId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -343,6 +363,7 @@ function parseCloudKidDoc(
   if (typeof raw['nameEnc'] === 'string') {
     nameEncCache.set(nameKey(uid, kidId), raw['nameEnc']);
   }
+  rememberLegacyName(uid, kidId, raw);
   const candidate: KidProfileData = {
     name: plainNameCache.get(nameKey(uid, kidId)) ?? '',
     nickname:
@@ -449,7 +470,10 @@ async function ensureNameEncKnown(uid: string, kidId: string): Promise<void> {
   const snap = await getDoc(doc(db, 'users', uid, 'kids', kidId));
   const enc = snap.exists() ? snap.data()['nameEnc'] : '';
   nameEncCache.set(nameKey(uid, kidId), typeof enc === 'string' ? enc : '');
-  if (snap.exists()) rememberChildId(uid, kidId, snap.data()['childId']);
+  if (snap.exists()) {
+    rememberChildId(uid, kidId, snap.data()['childId']);
+    rememberLegacyName(uid, kidId, snap.data());
+  }
 }
 
 /**
@@ -475,18 +499,62 @@ async function applyNameChange(uid: string, profile: KidProfile): Promise<void> 
   plainNameCache.set(key, wanted);
 }
 
+/**
+ * Converts profiles that still hold a plain-text first name: the name is encrypted on
+ * the server, stored as `nameEnc`, and the plain `name` is removed. Nothing else changes.
+ * Needs a PIN entered in the last 5 minutes. A profile that cannot be converted right
+ * now is left alone and tried again next time. Returns how many were converted.
+ */
+export async function migrateLegacyNames(uid: string, kidIds: readonly string[]): Promise<number> {
+  const { db, functions } = ensureFirebase();
+  let converted = 0;
+  for (const kidId of kidIds) {
+    try {
+      await ensureNameEncKnown(uid, kidId);
+      const key = nameKey(uid, kidId);
+      if (!legacyNameCache.has(key)) continue;
+      const plain = (legacyNameCache.get(key) ?? '').trim();
+      let nameEnc = '';
+      if (plain.length > 0) {
+        const fn = httpsCallable<{ kidId: string; name: string }, { nameEnc: string }>(
+          functions,
+          'encryptProfileName',
+        );
+        nameEnc = (await fn({ kidId, name: plain })).data.nameEnc;
+      }
+      await updateDoc(doc(db, 'users', uid, 'kids', kidId), {
+        nameEnc,
+        name: deleteField(),
+        updatedAt: serverTimestamp(),
+      });
+      nameEncCache.set(key, nameEnc);
+      if (plain.length > 0) plainNameCache.set(key, plain);
+      legacyNameCache.delete(key);
+      converted += 1;
+    } catch {
+      // Not allowed yet (PIN too old) or offline: leave it, and try again later.
+    }
+  }
+  return converted;
+}
+
 /** Decrypts names for the parent area. Needs a PIN entered in the last 5 minutes. */
 export async function loadChildNames(
   uid: string,
   kidIds: readonly string[],
 ): Promise<Record<string, string>> {
   const items: Array<{ kidId: string; nameEnc: string }> = [];
+  for (const kidId of kidIds) await ensureNameEncKnown(uid, kidId);
+  // The parent area is open, so the PIN is fresh: convert any old-style profiles now.
+  await migrateLegacyNames(uid, kidIds);
+  const legacy: Record<string, string> = {};
   for (const kidId of kidIds) {
-    await ensureNameEncKnown(uid, kidId);
     const nameEnc = nameEncCache.get(nameKey(uid, kidId)) ?? '';
     if (nameEnc) items.push({ kidId, nameEnc });
+    const stillPlain = legacyNameCache.get(nameKey(uid, kidId));
+    if (stillPlain) legacy[kidId] = stillPlain;
   }
-  if (items.length === 0) return {};
+  if (items.length === 0) return legacy;
   const { functions } = ensureFirebase();
   const fn = httpsCallable<{ items: typeof items }, { names: Record<string, string> }>(
     functions,
@@ -496,7 +564,7 @@ export async function loadChildNames(
   for (const [kidId, plain] of Object.entries(res.data.names)) {
     plainNameCache.set(nameKey(uid, kidId), plain);
   }
-  return res.data.names;
+  return { ...legacy, ...res.data.names };
 }
 
 /** True when the server says this parent has set a PIN. */

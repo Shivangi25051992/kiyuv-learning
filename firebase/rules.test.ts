@@ -12,6 +12,7 @@ import {
   getDoc,
   getDocs,
   collection,
+  deleteField,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -486,6 +487,66 @@ describe('Firestore Security Rules (Phase 3: real PIN enforcement)', () => {
       );
       await assertFails(
         updateDoc(doc(noPin('alice'), 'users/alice/kids/k1'), { maxTries: 2, updatedAt: serverTimestamp() }),
+      );
+    });
+  });
+
+  describe('profiles saved before names were encrypted', () => {
+    /** A document in the old shape: a plain `name` and no `nameEnc`. */
+    async function seedLegacyKid(uid: string, kidId: string, name = 'Anvika') {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const { nameEnc: _drop, ...rest } = validKidPayload();
+        await setDoc(doc(ctx.firestore(), `users/${uid}/kids/${kidId}`), {
+          ...rest,
+          name,
+          updatedAt: new Date(Date.now() - 60_000),
+        });
+      });
+    }
+
+    it('refuses ordinary updates while the plain name is still there', async () => {
+      await seedLegacyKid('alice', 'k1');
+      await assertFails(
+        updateDoc(doc(parent('alice', 60), 'users/alice/kids/k1'), { stars: 99, updatedAt: serverTimestamp() }),
+      );
+      await assertFails(
+        updateDoc(doc(parent('alice', 60), 'users/alice/kids/k1'), { maxTries: 2, updatedAt: serverTimestamp() }),
+      );
+    });
+
+    it('allows the conversion: encrypted name in, plain name out, with a fresh PIN', async () => {
+      await seedLegacyKid('alice', 'k1');
+      const convert = { nameEnc: 'v1.bm9uY2U.dGFn.Y2lwaGVy', name: deleteField(), updatedAt: serverTimestamp() };
+      await assertFails(updateDoc(doc(parent('alice', 600), 'users/alice/kids/k1'), convert));
+      await assertSucceeds(updateDoc(doc(parent('alice', 60), 'users/alice/kids/k1'), convert));
+    });
+
+    it('works normally after the conversion, and other families cannot convert it', async () => {
+      await seedLegacyKid('alice', 'k1');
+      await assertFails(
+        updateDoc(doc(parent('bob', 60), 'users/alice/kids/k1'), {
+          nameEnc: 'v1.bm9uY2U.dGFn.Y2lwaGVy', name: deleteField(), updatedAt: serverTimestamp(),
+        }),
+      );
+      await assertSucceeds(
+        updateDoc(doc(parent('alice', 60), 'users/alice/kids/k1'), {
+          nameEnc: 'v1.bm9uY2U.dGFn.Y2lwaGVy', name: deleteField(), updatedAt: serverTimestamp(),
+        }),
+      );
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users/alice/kids/k1'), {
+          ...validKidPayload(), updatedAt: new Date(Date.now() - 60_000),
+        });
+      });
+      await assertSucceeds(
+        updateDoc(doc(parent('alice', 600), 'users/alice/kids/k1'), { stars: 99, updatedAt: serverTimestamp() }),
+      );
+    });
+
+    it('converts a profile with an empty name too', async () => {
+      await seedLegacyKid('alice', 'k2', '');
+      await assertSucceeds(
+        updateDoc(doc(parent('alice', 60), 'users/alice/kids/k2'), { nameEnc: '', name: deleteField(), updatedAt: serverTimestamp() }),
       );
     });
   });

@@ -15,6 +15,7 @@ import {
   getCurrentAuthUser,
   removeKidProfileFromCloud,
   resetCloudKidsProgressBatch,
+  migrateLegacyNames,
   writeKidMaxTries,
   writeKidProfileDirect,
 } from '../firebase/index.js';
