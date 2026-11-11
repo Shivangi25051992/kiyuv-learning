@@ -1,7 +1,6 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
-import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import {
   computeLockoutOutcome,
@@ -16,12 +15,15 @@ import {
   encryptKidName,
   MAX_ENCRYPTED_LENGTH,
 } from './nameCrypto.js';
+import { requireFreshPin } from './authGuard.js';
+import { nameKeySecret, pinPepperSecret } from './secrets.js';
+
+export * from './groupFunctions.js';
 
 if (getApps().length === 0) {
   initializeApp();
 }
 
-const pinPepperSecret = defineSecret('PIN_PEPPER');
 
 /** Fails closed: there is no built-in default pepper. */
 function requirePepper(): string {
@@ -190,23 +192,6 @@ export const setPin = onCall(
   },
 );
 
-const nameKeySecret = defineSecret('NAME_KEY');
-
-/** Requires a PIN verified in the last 5 minutes (the `pin_at` claim). */
-function requireFreshPin(request: {
-  auth?: { uid: string; token: Record<string, unknown> };
-}): string {
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', 'Parent authentication is required.');
-  }
-  const pinAt = request.auth.token['pin_at'];
-  const ageSec =
-    typeof pinAt === 'number' ? Math.floor(Date.now() / 1000) - pinAt : Infinity;
-  if (ageSec > 300) {
-    throw new HttpsError('permission-denied', 'Enter your Parent PIN again.');
-  }
-  return request.auth.uid;
-}
 
 const KID_ID_PATTERN = /^k[1-6]$/;
 
