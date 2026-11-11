@@ -11,7 +11,8 @@ interface TrophiesViewProps {
   /** Runs the action once the parent's PIN is fresh (asks for it if not). */
   requirePin: (action: () => void) => void;
   onOpenParentReset: () => void;
-  onManageGroups: () => void;
+  /** Opens the Groups tab, where groups are created and run. */
+  onOpenGroups: () => void;
 }
 
 const FAMILY = 'family';
@@ -22,7 +23,7 @@ export const TrophiesView: React.FC<TrophiesViewProps> = ({
   profiles,
   requirePin,
   onOpenParentReset,
-  onManageGroups,
+  onOpenGroups,
 }) => {
   const [groups, setGroups] = useState<MyGroup[]>([]);
   const [selected, setSelected] = useState<string>(FAMILY);
@@ -80,8 +81,8 @@ export const TrophiesView: React.FC<TrophiesViewProps> = ({
         {groups.length === 0 && (
           <p className="groups-lead">Play along with friends and family in a group.</p>
         )}
-        <button type="button" className="secondary-btn big" onClick={onManageGroups}>
-          <IconGroup size={22} /> {groups.length === 0 ? 'Play with friends' : 'Manage groups'}
+        <button type="button" className="secondary-btn big" onClick={onOpenGroups}>
+          <IconGroup size={22} /> {groups.length === 0 ? 'Play with friends' : 'Open Groups'}
         </button>
       </div>
     </div>

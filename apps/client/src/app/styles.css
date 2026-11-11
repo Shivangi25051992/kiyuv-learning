@@ -2786,3 +2786,25 @@ select.text-input {
   margin-top: var(--s5);
   padding-bottom: 120px;
 }
+
+.tabbar {
+  width: min(96vw, 520px);
+}
+@media (max-width: 400px) {
+  .tabbar button {
+    font-size: 13px;
+    padding: var(--s2) 2px;
+  }
+}
+
+.group-card-waiting {
+  justify-self: start;
+  margin-top: 4px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: #fff1dd;
+  border: 2px solid #b45309;
+  color: #8a4a05;
+  font-size: 15px;
+  font-weight: 700;
+}

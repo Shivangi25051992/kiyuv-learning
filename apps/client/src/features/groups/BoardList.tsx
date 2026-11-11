@@ -31,7 +31,7 @@ export const BoardList: React.FC<BoardListProps> = ({
   if (ranked.length === 0) {
     return (
       <p className="groups-lead">
-        No children are on the board yet. Share a child from Manage groups to start.
+        No children are on the board yet. Share a child from the Groups tab to start.
       </p>
     );
   }

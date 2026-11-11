@@ -40,6 +40,7 @@ import { MusicControl } from '../ui/MusicControl.js';
 import {
   IconBook,
   IconGame,
+  IconGroup,
   IconLogout,
   IconParent,
   IconSoundOff,
@@ -556,7 +557,6 @@ export const App: React.FC = () => {
                 uid={authUser.uid}
                 profiles={profiles}
                 requirePin={requireRecentParentPin}
-                onExit={() => setActiveTab('leader')}
                 initialCode={joinCode}
                 onCodeHandled={() => {
                   clearJoinCode();
@@ -569,7 +569,7 @@ export const App: React.FC = () => {
                 profiles={profiles}
                 requirePin={requireRecentParentPin}
                 onOpenParentReset={() => requireRecentParentPin(() => setShowParentArea(true))}
-                onManageGroups={() => setActiveTab('groups')}
+                onOpenGroups={() => setActiveTab('groups')}
               />
             ) : (
               <CurriculumView
@@ -612,8 +612,20 @@ export const App: React.FC = () => {
               </button>
               <button
                 type="button"
-                className={activeTab === 'leader' || activeTab === 'groups' ? 'active' : ''}
-                aria-current={activeTab === 'leader' || activeTab === 'groups' ? 'page' : undefined}
+                className={activeTab === 'groups' ? 'active' : ''}
+                aria-current={activeTab === 'groups' ? 'page' : undefined}
+                onClick={() => {
+                  setCurrentTopicId(null);
+                  setActiveTab('groups');
+                }}
+              >
+                <IconGroup size={26} />
+                <span>Groups</span>
+              </button>
+              <button
+                type="button"
+                className={activeTab === 'leader' ? 'active' : ''}
+                aria-current={activeTab === 'leader' ? 'page' : undefined}
                 onClick={() => {
                   setCurrentTopicId(null);
                   setActiveTab('leader');

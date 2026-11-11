@@ -7,11 +7,13 @@ const h = vi.hoisted(() => ({
   calls: [] as Array<{ name: string; data: Record<string, unknown> }>,
   groups: [] as Array<{ groupId: string; name: string; role: 'owner' | 'member' }>,
   board: null as null | Record<string, unknown>,
+  waiting: 0,
 }));
 
 vi.mock('../../lib/firebase/index.js', () => ({
   fetchMyGroups: vi.fn(async () => h.groups),
   fetchGroupBoard: vi.fn(async () => h.board),
+  fetchGroupStatus: vi.fn(async () => ({ memberCount: 3, waiting: h.waiting })),
   fetchMyMembership: vi.fn(async () => ({ uid: 'u1', role: 'member', shared: {} })),
   fetchGroupAdmin: vi.fn(async () => ({ members: [], requests: [] })),
   callGroupFunction: vi.fn(async (name: string, data: Record<string, unknown>) => {
@@ -39,28 +41,37 @@ beforeEach(() => {
   h.calls.length = 0;
   h.groups = [];
   h.board = null;
+  h.waiting = 0;
   sessionStorage.clear();
 });
 afterEach(() => cleanup());
 
 describe('Groups tab', () => {
   it('shows an empty state with create and join choices', async () => {
-    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} onExit={() => {}} />);
+    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} />);
     expect(await screen.findByText('You are not in a group yet.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Create a group' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Join with a code' })).toBeTruthy();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
+  it('shows how many families a group has, and how many are waiting for its owner', async () => {
+    h.groups = [{ groupId: 'g1', name: 'Sunrise Club', role: 'owner' }];
+    h.waiting = 2;
+    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} />);
+    expect(await screen.findByText(/3 families/)).toBeTruthy();
+    expect(await screen.findByText('2 waiting to join')).toBeTruthy();
+  });
+
   it('lists the groups a family is in', async () => {
     h.groups = [{ groupId: 'g1', name: 'Sunrise Club', role: 'owner' }];
-    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} onExit={() => {}} />);
+    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} />);
     expect(await screen.findByRole('button', { name: /Sunrise Club/ })).toBeTruthy();
-    expect(screen.getByText('You run this group')).toBeTruthy();
+    expect(screen.getByText(/You run this group/)).toBeTruthy();
   });
 
   it('will not create a group with a rude or too short name', async () => {
-    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} onExit={() => {}} />);
+    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Create a group' }));
     const input = screen.getByLabelText('Group name');
     const submit = screen.getByRole('button', { name: 'Create group' }) as HTMLButtonElement;
@@ -74,7 +85,7 @@ describe('Groups tab', () => {
   });
 
   it('joins from a link: needs a child, a clean board name and the parent agreeing', async () => {
-    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode="ABCD2345" onCodeHandled={() => {}} onExit={() => {}} />);
+    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode="ABCD2345" onCodeHandled={() => {}} />);
     const send = (await screen.findByRole('button', { name: 'Ask to join' })) as HTMLButtonElement;
     expect((screen.getByLabelText('Invite code or link') as HTMLInputElement).value).toBe('ABCD2345');
     expect(send.disabled).toBe(true);
@@ -97,7 +108,7 @@ describe('Groups tab', () => {
   });
 
   it('never sends the real name or nickname when joining', async () => {
-    render(<GroupsView uid="u1" profiles={[kid({ nickname: 'SecretNick', name: 'Real Name' })]} requirePin={requirePin} initialCode="ABCD2345" onCodeHandled={() => {}} onExit={() => {}} />);
+    render(<GroupsView uid="u1" profiles={[kid({ nickname: 'SecretNick', name: 'Real Name' })]} requirePin={requirePin} initialCode="ABCD2345" onCodeHandled={() => {}} />);
     fireEvent.click(await screen.findByRole('checkbox', { name: /Share SecretNick/ }));
     fireEvent.change(screen.getByLabelText('Name on the board'), { target: { value: 'Happy Fox' } });
     fireEvent.click(screen.getByRole('checkbox', { name: /I am the parent/ }));
@@ -119,7 +130,7 @@ describe('Groups tab', () => {
         { entryId: 'e3', boardName: 'Old Owl', avatar: '🦉', favColor: 'teal', weekKey: '2020-01-06', weekStars: 99 },
       ],
     };
-    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} onExit={() => {}} />);
+    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: /Sunrise Club/ }));
     await screen.findByRole('heading', { name: 'This week' });
     const rows = screen.getAllByRole('listitem').filter((li) => li.className.includes('board-row'));
@@ -149,7 +160,7 @@ describe('Trophies with group boards', () => {
 
   const renderTrophies = (onManage = () => {}) =>
     render(
-      <TrophiesView uid="u1" profiles={family} requirePin={requirePin} onOpenParentReset={() => {}} onManageGroups={onManage} />,
+      <TrophiesView uid="u1" profiles={family} requirePin={requirePin} onOpenParentReset={() => {}} onOpenGroups={onManage} />,
     );
 
   it('shows only the family board, and a Play with friends button, when there are no groups', async () => {
@@ -176,7 +187,7 @@ describe('Trophies with group boards', () => {
     expect(await screen.findByText('Brave Otter')).toBeTruthy();
     expect(screen.getByText('⭐ 4')).toBeTruthy();
     expect(screen.queryByRole('heading', { name: /Family Leaderboard/ })).toBeNull();
-    expect(screen.getByRole('button', { name: /Manage groups/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Open Groups/ })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'My family' }));
     expect(await screen.findByRole('heading', { name: /Family Leaderboard/ })).toBeTruthy();
@@ -187,12 +198,5 @@ describe('Trophies with group boards', () => {
     vi.mocked(mod.fetchMyGroups).mockRejectedValueOnce(new Error('offline'));
     renderTrophies();
     expect(await screen.findByRole('heading', { name: /Family Leaderboard/ })).toBeTruthy();
-  });
-
-  it('Manage groups has a way back to Trophies', async () => {
-    const exit = vi.fn();
-    render(<GroupsView uid="u1" profiles={family} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} onExit={exit} />);
-    fireEvent.click(await screen.findByRole('button', { name: /Back to Trophies/ }));
-    expect(exit).toHaveBeenCalled();
   });
 });
