@@ -34,6 +34,17 @@ rules_version = '2';
 //   - topics: map (required, max 1000 entries; exempted from indexing)
 //   - resetEpoch: int (required, 0..100000000, monotonic non-decreasing on update)
 //   - updatedAt: timestamp (required, must equal request.time)
+//   - childId: string (optional, 32 lowercase hex chars; the client sets it once, never changes it)
+//   - sharedIn: list of group ids (optional, max 3; written ONLY by Cloud Functions, so
+//     a client can neither join a child to a group nor remove it)
+//
+// Family groups (see docs/GROUPS_FEATURE.md). Clients never write under these paths.
+//   groups/{gid}                    readable by members only
+//   groups/{gid}/board/current      readable by members only (the leaderboard)
+//   groups/{gid}/members/{uid}      readable by the group owner, and by that member (get)
+//   groups/{gid}/requests/{uid}     readable by the group owner (board names and avatars only)
+//   users/{uid}/groups/{gid}        the owner's list of "my groups"
+//   groupInvites, groupMeta, banned  closed to clients (no rule matches, so they are denied)
 //
 // Collection: consents/{uid}/records/{id}
 // Document ID: {id}
@@ -59,6 +70,28 @@ service cloud.firestore {
     function pinFresh(seconds) {
       return request.auth.token.get('pin_at', 0) * 1000
         > request.time.toMillis() - seconds * 1000;
+    }
+
+    function signedInWithPin() {
+      return request.auth != null && pinFresh(43200);
+    }
+
+    function isGroupMember(gid) {
+      return signedInWithPin()
+        && exists(/databases/$(database)/documents/groups/$(gid)/members/$(request.auth.uid));
+    }
+
+    function isGroupOwner(gid) {
+      return signedInWithPin()
+        && get(/databases/$(database)/documents/groups/$(gid)).data.ownerUid == request.auth.uid;
+    }
+
+    function validChildId(d) {
+      return !('childId' in d) || (d.childId is string && d.childId.matches('^[0-9a-f]{32}$'));
+    }
+
+    function validSharedIn(d) {
+      return !('sharedIn' in d) || (d.sharedIn is list && d.sharedIn.size() <= 3);
     }
 
     function count(v) {
@@ -96,8 +129,10 @@ service cloud.firestore {
         && d.keys().hasOnly([
           'nameEnc', 'nickname', 'age', 'country', 'state', 'favColor',
           'avatar', 'ageBand', 'track', 'stars', 'streak',
-          'bestStreak', 'totalCorrect', 'totalWrong', 'badges', 'topics', 'resetEpoch', 'updatedAt'
+          'bestStreak', 'totalCorrect', 'totalWrong', 'badges', 'topics', 'resetEpoch', 'updatedAt',
+          'childId', 'sharedIn'
         ])
+        && validChildId(d) && validSharedIn(d)
         && d.nameEnc is string && d.nameEnc.size() <= 200
         && d.nickname is string && d.nickname.size() >= 1 && d.nickname.size() <= 20
         && d.age is int && d.age >= 2 && d.age <= 13
@@ -130,9 +165,13 @@ service cloud.firestore {
       match /kids/{kidId} {
         allow get, list: if isOwner(uid) && pinFresh(43200);
         allow create: if isOwner(uid) && pinFresh(300)
-          && kidId.matches('^k[1-6]$') && validKid(request.resource.data);
+          && kidId.matches('^k[1-6]$') && validKid(request.resource.data)
+          && !('sharedIn' in request.resource.data);
         allow update: if isOwner(uid) && pinFresh(43200)
           && kidId.matches('^k[1-6]$') && validKid(request.resource.data)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['sharedIn'])
+          && (!('childId' in resource.data)
+              || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['childId']))
           && (request.resource.data.resetEpoch > resource.data.resetEpoch
               || request.time > resource.data.updatedAt + duration.value(5, 's'))
           && (request.resource.data.resetEpoch == resource.data.resetEpoch
@@ -141,6 +180,33 @@ service cloud.firestore {
               ['nameEnc', 'nickname', 'age', 'country', 'state', 'favColor', 'avatar', 'ageBand', 'track'])
               || pinFresh(300));
         allow delete: if isOwner(uid) && pinFresh(300);
+      }
+    }
+
+    match /users/{uid}/groups/{gid} {
+      allow get, list: if isOwner(uid) && pinFresh(43200);
+      allow write: if false;
+    }
+
+    match /groups/{gid} {
+      allow get: if isGroupMember(gid);
+      allow list, write: if false;
+
+      match /board/{docId} {
+        allow get: if isGroupMember(gid);
+        allow list, write: if false;
+      }
+
+      match /members/{memberUid} {
+        allow get: if isGroupOwner(gid)
+          || (signedInWithPin() && request.auth.uid == memberUid);
+        allow list: if isGroupOwner(gid);
+        allow write: if false;
+      }
+
+      match /requests/{requestUid} {
+        allow get, list: if isGroupOwner(gid);
+        allow write: if false;
       }
     }
 

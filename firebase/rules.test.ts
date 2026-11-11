@@ -278,4 +278,149 @@ describe('Firestore Security Rules (Phase 3: real PIN enforcement)', () => {
       await assertFails(setDoc(doc(parent('alice', 0), 'consents/alice/records/c2'), { policy: 'v1' }));
     });
   });
+
+  describe('family groups', () => {
+    const G1 = 'a'.repeat(32);
+    const G2 = 'b'.repeat(32);
+
+    async function seedGroups() {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await setDoc(doc(db, `groups/${G1}`), { name: 'Sunrise', ownerUid: 'owner' });
+        await setDoc(doc(db, `groups/${G1}/members/owner`), { role: 'owner', shared: {} });
+        await setDoc(doc(db, `groups/${G1}/members/mia`), { role: 'member', shared: {} });
+        await setDoc(doc(db, `groups/${G1}/board/current`), { entries: {} });
+        await setDoc(doc(db, `groups/${G1}/requests/zed`), { children: {} });
+        await setDoc(doc(db, `groups/${G2}`), { name: 'Other', ownerUid: 'zoe' });
+        await setDoc(doc(db, `groups/${G2}/members/zoe`), { role: 'owner', shared: {} });
+        await setDoc(doc(db, `groups/${G2}/board/current`), { entries: {} });
+        await setDoc(doc(db, 'groupInvites/hash1'), { groupId: G1 });
+        await setDoc(doc(db, 'groupMeta/mia'), { groupCount: 1 });
+      });
+    }
+
+    it('lets a member read the group and its board, with a fresh PIN only', async () => {
+      await seedGroups();
+      await assertSucceeds(getDoc(doc(parent('mia', 60), `groups/${G1}`)));
+      await assertSucceeds(getDoc(doc(parent('mia', 60), `groups/${G1}/board/current`)));
+      await assertFails(getDoc(doc(noPin('mia'), `groups/${G1}/board/current`)));
+    });
+
+    it('refuses a non-member, a member of another group, and a signed-out visitor', async () => {
+      await seedGroups();
+      await assertFails(getDoc(doc(parent('nobody'), `groups/${G1}/board/current`)));
+      await assertFails(getDoc(doc(parent('zoe'), `groups/${G1}/board/current`)));
+      await assertFails(getDoc(doc(parent('zoe'), `groups/${G1}`)));
+      await assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), `groups/${G1}`)));
+    });
+
+    it('refuses a removed member', async () => {
+      await seedGroups();
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await deleteDoc(doc(ctx.firestore(), `groups/${G1}/members/mia`));
+      });
+      await assertFails(getDoc(doc(parent('mia'), `groups/${G1}/board/current`)));
+    });
+
+    it('refuses list queries', async () => {
+      await seedGroups();
+      await assertFails(getDocs(collection(parent('mia'), 'groups')));
+      await assertFails(getDocs(collection(parent('mia'), `groups/${G1}/members`)));
+      await assertFails(getDocs(collection(parent('owner'), `groups/${G1}/board`)));
+    });
+
+    it('lets only the owner list members and read join requests', async () => {
+      await seedGroups();
+      await assertSucceeds(getDocs(collection(parent('owner'), `groups/${G1}/members`)));
+      await assertSucceeds(getDoc(doc(parent('owner'), `groups/${G1}/requests/zed`)));
+      await assertFails(getDoc(doc(parent('mia'), `groups/${G1}/requests/zed`)));
+      // A member may read only their own member document.
+      await assertSucceeds(getDoc(doc(parent('mia'), `groups/${G1}/members/mia`)));
+      await assertFails(getDoc(doc(parent('mia'), `groups/${G1}/members/owner`)));
+    });
+
+    it('never lets a client write under groups, even the owner', async () => {
+      await seedGroups();
+      await assertFails(setDoc(doc(parent('owner', 0), `groups/${G1}`), { name: 'Hacked', ownerUid: 'owner' }));
+      await assertFails(updateDoc(doc(parent('owner', 0), `groups/${G1}/board/current`), { entries: { x: 1 } }));
+      await assertFails(setDoc(doc(parent('mia', 0), `groups/${G1}/members/mia`), { role: 'owner', shared: {} }));
+      await assertFails(setDoc(doc(parent('mia', 0), `groups/${G1}/members/new`), { role: 'member' }));
+      await assertFails(deleteDoc(doc(parent('owner', 0), `groups/${G1}/members/mia`)));
+    });
+
+    it('keeps invites and group counters closed to clients', async () => {
+      await seedGroups();
+      await assertFails(getDoc(doc(parent('owner'), 'groupInvites/hash1')));
+      await assertFails(getDoc(doc(parent('mia'), 'groupMeta/mia')));
+      await assertFails(setDoc(doc(parent('mia', 0), 'groupMeta/mia'), { groupCount: 0 }));
+    });
+
+    it('lets a parent read their own group index, and never write it', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), `users/mia/groups/${G1}`), { name: 'Sunrise', role: 'member' });
+      });
+      await assertSucceeds(getDoc(doc(parent('mia'), `users/mia/groups/${G1}`)));
+      await assertFails(getDoc(doc(parent('bob'), `users/mia/groups/${G1}`)));
+      await assertFails(setDoc(doc(parent('mia', 0), `users/mia/groups/${G2}`), { name: 'X', role: 'owner' }));
+    });
+  });
+
+  describe('child sharing fields', () => {
+    const CHILD = 'c'.repeat(32);
+    const G1 = 'a'.repeat(32);
+
+    it('lets the client set childId once, and rejects a malformed one', async () => {
+      await assertSucceeds(
+        setDoc(doc(parent('alice'), 'users/alice/kids/k1'), { ...validKidPayload(), childId: CHILD }),
+      );
+      await assertFails(
+        setDoc(doc(parent('alice'), 'users/alice/kids/k2'), { ...validKidPayload(), childId: 'short' }),
+      );
+    });
+
+    it('refuses a client that creates a child already shared in a group', async () => {
+      await assertFails(
+        setDoc(doc(parent('alice'), 'users/alice/kids/k1'), { ...validKidPayload(), sharedIn: [G1] }),
+      );
+    });
+
+    it('refuses any client change to sharedIn, including dropping it', async () => {
+      await seedKid('alice', 'k1', { childId: CHILD, sharedIn: [G1] });
+      await assertFails(
+        setDoc(doc(parent('alice'), 'users/alice/kids/k1'), {
+          ...validKidPayload(),
+          childId: CHILD,
+          sharedIn: [G1, 'b'.repeat(32)],
+        }),
+      );
+      // A full replace that leaves sharedIn out would wipe it.
+      await assertFails(
+        setDoc(doc(parent('alice'), 'users/alice/kids/k1'), { ...validKidPayload(), childId: CHILD }),
+      );
+      // Writing it back unchanged is fine, so saving progress keeps working.
+      await assertSucceeds(
+        setDoc(doc(parent('alice'), 'users/alice/kids/k1'), {
+          ...validKidPayload(),
+          stars: 20,
+          childId: CHILD,
+          sharedIn: [G1],
+        }),
+      );
+    });
+
+    it('refuses changing childId once it is set', async () => {
+      await seedKid('alice', 'k1', { childId: CHILD });
+      await assertFails(
+        setDoc(doc(parent('alice'), 'users/alice/kids/k1'), { ...validKidPayload(), childId: 'd'.repeat(32) }),
+      );
+      await assertFails(setDoc(doc(parent('alice'), 'users/alice/kids/k1'), { ...validKidPayload() }));
+    });
+
+    it('lets an older child without childId get one', async () => {
+      await seedKid('alice', 'k1');
+      await assertSucceeds(
+        setDoc(doc(parent('alice'), 'users/alice/kids/k1'), { ...validKidPayload(), childId: CHILD }),
+      );
+    });
+  });
 });
