@@ -4,6 +4,18 @@ export type KidId = (typeof KID_IDS)[number];
 export const MAX_KIDS_PER_FAMILY = 6;
 export const MAX_COUNT_VALUE = 100_000_000;
 export const MAX_BADGES = 100;
+
+/**
+ * How many wrong answers a child may give to one question. 0 means unlimited (the
+ * default). A parent can choose 1 to 4 in the Parent area.
+ */
+export const TRIES_CHOICES = [0, 1, 2, 3, 4] as const;
+export type TriesChoice = (typeof TRIES_CHOICES)[number];
+
+export function triesLabel(value: number): string {
+  if (value <= 0) return 'Unlimited';
+  return value === 1 ? '1 try' : `${value} tries`;
+}
 export const MAX_TOPICS = 1000;
 export const WRITE_SPACING_MS = 5500;
 export const PIN_FRESH_PARENT_MS = 5 * 60 * 1000; // 5 minutes

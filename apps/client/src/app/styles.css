@@ -2757,6 +2757,26 @@ select.text-input {
   margin: 0;
 }
 
+.parent-profile-row {
+  flex-wrap: wrap;
+}
+.tries-setting {
+  flex: 1 1 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin-top: var(--s2);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.tries-setting select.text-input {
+  width: auto;
+  min-height: 44px;
+  font-size: 16px;
+}
+
 .board-choices {
   display: flex;
   gap: var(--s2);
