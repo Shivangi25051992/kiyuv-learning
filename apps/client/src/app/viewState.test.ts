@@ -35,6 +35,11 @@ describe('saved view', () => {
     }
   });
 
+  it('keeps a round in progress, including topic ids with capital letters', () => {
+    saveView('u1', { mode: 'app', kidId: 'k1', tab: 'curriculum', topicId: 'k-biggerN' });
+    expect(loadView('u1')).toEqual({ mode: 'app', kidId: 'k1', tab: 'curriculum', topicId: 'k-biggerN' });
+  });
+
   it('holds only a slot and a tab, never a name', () => {
     saveView('u1', { mode: 'app', kidId: 'k1', tab: 'curriculum' });
     expect(sessionStorage.getItem('kiyuv_view:u1')).toBe('{"mode":"app","kidId":"k1","tab":"curriculum"}');
