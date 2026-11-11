@@ -308,6 +308,29 @@ export function getCachedPlainName(uid: string, kidId: string): string {
 export function clearNameCaches(): void {
   nameEncCache.clear();
   plainNameCache.clear();
+  childIdCache.clear();
+}
+
+/**
+ * Each child gets a random id once. Groups use it, so a profile deleted and
+ * re-created in the same slot is a new child and does not inherit sharing.
+ */
+const childIdCache = new Map<string, string>();
+
+function newChildId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function rememberChildId(uid: string, kidId: string, value: unknown): void {
+  if (typeof value === 'string' && /^[0-9a-f]{32}$/.test(value)) {
+    childIdCache.set(nameKey(uid, kidId), value);
+  }
+}
+
+/** Replaces exactly the fields we send and leaves the rest (server-only `sharedIn`) alone. */
+function replaceOnly(payload: Record<string, unknown>): { mergeFields: string[] } {
+  return { mergeFields: Object.keys(payload) };
 }
 
 function parseCloudKidDoc(
@@ -316,6 +339,7 @@ function parseCloudKidDoc(
   raw: Record<string, unknown>,
 ): KidProfile | null {
   if (!KID_IDS.includes(kidId as KidId)) return null;
+  rememberChildId(uid, kidId, raw['childId']);
   if (typeof raw['nameEnc'] === 'string') {
     nameEncCache.set(nameKey(uid, kidId), raw['nameEnc']);
   }
@@ -402,9 +426,13 @@ export async function fetchSingleKidProfile(
 function toCloudKidPayload(uid: string, profile: KidProfile): Record<string, unknown> {
   const validated = KidProfileSchema.parse(profile);
   const { name: _plain, ...rest } = validated;
+  const idKey = nameKey(uid, profile.kidId);
+  const childId = childIdCache.get(idKey) ?? newChildId();
+  childIdCache.set(idKey, childId);
   return {
     ...rest,
     nameEnc: nameEncCache.get(nameKey(uid, profile.kidId)) ?? '',
+    childId,
     updatedAt: serverTimestamp(),
   };
 }
@@ -416,6 +444,7 @@ async function ensureNameEncKnown(uid: string, kidId: string): Promise<void> {
   const snap = await getDoc(doc(db, 'users', uid, 'kids', kidId));
   const enc = snap.exists() ? snap.data()['nameEnc'] : '';
   nameEncCache.set(nameKey(uid, kidId), typeof enc === 'string' ? enc : '');
+  if (snap.exists()) rememberChildId(uid, kidId, snap.data()['childId']);
 }
 
 /**
@@ -482,7 +511,8 @@ export async function writeKidProfileDirect(
   await ensureParentUserDocToday(uid, localResetEpoch);
   await applyNameChange(uid, profile);
   const kidRef = doc(db, 'users', uid, 'kids', profile.kidId);
-  await setDoc(kidRef, toCloudKidPayload(uid, profile));
+  const payload = toCloudKidPayload(uid, profile);
+  await setDoc(kidRef, payload, replaceOnly(payload));
 }
 
 export async function flushKidProfileTransaction(
@@ -499,7 +529,8 @@ export async function flushKidProfileTransaction(
     const remote = snap.exists() ? parseCloudKidDoc(uid, snap.id, snap.data()) : null;
     const merged = mergeFn(localProfile, remote);
     const validated = KidProfileSchema.parse(merged);
-    tx.set(kidRef, toCloudKidPayload(uid, { kidId: localProfile.kidId, ...validated }));
+    const payload = toCloudKidPayload(uid, { kidId: localProfile.kidId, ...validated });
+    tx.set(kidRef, payload, replaceOnly(payload));
     return {
       kidId: localProfile.kidId,
       ...validated,
@@ -513,6 +544,8 @@ export async function removeKidProfileFromCloud(
 ): Promise<void> {
   const { db } = ensureFirebase();
   await deleteDoc(doc(db, 'users', uid, 'kids', kidId));
+  // A profile created in this slot later is a new child with a new id.
+  childIdCache.delete(nameKey(uid, kidId));
 }
 
 export async function resetCloudKidsProgressBatch(
@@ -549,10 +582,8 @@ export async function resetCloudKidsProgressBatch(
 
   for (const profile of zeroedProfiles) {
     await ensureNameEncKnown(uid, profile.kidId);
-    batch.set(
-      doc(db, 'users', uid, 'kids', profile.kidId),
-      toCloudKidPayload(uid, { ...profile, resetEpoch: nextResetEpoch }),
-    );
+    const payload = toCloudKidPayload(uid, { ...profile, resetEpoch: nextResetEpoch });
+    batch.set(doc(db, 'users', uid, 'kids', profile.kidId), payload, replaceOnly(payload));
   }
 
   await batch.commit();
