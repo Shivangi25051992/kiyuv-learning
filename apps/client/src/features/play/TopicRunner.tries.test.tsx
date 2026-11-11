@@ -71,30 +71,73 @@ describe('tries per question', () => {
     expect(status(container)).toContain('1 try left');
   });
 
-  it('shows the answer and moves on, with no stars, when the tries run out', () => {
+  it('blocks the question and sends the child to a parent when the tries run out', () => {
     const { container, updates } = setup(kid({ maxTries: 2 }));
     fireEvent.click(choice('B'));
     act(() => void vi.advanceTimersByTime(1000));
     fireEvent.click(choice('C'));
 
-    expect(status(container)).toContain('The answer was A');
-    expect(choice('A').className).toContain('correct');
-    // The question is closed: tapping the right answer now earns nothing.
+    expect(status(container)).toContain('ask a parent');
+    expect(screen.getByRole('region', { name: 'Ask a parent' })).toBeTruthy();
+    // The child is not shown the answer.
+    expect(container.textContent).not.toContain('the answer is');
+    expect(choice('A').className).not.toContain('correct');
+    // The question stays blocked: tapping the right answer does nothing, and it does not move on.
     fireEvent.click(choice('A'));
+    act(() => void vi.advanceTimersByTime(5000));
     expect(updates).toHaveLength(2);
     expect(updates.every((u) => u.stars === 0)).toBe(true);
-
-    act(() => void vi.advanceTimersByTime(2300));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('question 2');
-    // The next question starts with fresh tries.
-    fireEvent.click(choice('B'));
-    expect(status(container)).toContain('1 try left');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('question 1');
   });
 
-  it('with one try, the first wrong tap ends the question', () => {
-    const { container } = setup(kid({ maxTries: 1 }));
+  it('needs the parent PIN before the parent sees the answer', () => {
+    const asked = vi.fn();
+    const pending: Array<() => void> = [];
+    render(
+      <TopicRunner
+        profile={kid({ maxTries: 1 })}
+        topicId="y-add-e"
+        onUpdateProfile={() => {}}
+        onExitToMap={() => {}}
+        requireParentPin={(action) => {
+          asked();
+          pending.push(action);
+        }}
+      />,
+    );
+    fireEvent.click(choice('B'));
+    fireEvent.click(screen.getByRole('button', { name: 'Parent help' }));
+    expect(asked).toHaveBeenCalled();
+    expect(screen.queryByText('A', { selector: 'strong' })).toBeNull(); // PIN not entered yet
+
+    act(() => pending[0]!()); // the parent enters the PIN
+    expect(screen.getByText('A', { selector: 'strong' })).toBeTruthy();
+    expect(choice('A').className).toContain('correct');
+  });
+
+  it('after the parent helps, the child gets fresh tries and can earn the stars', () => {
+    const { container, updates } = setup(kid({ maxTries: 1 }));
     fireEvent.click(choice('D'));
-    expect(status(container)).toContain('The answer was A');
+    fireEvent.click(screen.getByRole('button', { name: 'Parent help' }));
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+
+    expect(screen.queryByRole('region', { name: 'Ask a parent' })).toBeNull();
+    expect(status(container)).toContain('Try again');
+    fireEvent.click(choice('A'));
+    expect(updates.at(-1)!.stars).toBe(2);
+  });
+
+  it('starts the next question with fresh tries and no block', () => {
+    const { container } = setup(kid({ maxTries: 1 }));
+    fireEvent.click(choice('B'));
+    fireEvent.click(screen.getByRole('button', { name: 'Parent help' }));
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+    fireEvent.click(choice('A'));
+    act(() => void vi.advanceTimersByTime(1300));
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('question 2');
+    expect(screen.queryByRole('region', { name: 'Ask a parent' })).toBeNull();
+    fireEvent.click(choice('C'));
+    expect(status(container)).toContain('ask a parent');
   });
 
   it('a right answer within the limit still earns the stars', () => {

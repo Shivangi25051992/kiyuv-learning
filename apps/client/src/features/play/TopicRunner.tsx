@@ -21,6 +21,8 @@ interface TopicRunnerProps {
   topicId: string;
   onUpdateProfile: (next: KidProfile, flushImmediately: boolean) => void;
   onExitToMap: () => void;
+  /** Runs the action once the parent's PIN is fresh (asks for it if not). */
+  requireParentPin?: (action: () => void) => void;
 }
 
 const QUESTIONS_PER_SESSION = 10;
@@ -48,6 +50,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   topicId,
   onUpdateProfile,
   onExitToMap,
+  requireParentPin,
 }) => {
   const [questionIndex, setQuestionIndex] = useState(1);
   const [sessionCorrect, setSessionCorrect] = useState(0);
@@ -59,9 +62,11 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   const [optionState, setOptionState] = useState<'idle' | 'correct' | 'wrong'>('idle');
   const [feedbackMsg, setFeedbackMsg] = useState<string>('');
   const [locked, setLocked] = useState(false);
-  // Wrong answers given to the current question, and the answer shown when tries run out.
+  // Wrong answers given to the current question. When a parent has set a limit and the
+  // tries run out, the question is blocked until a parent helps (stage 'blocked', then 'parent').
   const [wrongTries, setWrongTries] = useState(0);
   const [revealed, setRevealed] = useState<string | null>(null);
+  const [helpStage, setHelpStage] = useState<'none' | 'blocked' | 'parent'>('none');
 
   const questionRef = useRef<HTMLDivElement>(null);
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
@@ -79,6 +84,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     setLocked(false);
     setWrongTries(0);
     setRevealed(null);
+    setHelpStage('none');
     setQuestion(generateQuestionForTopic(topicId));
   }, [topicId]);
 
@@ -127,6 +133,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     setLocked(false);
     setWrongTries(0);
     setRevealed(null);
+    setHelpStage('none');
     setQuestion(generateQuestionForTopic(topicId));
     void nextSessionCorrect;
   };
@@ -248,19 +255,16 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       onUpdateProfile(updatedProfile, false);
       sfx.wrong();
 
-      // A parent can limit the tries per question. When they run out, the answer is
-      // shown (no stars) and the round moves on.
+      // A parent can limit the tries per question. When they run out, the question is
+      // blocked and the child is sent to a parent, who sees the answer and helps.
       const maxTries = profile.maxTries ?? 0;
       const triesUsed = wrongTries + 1;
       setWrongTries(triesUsed);
       if (maxTries > 0 && triesUsed >= maxTries) {
-        const answer =
-          question.options.find((o) => o.value === question.correctValue)?.label ?? question.correctValue;
         setLocked(true);
-        setRevealed(question.correctValue);
-        setFeedbackMsg(`The answer was ${answer}. On to the next one!`);
-        if (isEarly) speak('Let us try the next one!');
-        setTimeout(() => advanceOrFinish(updatedProfile, sessionCorrect), 2200);
+        setHelpStage('blocked');
+        setFeedbackMsg('You used all your tries. Please ask a parent to help!');
+        if (isEarly) speak('Please ask a grown up to help!');
         return;
       }
       const left = maxTries > 0 ? maxTries - triesUsed : 0;
@@ -280,6 +284,24 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         setOptionState('idle');
       }, 900);
     }
+  };
+
+  const answerLabel =
+    question.options.find((o) => o.value === question.correctValue)?.label ?? question.correctValue;
+
+  const showParentHelp = () => {
+    setHelpStage('parent');
+    setRevealed(question.correctValue);
+  };
+
+  const retryWithHelp = () => {
+    setHelpStage('none');
+    setRevealed(null);
+    setWrongTries(0);
+    setLocked(false);
+    setSelectedOption(null);
+    setOptionState('idle');
+    setFeedbackMsg('Try again. You can do it!');
   };
 
   // ------------------------------------------------------------ Finish screen
@@ -479,6 +501,34 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
           );
         })}
       </div>
+
+      {helpStage !== 'none' && (
+        <div className="ask-parent" role="region" aria-label="Ask a parent">
+          {helpStage === 'blocked' ? (
+            <>
+              <p>You used all your tries. Please ask a parent to help you.</p>
+              <button
+                type="button"
+                className="primary-btn big"
+                autoFocus
+                onClick={() => (requireParentPin ? requireParentPin(showParentHelp) : showParentHelp())}
+              >
+                Parent help
+              </button>
+            </>
+          ) : (
+            <>
+              <p>
+                Parent: the answer is <strong>{answerLabel}</strong>. Please help {profile.nickname}{' '}
+                understand it, then let them try again.
+              </p>
+              <button type="button" className="primary-btn big" autoFocus onClick={retryWithHelp}>
+                Let {profile.nickname} try again
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <div
         className={`msg ${optionState === 'wrong' ? 'wrong-msg' : ''} ${optionState === 'correct' ? 'right-msg' : ''}`}
