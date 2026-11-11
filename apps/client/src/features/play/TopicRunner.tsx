@@ -415,11 +415,12 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       <div className="game-top">
         <button
           type="button"
-          className="icon-btn"
+          className="back-topics"
           onClick={onExitToMap}
           aria-label="Back to topics"
         >
-          <IconBack />
+          <IconBack size={22} />
+          <span aria-hidden="true">Topics</span>
         </button>
         <div className="game-pills">
           <div className="pill score-pill" role="img" aria-label={`${profile.stars} stars`}>
