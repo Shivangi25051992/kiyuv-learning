@@ -28,7 +28,7 @@ import {
   syncFamilyFromCloud,
   type LegacyImportCandidate,
 } from '../lib/sync/index.js';
-import { initAudio, isSoundEnabled, sfx, startMusic, toggleSound } from '../lib/sound.js';
+import { initAudio, isSoundEnabled, sfx, startMusic, stopMusic, toggleSound } from '../lib/sound.js';
 import { LoginScreen } from '../features/auth/LoginScreen.js';
 import {
   clearDeviceUnlock,
@@ -214,6 +214,19 @@ export const App: React.FC = () => {
     };
   }, [unlocked, screenMode]);
 
+  // Music belongs to the signed-in app. It never plays on the sign-in or PIN screens,
+  // and it stops again when the parent signs out or the app locks.
+  const unlockedRef = useRef(false);
+  useEffect(() => {
+    unlockedRef.current = unlocked;
+    if (unlocked) {
+      initAudio();
+      startMusic();
+    } else {
+      stopMusic();
+    }
+  }, [unlocked]);
+
   // A soft "pop" on every button press, except buttons that make their own sound.
   useEffect(() => {
     const onPress = (e: PointerEvent) => {
@@ -222,7 +235,7 @@ export const App: React.FC = () => {
       if (!button || button.disabled) return;
       // Browsers only allow sound after a tap, so the music starts on the first one.
       initAudio();
-      startMusic();
+      if (unlockedRef.current) startMusic();
       if (button.hasAttribute('data-silent')) return;
       sfx.tap();
     };
