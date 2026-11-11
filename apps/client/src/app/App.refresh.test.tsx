@@ -27,6 +27,7 @@ vi.mock('../lib/firebase/index.js', () => ({
   signInOrRegisterWithEmail: vi.fn(),
   fetchPinConfigured: vi.fn(async () => h.pinConfigured),
   loadChildNames: vi.fn().mockResolvedValue({}),
+  migrateLegacyNames: vi.fn().mockResolvedValue(0),
   getCachedPlainName: () => '',
   clearNameCaches: vi.fn(),
   signOutParent: vi.fn().mockResolvedValue(undefined),

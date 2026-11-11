@@ -8,6 +8,7 @@ import {
   type KidProfile,
 } from '@kiyuv/shared';
 import {
+  migrateLegacyNames,
   signOutParent,
   subscribeAuthState,
   type AuthParentUser,
@@ -121,6 +122,14 @@ export const App: React.FC = () => {
 
     const synced = await syncFamilyFromCloud(user.uid);
     setProfiles(synced);
+    // The PIN was just entered, so this is the moment to convert any profile saved before
+    // names were encrypted. It is quiet, and tried again at the next sign-in if it fails.
+    if (fromLogin) {
+      void migrateLegacyNames(
+        user.uid,
+        synced.map((p) => p.kidId),
+      ).catch(() => undefined);
+    }
 
     const rememberedKidId = getActiveKidForDevice(user.uid);
     if (synced.length === 0) {
