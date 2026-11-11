@@ -520,6 +520,18 @@ export async function writeKidProfileDirect(
   await setDoc(kidRef, payload, replaceOnly(payload));
 }
 
+/**
+ * Changes only the tries-per-question setting on a child, leaving every other field
+ * (including the encrypted name) untouched. Needs a PIN from the last 5 minutes.
+ */
+export async function writeKidMaxTries(uid: string, kidId: string, maxTries: number): Promise<void> {
+  const { db } = ensureFirebase();
+  await updateDoc(doc(db, 'users', uid, 'kids', kidId), {
+    maxTries,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function flushKidProfileTransaction(
   uid: string,
   localProfile: KidProfile,

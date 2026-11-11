@@ -2828,3 +2828,27 @@ select.text-input {
   font-size: 15px;
   font-weight: 700;
 }
+
+/* Dropdowns: our own arrow with room around it, instead of the browser's, which sits on the edge. */
+select.text-input {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 48px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2324305e' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+  background-size: 16px 16px;
+  cursor: pointer;
+}
+.tries-setting select.text-input {
+  padding-left: var(--s4);
+  min-width: 190px;
+}
+@media (forced-colors: active) {
+  select.text-input {
+    -webkit-appearance: auto;
+    appearance: auto;
+    background-image: none;
+    padding-right: var(--s4);
+  }
+}

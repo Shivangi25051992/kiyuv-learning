@@ -61,8 +61,13 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
     setTriesError('');
     try {
       await onChangeTries(kidId, value);
-    } catch {
-      setTriesError('Could not save. Close this window, enter your PIN again and retry.');
+    } catch (err) {
+      const code = (err as { code?: string })?.code ?? '';
+      setTriesError(
+        code.includes('permission-denied')
+          ? 'Could not save. Close this window, enter your PIN again and retry.'
+          : 'Could not save. Check your connection and try again.',
+      );
     }
   };
 
