@@ -2852,3 +2852,21 @@ select.text-input {
     padding-right: var(--s4);
   }
 }
+
+.ask-parent {
+  display: grid;
+  gap: var(--s3);
+  justify-items: center;
+  text-align: center;
+  margin-top: var(--s4);
+  padding: var(--s4);
+  border-radius: var(--radius-lg);
+  border: var(--edge) solid var(--kid-primary);
+  background: var(--kid-bg-light);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+}
+.ask-parent p {
+  margin: 0;
+}

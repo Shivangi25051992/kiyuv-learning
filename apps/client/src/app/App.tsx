@@ -561,6 +561,7 @@ export const App: React.FC = () => {
                 topicId={currentTopicId}
                 onUpdateProfile={handleUpdateActiveProfileProgress}
                 onExitToMap={() => setCurrentTopicId(null)}
+                requireParentPin={requireRecentParentPin}
               />
             ) : activeTab === 'groups' ? (
               <GroupsView
