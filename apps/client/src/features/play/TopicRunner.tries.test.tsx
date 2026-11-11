@@ -148,3 +148,86 @@ describe('tries per question', () => {
     expect(updates.at(-1)!.stars).toBe(2);
   });
 });
+
+describe('a refresh in the middle of a round', () => {
+  const KEY = 'u1:k1';
+  const stored = () => sessionStorage.getItem('kiyuv_round:' + KEY);
+
+  function renderRound(profile = kid({ maxTries: 2 })) {
+    const updates: KidProfile[] = [];
+    const view = render(
+      <TopicRunner
+        profile={profile}
+        topicId="y-add-e"
+        onUpdateProfile={(p) => updates.push(p)}
+        onExitToMap={() => {}}
+        storageKey={KEY}
+      />,
+    );
+    return { ...view, updates };
+  }
+
+  /** A refresh does not run React's clean-up, but leaving the round does. Keep what was saved. */
+  function refresh(view: { unmount: () => void }) {
+    const saved = stored();
+    view.unmount();
+    sessionStorage.setItem('kiyuv_round:' + KEY, saved!);
+  }
+
+  beforeEach(() => sessionStorage.clear());
+
+  it('returns to the same question number, score and tries', () => {
+    const first = renderRound();
+    fireEvent.click(choice('A')); // right: moves on after a moment
+    act(() => void vi.advanceTimersByTime(1300));
+    fireEvent.click(choice('B')); // one wrong tap on question 2
+    refresh(first);
+
+    const { container } = renderRound();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('question 2');
+    fireEvent.click(choice('C'));
+    expect(status(container)).toContain('ask a parent'); // one try was already used
+  });
+
+  it('never lets a question that was already answered right be answered again', () => {
+    const first = renderRound();
+    fireEvent.click(choice('A')); // right, and the refresh comes straight away
+    refresh(first);
+
+    const { updates } = renderRound();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('question 2');
+    expect(updates).toHaveLength(0); // nothing was counted twice
+  });
+
+  it('comes back blocked, and still needs the parent', () => {
+    const first = renderRound(kid({ maxTries: 1 }));
+    fireEvent.click(choice('B'));
+    expect(screen.getByRole('region', { name: 'Ask a parent' })).toBeTruthy();
+    refresh(first);
+
+    renderRound(kid({ maxTries: 1 }));
+    expect(screen.getByRole('region', { name: 'Ask a parent' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Parent help' })).toBeTruthy();
+    expect(container_has_answer()).toBe(false);
+  });
+
+  it('forgets the round when the child leaves it or finishes it', () => {
+    const first = renderRound();
+    fireEvent.click(choice('B'));
+    expect(stored()).not.toBeNull();
+    first.unmount(); // leaving the round inside the app
+    expect(stored()).toBeNull();
+
+    const second = renderRound();
+    for (let i = 0; i < 10; i++) {
+      fireEvent.click(choice('A'));
+      act(() => void vi.advanceTimersByTime(1300));
+    }
+    expect(stored()).toBeNull();
+    second.unmount();
+  });
+});
+
+function container_has_answer(): boolean {
+  return document.body.textContent?.includes('the answer is') ?? false;
+}

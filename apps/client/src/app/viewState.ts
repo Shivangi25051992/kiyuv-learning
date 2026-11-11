@@ -6,7 +6,7 @@ const TABS: readonly AppTab[] = ['curriculum', 'games', 'leader', 'groups'];
 /** Where the parent was in the app, so a page refresh puts them back there. */
 export type SavedView =
   | { mode: 'picker' }
-  | { mode: 'app'; kidId: KidId; tab: AppTab };
+  | { mode: 'app'; kidId: KidId; tab: AppTab; /** A round in progress, if any. */ topicId?: string };
 
 const KEY_PREFIX = 'kiyuv_view:';
 
@@ -35,7 +35,7 @@ export function loadView(uid: string): SavedView | null {
   try {
     const raw = storage()?.getItem(`${KEY_PREFIX}${uid}`);
     if (!raw) return null;
-    const v = JSON.parse(raw) as { mode?: unknown; kidId?: unknown; tab?: unknown };
+    const v = JSON.parse(raw) as { mode?: unknown; kidId?: unknown; tab?: unknown; topicId?: unknown };
     if (v.mode === 'picker') return { mode: 'picker' };
     if (
       v.mode === 'app' &&
@@ -44,7 +44,9 @@ export function loadView(uid: string): SavedView | null {
       typeof v.tab === 'string' &&
       (TABS as readonly string[]).includes(v.tab)
     ) {
-      return { mode: 'app', kidId: v.kidId as KidId, tab: v.tab as AppTab };
+      const topicId =
+        typeof v.topicId === 'string' && /^[a-z0-9-]{1,40}$/.test(v.topicId) ? v.topicId : undefined;
+      return { mode: 'app', kidId: v.kidId as KidId, tab: v.tab as AppTab, ...(topicId ? { topicId } : {}) };
     }
     return null;
   } catch {

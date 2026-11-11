@@ -130,6 +130,30 @@ describe('a page refresh keeps the profile and tab in use', () => {
     expect(await screen.findByText(/Who.?s learning/i)).toBeTruthy();
   });
 
+  it('goes back to the same question of a round that was in progress', async () => {
+    sessionStorage.setItem(
+      'kiyuv_view:u1',
+      JSON.stringify({ mode: 'app', kidId: 'k1', tab: 'games', topicId: 'y-add-e' }),
+    );
+    sessionStorage.setItem(
+      'kiyuv_round:u1:k1',
+      JSON.stringify({ topicId: 'y-add-e', questionIndex: 3, sessionCorrect: 2, question: null, wrongTries: 0, helpStage: 'none' }),
+    );
+    render(<App />);
+    expect((await screen.findByRole('heading', { level: 1, name: /question 3 of 10/ })).textContent).toContain('question 3');
+  });
+
+  it('goes to the topic list when there is no saved round for the topic', async () => {
+    sessionStorage.setItem(
+      'kiyuv_view:u1',
+      JSON.stringify({ mode: 'app', kidId: 'k1', tab: 'games', topicId: 'y-add-e' }),
+    );
+    render(<App />);
+    const play = await screen.findByRole('button', { name: 'Play' });
+    expect(play.getAttribute('aria-current')).toBe('page');
+    expect(screen.queryByRole('heading', { level: 1, name: /question \d+ of 10/ })).toBeNull();
+  });
+
   it('ignores a damaged saved view', async () => {
     sessionStorage.setItem('kiyuv_view:u1', '{"mode":"app","kidId":"k2","tab":"hacked"}');
     render(<App />);
