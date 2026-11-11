@@ -88,7 +88,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   useEffect(() => {
     if (!storageKey) return;
     if (finished || (optionState === 'correct' && questionIndex >= QUESTIONS_PER_SESSION)) {
-      clearRound(storageKey);
+      clearRound(storageKey, topicId);
       return;
     }
     if (optionState === 'correct') {
@@ -104,14 +104,6 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     }
     saveRound(storageKey, { topicId, questionIndex, sessionCorrect, question, wrongTries, helpStage });
   }, [storageKey, topicId, finished, optionState, questionIndex, sessionCorrect, question, wrongTries, helpStage]);
-
-  // Leaving the round inside the app (back to topics, another tab, another child) ends it.
-  // A page refresh does not run this, which is what lets the round come back.
-  useEffect(() => {
-    return () => {
-      if (storageKey) clearRound(storageKey);
-    };
-  }, [storageKey]);
 
   const questionRef = useRef<HTMLDivElement>(null);
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;

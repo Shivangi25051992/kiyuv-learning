@@ -38,7 +38,7 @@ import {
   markDeviceUnlocked,
 } from '../features/auth/deviceUnlock.js';
 import { clearView, loadView, saveView, type AppTab } from './viewState.js';
-import { clearAllRounds, loadRound } from '../features/play/roundState.js';
+import { loadRound } from '../features/play/roundState.js';
 import { Mascot } from '../ui/Mascot.js';
 import { MusicControl } from '../ui/MusicControl.js';
 import {
@@ -113,7 +113,6 @@ export const App: React.FC = () => {
     const savedView = fromLogin ? null : loadView(user.uid);
     if (fromLogin) {
       clearView(user.uid);
-      clearAllRounds();
     }
     setAuthUser(user);
     setUnlocked(true);
@@ -422,7 +421,6 @@ export const App: React.FC = () => {
     }
     clearDeviceUnlock(authUser?.uid);
     clearView(authUser?.uid);
-    clearAllRounds();
     await signOutParent();
     setUnlocked(false);
   };

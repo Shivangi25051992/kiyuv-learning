@@ -1,9 +1,10 @@
 import type { GeneratedQuestion } from '@kiyuv/content';
 
 /**
- * A round in progress, kept in session storage (this browser tab only) so a page
- * refresh puts the child back on the same question. It holds only the question,
- * the counts for this round and the "ask a parent" step. Nothing personal.
+ * A round in progress, kept on this device for each child and each topic, so the child
+ * can leave (refresh, switch profile, close the tab) and come back to the same question.
+ * It is forgotten when the round is finished or after two weeks. It holds only the
+ * question, the counts for this round and the "ask a parent" step. Nothing personal.
  */
 export type HelpStage = 'none' | 'blocked' | 'parent';
 
@@ -20,10 +21,13 @@ export interface RoundState {
 
 const KEY_PREFIX = 'kiyuv_round:';
 const QUESTIONS_PER_ROUND = 10;
+const KEEP_MS = 14 * 24 * 60 * 60 * 1000;
+
+const slot = (key: string, topicId: string) => `${KEY_PREFIX}${key}:${topicId}`;
 
 function storage(): Storage | null {
   try {
-    return typeof sessionStorage !== 'undefined' ? sessionStorage : null;
+    return typeof localStorage !== 'undefined' ? localStorage : null;
   } catch {
     return null;
   }
@@ -31,15 +35,15 @@ function storage(): Storage | null {
 
 export function saveRound(key: string, state: RoundState): void {
   try {
-    storage()?.setItem(`${KEY_PREFIX}${key}`, JSON.stringify(state));
+    storage()?.setItem(slot(key, state.topicId), JSON.stringify({ ...state, savedAt: Date.now() }));
   } catch {
     // storage unavailable: a refresh then returns to the topic list
   }
 }
 
-export function clearRound(key: string): void {
+export function clearRound(key: string, topicId: string): void {
   try {
-    storage()?.removeItem(`${KEY_PREFIX}${key}`);
+    storage()?.removeItem(slot(key, topicId));
   } catch {
     // nothing to clear
   }
@@ -77,9 +81,10 @@ function validQuestion(q: unknown): q is GeneratedQuestion {
 /** The saved round for this topic, or null if there is none, or it is not valid. */
 export function loadRound(key: string, topicId: string): RoundState | null {
   try {
-    const raw = storage()?.getItem(`${KEY_PREFIX}${key}`);
+    const raw = storage()?.getItem(slot(key, topicId));
     if (!raw) return null;
-    const v = JSON.parse(raw) as Partial<RoundState>;
+    const v = JSON.parse(raw) as Partial<RoundState> & { savedAt?: unknown };
+    if (typeof v.savedAt !== 'number' || Date.now() - v.savedAt > KEEP_MS) return null;
     if (v.topicId !== topicId) return null;
     if (!isInt(v.questionIndex, 1, QUESTIONS_PER_ROUND)) return null;
     if (!isInt(v.sessionCorrect, 0, QUESTIONS_PER_ROUND)) return null;
