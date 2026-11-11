@@ -1,7 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { clearAllRounds, clearRound, loadRound, saveRound, type RoundState } from './roundState.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { clearRound, loadRound, saveRound, type RoundState } from './roundState.js';
 
-afterEach(() => sessionStorage.clear());
+afterEach(() => {
+  localStorage.clear();
+  vi.useRealTimers();
+});
 
 const question = {
   topicId: 'y-add-e',
@@ -30,14 +33,28 @@ describe('saved round', () => {
     expect(loadRound('u1:k1', 'y-add-e')?.question).toBeNull();
   });
 
-  it('clears one round or all of them', () => {
+  it('keeps a separate round for each topic of the same child', () => {
+    saveRound('u1:k1', round());
+    saveRound('u1:k1', round({ topicId: 'y-sub-e', questionIndex: 7 }));
+    expect(loadRound('u1:k1', 'y-add-e')?.questionIndex).toBe(4);
+    expect(loadRound('u1:k1', 'y-sub-e')?.questionIndex).toBe(7);
+  });
+
+  it('clears only the round asked for', () => {
     saveRound('u1:k1', round());
     saveRound('u1:k2', round());
-    clearRound('u1:k1');
+    clearRound('u1:k1', 'y-add-e');
     expect(loadRound('u1:k1', 'y-add-e')).toBeNull();
     expect(loadRound('u1:k2', 'y-add-e')).not.toBeNull();
-    clearAllRounds();
-    expect(loadRound('u1:k2', 'y-add-e')).toBeNull();
+  });
+
+  it('forgets a round after two weeks', () => {
+    vi.useFakeTimers();
+    saveRound('u1:k1', round());
+    vi.advanceTimersByTime(13 * 24 * 3600 * 1000);
+    expect(loadRound('u1:k1', 'y-add-e')).not.toBeNull();
+    vi.advanceTimersByTime(2 * 24 * 3600 * 1000);
+    expect(loadRound('u1:k1', 'y-add-e')).toBeNull();
   });
 
   it('refuses anything damaged', () => {
@@ -52,10 +69,10 @@ describe('saved round', () => {
       round({ question: { ...question, prompt: 5 as never } }),
     ];
     for (const b of bad) {
-      sessionStorage.setItem('kiyuv_round:u1:k1', JSON.stringify(b));
+      localStorage.setItem('kiyuv_round:u1:k1:y-add-e', JSON.stringify({ ...(b as object), savedAt: Date.now() }));
       expect(loadRound('u1:k1', 'y-add-e'), JSON.stringify(b)).toBeNull();
     }
-    sessionStorage.setItem('kiyuv_round:u1:k1', 'not json');
+    localStorage.setItem('kiyuv_round:u1:k1:y-add-e', 'not json');
     expect(loadRound('u1:k1', 'y-add-e')).toBeNull();
   });
 });

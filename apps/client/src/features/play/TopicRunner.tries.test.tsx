@@ -151,7 +151,7 @@ describe('tries per question', () => {
 
 describe('a refresh in the middle of a round', () => {
   const KEY = 'u1:k1';
-  const stored = () => sessionStorage.getItem('kiyuv_round:' + KEY);
+  const stored = () => localStorage.getItem('kiyuv_round:' + KEY + ':y-add-e');
 
   function renderRound(profile = kid({ maxTries: 2 })) {
     const updates: KidProfile[] = [];
@@ -167,14 +167,12 @@ describe('a refresh in the middle of a round', () => {
     return { ...view, updates };
   }
 
-  /** A refresh does not run React's clean-up, but leaving the round does. Keep what was saved. */
+  /** Leaving the round (refresh, another profile, back to topics) keeps what was saved. */
   function refresh(view: { unmount: () => void }) {
-    const saved = stored();
     view.unmount();
-    sessionStorage.setItem('kiyuv_round:' + KEY, saved!);
   }
 
-  beforeEach(() => sessionStorage.clear());
+  beforeEach(() => localStorage.clear());
 
   it('returns to the same question number, score and tries', () => {
     const first = renderRound();
@@ -211,12 +209,14 @@ describe('a refresh in the middle of a round', () => {
     expect(container_has_answer()).toBe(false);
   });
 
-  it('forgets the round when the child leaves it or finishes it', () => {
+  it('keeps the round when the child leaves it, and forgets it once finished', () => {
     const first = renderRound();
     fireEvent.click(choice('B'));
     expect(stored()).not.toBeNull();
     first.unmount(); // leaving the round inside the app
-    expect(stored()).toBeNull();
+    expect(stored()).not.toBeNull();
+    expect(renderRound().container).toBeTruthy();
+    cleanup();
 
     const second = renderRound();
     for (let i = 0; i < 10; i++) {
