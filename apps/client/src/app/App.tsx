@@ -37,6 +37,8 @@ import {
   isDeviceStillUnlocked,
   markDeviceUnlocked,
 } from '../features/auth/deviceUnlock.js';
+import { clearView, loadView, saveView, type AppTab } from './viewState.js';
+import { clearAllRounds, loadRound } from '../features/play/roundState.js';
 import { Mascot } from '../ui/Mascot.js';
 import { MusicControl } from '../ui/MusicControl.js';
 import {
@@ -67,7 +69,6 @@ import { GroupsView } from '../features/groups/GroupsView.js';
 import { clearJoinCode, readJoinCode } from '../features/groups/joinLink.js';
 
 type ScreenMode = 'picker' | 'onboarding' | 'app';
-type AppTab = 'curriculum' | 'games' | 'leader' | 'groups';
 
 export const App: React.FC = () => {
   const [authUser, setAuthUser] = useState<AuthParentUser | null>(null);
@@ -108,6 +109,12 @@ export const App: React.FC = () => {
 
   // Load family profiles once parent unlocks the device
   const handleDeviceUnlocked = useCallback(async (user: AuthParentUser, fromLogin = true) => {
+    // After a page refresh, remember where the parent was. A fresh sign-in starts over.
+    const savedView = fromLogin ? null : loadView(user.uid);
+    if (fromLogin) {
+      clearView(user.uid);
+      clearAllRounds();
+    }
     setAuthUser(user);
     setUnlocked(true);
     // Remember this unlock for 12 hours, so a page refresh does not ask for the PIN again.
@@ -132,10 +139,22 @@ export const App: React.FC = () => {
     }
 
     const rememberedKidId = getActiveKidForDevice(user.uid);
+    const savedKid =
+      savedView?.mode === 'app' ? synced.find((p) => p.kidId === savedView.kidId) : undefined;
     if (synced.length === 0) {
       // First-time family setup -> go straight to onboarding for the first child
       setEditingProfile(null);
       setScreenMode('onboarding');
+    } else if (savedView?.mode === 'app' && savedKid) {
+      // Refreshed in the middle of using the app: back to the same child and tab.
+      setActiveKidId(savedKid.kidId);
+      setActiveTab(savedView.tab);
+      // ...and to the same question, if a round was in progress.
+      const roundKey = `${user.uid}:${savedKid.kidId}`;
+      setCurrentTopicId(
+        savedView.topicId && loadRound(roundKey, savedView.topicId) ? savedView.topicId : null,
+      );
+      setScreenMode('app');
     } else if (
       synced.length === 1 &&
       rememberedKidId &&
@@ -149,6 +168,22 @@ export const App: React.FC = () => {
       setScreenMode('picker');
     }
   }, []);
+
+  // Remember the profile and tab in use, so a refresh does not send the parent back to the
+  // profile picker. Not while a refresh is still being restored.
+  useEffect(() => {
+    if (!authUser || !unlocked || resuming) return;
+    if (screenMode === 'app' && activeKidId) {
+      saveView(authUser.uid, {
+        mode: 'app',
+        kidId: activeKidId,
+        tab: activeTab,
+        ...(currentTopicId ? { topicId: currentTopicId } : {}),
+      });
+    } else if (screenMode === 'picker') {
+      saveView(authUser.uid, { mode: 'picker' });
+    }
+  }, [authUser, unlocked, resuming, screenMode, activeKidId, activeTab, currentTopicId]);
 
   // Subscribe to Firebase Auth state. After a refresh, a parent who unlocked within
   // the last 12 hours goes straight back in instead of seeing the PIN screen.
@@ -386,6 +421,8 @@ export const App: React.FC = () => {
       await flushAllDirtyKidsForUser(authUser.uid);
     }
     clearDeviceUnlock(authUser?.uid);
+    clearView(authUser?.uid);
+    clearAllRounds();
     await signOutParent();
     setUnlocked(false);
   };
@@ -562,6 +599,7 @@ export const App: React.FC = () => {
                 onUpdateProfile={handleUpdateActiveProfileProgress}
                 onExitToMap={() => setCurrentTopicId(null)}
                 requireParentPin={requireRecentParentPin}
+                storageKey={`${authUser.uid}:${activeProfile.kidId}`}
               />
             ) : activeTab === 'groups' ? (
               <GroupsView

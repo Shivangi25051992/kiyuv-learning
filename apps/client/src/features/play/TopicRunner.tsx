@@ -14,6 +14,7 @@ import {
 import { confettiBlast, floatEmoji, showTrophy, starBurst } from '../../lib/effects.js';
 import { canSpeak, initAudio, setMusicScene, sfx, speak, stopSpeaking } from '../../lib/sound.js';
 import { Mascot, type MascotMood } from '../../ui/Mascot.js';
+import { clearRound, loadRound, saveRound } from './roundState.js';
 import { IconBack, IconFlame, IconRefresh, IconSpeaker, IconStar, IconBook } from '../../ui/Icons.js';
 
 interface TopicRunnerProps {
@@ -23,6 +24,11 @@ interface TopicRunnerProps {
   onExitToMap: () => void;
   /** Runs the action once the parent's PIN is fresh (asks for it if not). */
   requireParentPin?: (action: () => void) => void;
+  /**
+   * Where to keep the round in progress, so a page refresh returns to the same question.
+   * Leave out to keep nothing.
+   */
+  storageKey?: string;
 }
 
 const QUESTIONS_PER_SESSION = 10;
@@ -51,22 +57,61 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   onUpdateProfile,
   onExitToMap,
   requireParentPin,
+  storageKey,
 }) => {
-  const [questionIndex, setQuestionIndex] = useState(1);
-  const [sessionCorrect, setSessionCorrect] = useState(0);
+  // A round saved before a page refresh. The parent step is asked again, not skipped.
+  const [restored] = useState(() => (storageKey ? loadRound(storageKey, topicId) : null));
+  const [questionIndex, setQuestionIndex] = useState(restored?.questionIndex ?? 1);
+  const [sessionCorrect, setSessionCorrect] = useState(restored?.sessionCorrect ?? 0);
   const [finished, setFinished] = useState(false);
-  const [question, setQuestion] = useState<GeneratedQuestion>(() =>
-    generateQuestionForTopic(topicId),
+  const [question, setQuestion] = useState<GeneratedQuestion>(
+    () => restored?.question ?? generateQuestionForTopic(topicId),
   );
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [optionState, setOptionState] = useState<'idle' | 'correct' | 'wrong'>('idle');
-  const [feedbackMsg, setFeedbackMsg] = useState<string>('');
-  const [locked, setLocked] = useState(false);
+  const wasBlocked = restored !== null && restored.helpStage !== 'none';
+  const [feedbackMsg, setFeedbackMsg] = useState<string>(
+    wasBlocked ? 'You used all your tries. Please ask a parent to help!' : '',
+  );
+  const [locked, setLocked] = useState(wasBlocked);
   // Wrong answers given to the current question. When a parent has set a limit and the
   // tries run out, the question is blocked until a parent helps (stage 'blocked', then 'parent').
-  const [wrongTries, setWrongTries] = useState(0);
+  const [wrongTries, setWrongTries] = useState(restored?.wrongTries ?? 0);
   const [revealed, setRevealed] = useState<string | null>(null);
-  const [helpStage, setHelpStage] = useState<'none' | 'blocked' | 'parent'>('none');
+  const [helpStage, setHelpStage] = useState<'none' | 'blocked' | 'parent'>(
+    wasBlocked ? 'blocked' : 'none',
+  );
+
+  // Keep the round up to date, so a refresh returns to the same question. Once a question
+  // has been answered right, the saved round moves on to the next one (never the same
+  // question again), and a finished round is forgotten.
+  useEffect(() => {
+    if (!storageKey) return;
+    if (finished || (optionState === 'correct' && questionIndex >= QUESTIONS_PER_SESSION)) {
+      clearRound(storageKey);
+      return;
+    }
+    if (optionState === 'correct') {
+      saveRound(storageKey, {
+        topicId,
+        questionIndex: questionIndex + 1,
+        sessionCorrect,
+        question: null,
+        wrongTries: 0,
+        helpStage: 'none',
+      });
+      return;
+    }
+    saveRound(storageKey, { topicId, questionIndex, sessionCorrect, question, wrongTries, helpStage });
+  }, [storageKey, topicId, finished, optionState, questionIndex, sessionCorrect, question, wrongTries, helpStage]);
+
+  // Leaving the round inside the app (back to topics, another tab, another child) ends it.
+  // A page refresh does not run this, which is what lets the round come back.
+  useEffect(() => {
+    return () => {
+      if (storageKey) clearRound(storageKey);
+    };
+  }, [storageKey]);
 
   const questionRef = useRef<HTMLDivElement>(null);
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
