@@ -34,6 +34,7 @@ rules_version = '2';
 //   - topics: map (required, max 1000 entries; exempted from indexing)
 //   - resetEpoch: int (required, 0..100000000, monotonic non-decreasing on update)
 //   - updatedAt: timestamp (required, must equal request.time)
+//   - maxTries: int (optional, 0..4; tries per question, 0 or missing means unlimited; a change needs a PIN from the last 5 minutes)
 //   - childId: string (optional, 32 lowercase hex chars; the client sets it once, never changes it)
 //   - sharedIn: list of group ids (optional, max 3; written ONLY by Cloud Functions, so
 //     a client can neither join a child to a group nor remove it)
@@ -91,6 +92,10 @@ service cloud.firestore {
       return !('childId' in d) || (d.childId is string && d.childId.matches('^[0-9a-f]{32}$'));
     }
 
+    function validMaxTries(d) {
+      return !('maxTries' in d) || (d.maxTries is int && d.maxTries >= 0 && d.maxTries <= 4);
+    }
+
     function validSharedIn(d) {
       return !('sharedIn' in d) || (d.sharedIn is list && d.sharedIn.size() <= 3);
     }
@@ -131,9 +136,9 @@ service cloud.firestore {
           'nameEnc', 'nickname', 'age', 'country', 'state', 'favColor',
           'avatar', 'ageBand', 'track', 'stars', 'streak',
           'bestStreak', 'totalCorrect', 'totalWrong', 'badges', 'topics', 'resetEpoch', 'updatedAt',
-          'childId', 'sharedIn'
+          'childId', 'sharedIn', 'maxTries'
         ])
-        && validChildId(d) && validSharedIn(d)
+        && validChildId(d) && validSharedIn(d) && validMaxTries(d)
         && d.nameEnc is string && d.nameEnc.size() <= 200
         && d.nickname is string && d.nickname.size() >= 1 && d.nickname.size() <= 20
         && d.age is int && d.age >= 2 && d.age <= 13
@@ -178,7 +183,7 @@ service cloud.firestore {
           && (request.resource.data.resetEpoch == resource.data.resetEpoch
               || (pinFresh(300) && request.resource.data.resetEpoch > resource.data.resetEpoch))
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(
-              ['nameEnc', 'nickname', 'age', 'country', 'state', 'favColor', 'avatar', 'ageBand', 'track'])
+              ['nameEnc', 'nickname', 'age', 'country', 'state', 'favColor', 'avatar', 'ageBand', 'track', 'maxTries'])
               || pinFresh(300));
         allow delete: if isOwner(uid) && pinFresh(300);
       }

@@ -15,6 +15,7 @@ import {
 import {
   createOrSaveProfile,
   deleteChildProfile,
+  setProfileMaxTries,
   detectLegacyLocalProgress,
   flushAllDirtyKidsForUser,
   getActiveKidForDevice,
@@ -669,6 +670,9 @@ export const App: React.FC = () => {
           onResetProgress={async (targetKidId) => {
             const updated = await resetFamilyProgress(authUser.uid, targetKidId);
             setProfiles(updated);
+          }}
+          onChangeTries={async (kidId, maxTries) => {
+            setProfiles(await setProfileMaxTries(authUser.uid, kidId, maxTries));
           }}
           onClose={() => setShowParentArea(false)}
         />

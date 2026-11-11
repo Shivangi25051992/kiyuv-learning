@@ -436,4 +436,37 @@ describe('Firestore Security Rules (Phase 3: real PIN enforcement)', () => {
       );
     });
   });
+
+  describe('tries per question setting', () => {
+    const profile = (extra: Record<string, unknown> = {}) => ({ ...validKidPayload(), ...extra });
+
+    it('accepts 0 to 4 and rejects anything else', async () => {
+      await assertSucceeds(setDoc(doc(parent('alice'), 'users/alice/kids/k1'), profile({ maxTries: 0 })));
+      await assertSucceeds(setDoc(doc(parent('alice'), 'users/alice/kids/k2'), profile({ maxTries: 4 })));
+      await assertFails(setDoc(doc(parent('alice'), 'users/alice/kids/k3'), profile({ maxTries: 5 })));
+      await assertFails(setDoc(doc(parent('alice'), 'users/alice/kids/k4'), profile({ maxTries: -1 })));
+      await assertFails(setDoc(doc(parent('alice'), 'users/alice/kids/k5'), profile({ maxTries: '2' })));
+      await assertFails(setDoc(doc(parent('alice'), 'users/alice/kids/k6'), profile({ maxTries: 1.5 })));
+    });
+
+    it('needs a PIN from the last 5 minutes to change it', async () => {
+      await seedKid('alice', 'k1', { maxTries: 2 });
+      await assertFails(setDoc(doc(parent('alice', 600), 'users/alice/kids/k1'), profile({ maxTries: 4 })));
+      await assertSucceeds(setDoc(doc(parent('alice', 60), 'users/alice/kids/k1'), profile({ maxTries: 4 })));
+    });
+
+    it('saving progress with the same setting needs no fresh PIN', async () => {
+      await seedKid('alice', 'k1', { maxTries: 2 });
+      await assertSucceeds(
+        setDoc(doc(parent('alice', 600), 'users/alice/kids/k1'), profile({ maxTries: 2, stars: 30 })),
+      );
+    });
+
+    it('a profile saved without the setting leaves the stored one alone', async () => {
+      await seedKid('alice', 'k1', { maxTries: 3 });
+      await assertSucceeds(
+        setDoc(doc(parent('alice', 600), 'users/alice/kids/k1'), profile({ stars: 30 }), { mergeFields: Object.keys(profile({ stars: 30 })) }),
+      );
+    });
+  });
 });

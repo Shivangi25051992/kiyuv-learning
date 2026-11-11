@@ -371,6 +371,9 @@ function parseCloudKidDoc(
         ? (raw['topics'] as KidProfileData['topics'])
         : {},
     resetEpoch: typeof raw['resetEpoch'] === 'number' ? raw['resetEpoch'] : 0,
+    ...(Number.isInteger(raw['maxTries']) && (raw['maxTries'] as number) >= 0 && (raw['maxTries'] as number) <= 4
+      ? { maxTries: raw['maxTries'] as number }
+      : {}),
   };
   const parsed = KidProfileSchema.safeParse(candidate);
   if (!parsed.success) return null;
@@ -425,7 +428,9 @@ export async function fetchSingleKidProfile(
 /** Cloud document body: the plain name is replaced by its ciphertext. */
 function toCloudKidPayload(uid: string, profile: KidProfile): Record<string, unknown> {
   const validated = KidProfileSchema.parse(profile);
-  const { name: _plain, ...rest } = validated;
+  const { name: _plain, ...withUndefined } = validated;
+  // Firestore refuses `undefined`, so an unset optional setting is simply left out.
+  const rest = Object.fromEntries(Object.entries(withUndefined).filter(([, v]) => v !== undefined));
   const idKey = nameKey(uid, profile.kidId);
   const childId = childIdCache.get(idKey) ?? newChildId();
   childIdCache.set(idKey, childId);

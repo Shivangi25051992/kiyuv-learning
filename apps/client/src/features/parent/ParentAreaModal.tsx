@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   FAV_COLOR_THEMES,
   MAX_KIDS_PER_FAMILY,
+  TRIES_CHOICES,
+  triesLabel,
   type KidId,
   type KidProfile,
 } from '@kiyuv/shared';
@@ -15,6 +17,8 @@ interface ParentAreaModalProps {
   onAddProfile: () => void;
   onEditProfile: (profile: KidProfile) => void;
   onResetProgress: (targetKidId?: KidId) => Promise<void>;
+  /** Saves how many tries a child gets per question (0 = unlimited). */
+  onChangeTries: (kidId: KidId, maxTries: number) => Promise<void>;
   onClose: () => void;
 }
 
@@ -24,10 +28,12 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
   onAddProfile,
   onEditProfile,
   onResetProgress,
+  onChangeTries,
   onClose,
 }) => {
   const [confirmResetTarget, setConfirmResetTarget] = useState<'all' | KidId | null>(null);
   const [busy, setBusy] = useState(false);
+  const [triesError, setTriesError] = useState('');
   // Names are stored encrypted. They are decrypted here, in memory only, because
   // this screen is only reachable with a freshly verified PIN.
   const [names, setNames] = useState<Record<string, string>>({});
@@ -50,6 +56,15 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
   }, [user.uid, profiles]);
 
   const dialogRef = useModalFocus<HTMLDivElement>(onClose);
+
+  const handleTriesChange = async (kidId: KidId, value: number) => {
+    setTriesError('');
+    try {
+      await onChangeTries(kidId, value);
+    } catch {
+      setTriesError('Could not save. Close this window, enter your PIN again and retry.');
+    }
+  };
 
   const handleConfirmReset = async () => {
     if (!confirmResetTarget) return;
@@ -141,11 +156,31 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
                       Reset Stars
                     </button>
                   </div>
+                  <div className="tries-setting">
+                    <label htmlFor={`tries-${p.kidId}`}>Tries per question</label>
+                    <select
+                      id={`tries-${p.kidId}`}
+                      className="text-input"
+                      value={p.maxTries ?? 0}
+                      onChange={(e) => void handleTriesChange(p.kidId, Number(e.target.value))}
+                    >
+                      {TRIES_CHOICES.map((n) => (
+                        <option key={n} value={n}>
+                          {triesLabel(n)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
+        {triesError && (
+          <p className="field-error" role="alert">
+            {triesError}
+          </p>
+        )}
 
         {confirmResetTarget && (
           <div className="delete-confirm-box" style={{ marginTop: 16 }}>

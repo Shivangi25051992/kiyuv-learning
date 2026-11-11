@@ -124,6 +124,8 @@ export const KidProfileSchema = z
       .record(z.string().min(1).max(40), TopicProgressSchema)
       .refine((m) => Object.keys(m).length <= MAX_TOPICS, 'Too many topics'),
     resetEpoch: CountSchema,
+    /** Tries per question: 0 or missing means unlimited. Set by a parent, never during onboarding. */
+    maxTries: z.number().int().min(0).max(4).optional(),
   })
   .superRefine((val, ctx) => {
     if (!ageBandOk(val.age, val.ageBand)) {

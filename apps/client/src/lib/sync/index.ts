@@ -150,6 +150,8 @@ export function mergeKidProfiles(local: KidProfile, remote: KidProfile | null): 
   const totalCorrect = Math.max(local.totalCorrect, remote.totalCorrect);
   const totalWrong = Math.max(local.totalWrong, remote.totalWrong);
   const streak = local.streak;
+  // A parent's choice on this device wins; otherwise take what the cloud has.
+  const maxTries = local.maxTries ?? remote.maxTries;
 
   const badgeSet = new Set([
     ...local.badges,
@@ -167,6 +169,7 @@ export function mergeKidProfiles(local: KidProfile, remote: KidProfile | null): 
     topics: mergedTopics,
     badges: [...badgeSet].slice(0, 100),
     resetEpoch: Math.max(local.resetEpoch, remote.resetEpoch),
+    ...(maxTries !== undefined ? { maxTries } : {}),
   };
 }
 
@@ -322,6 +325,8 @@ export async function createOrSaveProfile(
     badges: existing?.badges ?? initialProgress?.badges ?? [],
     topics: existing?.topics ?? initialProgress?.topics ?? {},
     resetEpoch,
+    // Editing a profile must not undo the parent's tries setting.
+    ...(existing?.maxTries !== undefined ? { maxTries: existing.maxTries } : {}),
   };
 
   KidProfileSchema.parse(profile);
@@ -338,6 +343,26 @@ export async function createOrSaveProfile(
     markKidDirty(uid, kidId);
   }
   return profile;
+}
+
+/**
+ * Changes how many tries a child gets per question (0 = unlimited). Needs a PIN from
+ * the last 5 minutes, so it is saved straight away and rolled back if that fails.
+ */
+export async function setProfileMaxTries(
+  uid: string,
+  kidId: KidId,
+  maxTries: number,
+): Promise<KidProfile[]> {
+  const profiles = loadLocalProfiles(uid);
+  const existing = profiles.find((p) => p.kidId === kidId);
+  if (!existing) return profiles;
+  const updated: KidProfile = { ...existing, maxTries };
+  KidProfileSchema.parse(updated);
+  await writeKidProfileDirect(uid, updated, getLocalResetEpoch(uid));
+  const next = profiles.map((p) => (p.kidId === kidId ? updated : p));
+  saveLocalProfiles(uid, next);
+  return next;
 }
 
 export async function deleteChildProfile(uid: string, kidId: KidId): Promise<KidProfile[]> {

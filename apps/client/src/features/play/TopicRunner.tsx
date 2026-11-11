@@ -59,6 +59,9 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   const [optionState, setOptionState] = useState<'idle' | 'correct' | 'wrong'>('idle');
   const [feedbackMsg, setFeedbackMsg] = useState<string>('');
   const [locked, setLocked] = useState(false);
+  // Wrong answers given to the current question, and the answer shown when tries run out.
+  const [wrongTries, setWrongTries] = useState(0);
+  const [revealed, setRevealed] = useState<string | null>(null);
 
   const questionRef = useRef<HTMLDivElement>(null);
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
@@ -74,6 +77,8 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     setOptionState('idle');
     setFeedbackMsg('');
     setLocked(false);
+    setWrongTries(0);
+    setRevealed(null);
     setQuestion(generateQuestionForTopic(topicId));
   }, [topicId]);
 
@@ -120,6 +125,8 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     setOptionState('idle');
     setFeedbackMsg('');
     setLocked(false);
+    setWrongTries(0);
+    setRevealed(null);
     setQuestion(generateQuestionForTopic(topicId));
     void nextSessionCorrect;
   };
@@ -240,13 +247,31 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       };
       onUpdateProfile(updatedProfile, false);
       sfx.wrong();
+
+      // A parent can limit the tries per question. When they run out, the answer is
+      // shown (no stars) and the round moves on.
+      const maxTries = profile.maxTries ?? 0;
+      const triesUsed = wrongTries + 1;
+      setWrongTries(triesUsed);
+      if (maxTries > 0 && triesUsed >= maxTries) {
+        const answer =
+          question.options.find((o) => o.value === question.correctValue)?.label ?? question.correctValue;
+        setLocked(true);
+        setRevealed(question.correctValue);
+        setFeedbackMsg(`The answer was ${answer}. On to the next one!`);
+        if (isEarly) speak('Let us try the next one!');
+        setTimeout(() => advanceOrFinish(updatedProfile, sessionCorrect), 2200);
+        return;
+      }
+      const left = maxTries > 0 ? maxTries - triesUsed : 0;
+      const leftText = left > 0 ? ` ${left} ${left === 1 ? 'try' : 'tries'} left.` : '';
       const chosen = question.options.find((o) => o.value === optionValue)?.label;
       setFeedbackMsg(
-        chosen && chosen.length <= 20
+        (chosen && chosen.length <= 20
           ? `${chosen} is not right. Try again!`
           : isEarly
             ? 'Oopsie! Try again!'
-            : 'Not quite. Try again!',
+            : 'Not quite. Try again!') + leftText,
       );
       if (isEarly) speak('Try again!');
       // The message stays until the next answer, so it can be read at any pace.
@@ -403,11 +428,13 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         {question.options.map((opt, optIndex) => {
           const isSelected = selectedOption === opt.value;
           const stateCls =
-            isSelected && optionState === 'correct'
+            revealed === opt.value
               ? 'correct'
-              : isSelected && optionState === 'wrong'
-                ? 'wrong'
-                : '';
+              : isSelected && optionState === 'correct'
+                ? 'correct'
+                : isSelected && optionState === 'wrong'
+                  ? 'wrong'
+                  : '';
 
           if (opt.colorHex) {
             return (
