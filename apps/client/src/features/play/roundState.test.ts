@@ -17,7 +17,7 @@ const question = {
 };
 
 const round = (over: Partial<RoundState> = {}): RoundState => ({
-  topicId: 'y-add-e', questionIndex: 4, sessionCorrect: 3, question, wrongTries: 1, helpStage: 'none', ...over,
+  topicId: 'y-add-e', questionIndex: 4, sessionCorrect: 3, question, wrongTries: 1, helpStage: 'none', asked: ['a'], ...over,
 });
 
 describe('saved round', () => {

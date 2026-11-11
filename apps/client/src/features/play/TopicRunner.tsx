@@ -11,9 +11,12 @@ import {
   starsPerCorrectForTrack,
   type KidProfile,
 } from '@kiyuv/shared';
-import { confettiBlast, floatEmoji, showTrophy, starBurst } from '../../lib/effects.js';
+import { Pic, PicText } from '../../ui/Pic.js';
+import { CountUp } from '../../ui/CountUp.js';
+import { balloonRise, confettiBlast, floatEmoji, showTrophy, starBurst } from '../../lib/effects.js';
 import { canSpeak, initAudio, setMusicScene, sfx, speak, stopSpeaking } from '../../lib/sound.js';
 import { Mascot, type MascotMood } from '../../ui/Mascot.js';
+import { questionKey } from './questionKey.js';
 import { clearRound, loadRound, saveRound } from './roundState.js';
 import { IconBack, IconFlame, IconRefresh, IconSpeaker, IconStar, IconBook } from '../../ui/Icons.js';
 
@@ -32,6 +35,8 @@ interface TopicRunnerProps {
 }
 
 const QUESTIONS_PER_SESSION = 10;
+/** How many times a repeat is redrawn before giving up (small topics may run out of new questions). */
+const MAX_REDRAWS = 40;
 
 const PRIMARY_PRAISES = [
   'Awesome!',
@@ -64,9 +69,17 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   const [questionIndex, setQuestionIndex] = useState(restored?.questionIndex ?? 1);
   const [sessionCorrect, setSessionCorrect] = useState(restored?.sessionCorrect ?? 0);
   const [finished, setFinished] = useState(false);
-  const [question, setQuestion] = useState<GeneratedQuestion>(
-    () => restored?.question ?? generateQuestionForTopic(topicId),
-  );
+  // Questions already asked in this round, so the same one never comes twice.
+  const askedRef = useRef<string[]>(restored?.asked ?? []);
+  const freshQuestion = useCallback((): GeneratedQuestion => {
+    let q = generateQuestionForTopic(topicId);
+    for (let i = 0; i < MAX_REDRAWS && askedRef.current.includes(questionKey(q)); i++) {
+      q = generateQuestionForTopic(topicId);
+    }
+    askedRef.current = [...askedRef.current, questionKey(q)];
+    return q;
+  }, [topicId]);
+  const [question, setQuestion] = useState<GeneratedQuestion>(() => restored?.question ?? freshQuestion());
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [optionState, setOptionState] = useState<'idle' | 'correct' | 'wrong'>('idle');
   const wasBlocked = restored !== null && restored.helpStage !== 'none';
@@ -99,10 +112,19 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         question: null,
         wrongTries: 0,
         helpStage: 'none',
+        asked: askedRef.current,
       });
       return;
     }
-    saveRound(storageKey, { topicId, questionIndex, sessionCorrect, question, wrongTries, helpStage });
+    saveRound(storageKey, {
+      topicId,
+      questionIndex,
+      sessionCorrect,
+      question,
+      wrongTries,
+      helpStage,
+      asked: askedRef.current,
+    });
   }, [storageKey, topicId, finished, optionState, questionIndex, sessionCorrect, question, wrongTries, helpStage]);
 
   const questionRef = useRef<HTMLDivElement>(null);
@@ -122,8 +144,9 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     setWrongTries(0);
     setRevealed(null);
     setHelpStage('none');
-    setQuestion(generateQuestionForTopic(topicId));
-  }, [topicId]);
+    askedRef.current = [];
+    setQuestion(freshQuestion());
+  }, [freshQuestion]);
 
   // Finishing a round always gets a fanfare; a near-perfect round also gets the trophy.
   useEffect(() => {
@@ -133,9 +156,11 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       sfx.trophy();
       confettiBlast();
       confettiBlast();
+      balloonRise(14);
     } else {
       sfx.fanfare();
       if (sessionCorrect >= 6) confettiBlast();
+      balloonRise(sessionCorrect >= 6 ? 8 : 4);
     }
   }, [finished, sessionCorrect]);
 
@@ -170,7 +195,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     setWrongTries(0);
     setRevealed(null);
     setHelpStage('none');
-    setQuestion(generateQuestionForTopic(topicId));
+    setQuestion(freshQuestion());
     void nextSessionCorrect;
   };
 
@@ -400,10 +425,14 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
           <div className="pill score-pill" role="img" aria-label={`${profile.stars} stars`}>
             <IconStar size={18} />
             <span key={profile.stars} className="bump">
-              {profile.stars}
+              <CountUp value={profile.stars} />
             </span>
           </div>
-          <div className="pill streak-pill" role="img" aria-label={`${profile.streak} in a row`}>
+          <div
+            className={`pill streak-pill${profile.streak >= 5 ? ' streak-5' : profile.streak >= 3 ? ' streak-3' : ''}`}
+            role="img"
+            aria-label={`${profile.streak} in a row`}
+          >
             <IconFlame size={18} />
             <span key={profile.streak} className="bump">
               {profile.streak}
@@ -431,7 +460,11 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       <div className="question-card" key={`${questionIndex}-${question.prompt}`}>
         <Mascot mood={mascotMood} size={isEarly ? 96 : 76} className="game-mascot" />
 
-        {question.subPrompt && <div className="q-sub">{question.subPrompt}</div>}
+        {question.subPrompt && (
+          <div className="q-sub">
+            <PicText text={question.subPrompt} />
+          </div>
+        )}
 
         <div
           className="q"
@@ -444,7 +477,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
               Tap <span style={{ color: question.highlightColor }}>{question.highlightText}</span>!
             </>
           ) : (
-            question.prompt
+            <PicText text={question.prompt} />
           )}
         </div>
 
@@ -462,7 +495,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
 
         {question.heroEmoji && (
           <div className="hero-emoji" role="img" aria-label={question.heroEmoji}>
-            {question.heroEmoji}
+            <Pic emoji={question.heroEmoji} />
           </div>
         )}
 
@@ -470,7 +503,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
           <div className="count-row" role="group" aria-label="Things to count">
             {question.visualEmojis.map((em, idx) => (
               <span key={idx} className="count-item" style={{ ['--i' as string]: idx }}>
-                {em}
+                <Pic emoji={em} />
               </span>
             ))}
           </div>
@@ -515,7 +548,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
                 style={{ ['--i' as string]: optIndex }}
                 onClick={(e) => handleOptionClick(e, opt.value)}
               >
-                {opt.label}
+                <Pic emoji={opt.label} />
               </button>
             );
           }
@@ -529,7 +562,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
               style={{ ['--i' as string]: optIndex }}
               onClick={(e) => handleOptionClick(e, opt.value)}
             >
-              {opt.label}
+              <PicText text={opt.label} />
             </button>
           );
         })}

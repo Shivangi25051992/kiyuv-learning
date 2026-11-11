@@ -17,6 +17,8 @@ export interface RoundState {
   question: GeneratedQuestion | null;
   wrongTries: number;
   helpStage: HelpStage;
+  /** Keys of the questions already asked this round, so none comes twice. */
+  asked?: string[];
 }
 
 const KEY_PREFIX = 'kiyuv_round:';
@@ -91,6 +93,10 @@ export function loadRound(key: string, topicId: string): RoundState | null {
     if (!isInt(v.wrongTries, 0, 50)) return null;
     if (v.helpStage !== 'none' && v.helpStage !== 'blocked' && v.helpStage !== 'parent') return null;
     if (v.question !== null && !validQuestion(v.question)) return null;
+    const asked =
+      Array.isArray(v.asked) && v.asked.length <= 40 && v.asked.every((k) => typeof k === 'string' && k.length <= 200)
+        ? v.asked
+        : [];
     return {
       topicId,
       questionIndex: v.questionIndex,
@@ -98,6 +104,7 @@ export function loadRound(key: string, topicId: string): RoundState | null {
       question: v.question ?? null,
       wrongTries: v.wrongTries,
       helpStage: v.helpStage,
+      asked,
     };
   } catch {
     return null;

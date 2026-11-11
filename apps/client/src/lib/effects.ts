@@ -1,4 +1,20 @@
 import { pick } from '@kiyuv/content';
+import { picSrc } from '../ui/Pic.js';
+
+/** Puts an emoji into an element as a drawn picture when there is one, as text otherwise. */
+function fillWithPic(el: HTMLElement, emoji: string): void {
+  const src = picSrc(emoji);
+  if (!src) {
+    el.textContent = emoji;
+    return;
+  }
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = '';
+  img.draggable = false;
+  img.className = 'pic';
+  el.appendChild(img);
+}
 
 /** True when the device asks for less motion. Effects then become much smaller. */
 export function prefersReducedMotion(): boolean {
@@ -48,7 +64,7 @@ export function starBurst(x: number, y: number): void {
   for (let i = 0; i < count; i++) {
     const s = document.createElement('div');
     s.className = 'star-burst';
-    s.textContent = pick(emojis);
+    fillWithPic(s, pick(emojis));
     const angle = (i / count) * Math.PI * 2;
     const dist = 70 + Math.random() * 40;
     s.style.left = `${x}px`;
@@ -64,7 +80,7 @@ export function floatEmoji(x: number, y: number, text: string): void {
   if (typeof document === 'undefined') return;
   const f = document.createElement('div');
   f.className = 'float-emoji';
-  f.textContent = text;
+  fillWithPic(f, text);
   f.style.left = `${x}px`;
   f.style.top = `${y}px`;
   document.body.appendChild(f);
@@ -75,7 +91,25 @@ export function showTrophy(): void {
   if (typeof document === 'undefined') return;
   const t = document.createElement('div');
   t.className = 'trophy-pop';
-  t.textContent = '🏆';
+  fillWithPic(t, '🏆');
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 1800);
+}
+
+/** Balloons float up the screen. A better round sends more of them. */
+export function balloonRise(count: number): void {
+  if (typeof document === 'undefined') return;
+  const total = prefersReducedMotion() ? Math.min(count, 3) : count;
+  for (let i = 0; i < total; i++) {
+    const b = document.createElement('div');
+    b.className = 'balloon';
+    fillWithPic(b, '🎈');
+    b.style.left = `${5 + Math.random() * 90}%`;
+    b.style.setProperty('--balloon-sway', `${(Math.random() - 0.5) * 80}px`);
+    b.style.setProperty('--balloon-hue', `${Math.floor(Math.random() * 360)}deg`);
+    b.style.animationDelay = `${Math.random() * 0.9}s`;
+    b.style.animationDuration = `${3.2 + Math.random() * 1.6}s`;
+    document.body.appendChild(b);
+    setTimeout(() => b.remove(), 6000);
+  }
 }

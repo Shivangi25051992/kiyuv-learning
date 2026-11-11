@@ -6,11 +6,14 @@ import {
   type CurriculumSystem,
 } from '@kiyuv/content';
 import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
+import { loadRound } from './roundState.js';
 import { IconCheck, IconFlame, IconPlay, IconStar, IconTrophy } from '../../ui/Icons.js';
 
 interface CurriculumViewProps {
   profile: KidProfile;
   mode?: 'learn' | 'play';
+  /** Where this child's rounds in progress are saved (so topics can say "Continue"). */
+  roundKey?: string;
   onStartTopic: (topicId: string) => void;
 }
 
@@ -89,8 +92,10 @@ export const StatsBar: React.FC<{ profile: KidProfile }> = ({ profile }) => {
 export const CurriculumView: React.FC<CurriculumViewProps> = ({
   profile,
   mode = 'learn',
+  roundKey,
   onStartTopic,
 }) => {
+  let topicIndex = 0; // gives each topic card its own little delay in the float animation
   const cur = CURRICULUM[profile.track];
   const examTracks = EXAM_PREP_BY_TRACK[profile.track];
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
@@ -218,17 +223,24 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
                   const stat = profile.topics[topic.id];
                   const best = stat?.b ?? 0;
                   const mastered = best >= 10 || Boolean(stat?.m);
+                  const saved = roundKey ? loadRound(roundKey, topic.id) : null;
                   return (
                     <button
                       key={topic.id}
                       type="button"
                       data-silent
-                      className={`topic-chip ${mastered ? 'mastered' : ''}`}
+                      className={`topic-chip ${mastered ? 'mastered' : ''}${saved ? ' in-progress' : ''}`}
+                      style={{ ['--i' as string]: topicIndex++ }}
                       onClick={() => onStartTopic(topic.id)}
                       aria-label={`${topic.name}. Difficulty ${topic.diff} of 3. ${
                         mastered ? 'Mastered.' : best > 0 ? `Best score ${best} of 10.` : 'New.'
-                      }`}
+                      }${saved ? ` Round in progress, question ${saved.questionIndex} of 10.` : ''}`}
                     >
+                      {saved && (
+                        <span className="topic-resume" aria-hidden="true">
+                          Continue · Q{saved.questionIndex}
+                        </span>
+                      )}
                       <span className="topic-name">{topic.name}</span>
                       <span className="topic-meta">
                         <span className="diff" aria-hidden="true">
