@@ -61,7 +61,7 @@ import { ParentAreaModal } from '../features/parent/ParentAreaModal.js';
 import { CurriculumView } from '../features/play/CurriculumView.js';
 import { TopicRunner } from '../features/play/TopicRunner.js';
 import { ProfilePicker } from '../features/profiles/ProfilePicker.js';
-import { LeaderboardView } from '../features/progress/LeaderboardView.js';
+import { TrophiesView } from '../features/progress/TrophiesView.js';
 import { GroupsView } from '../features/groups/GroupsView.js';
 import { clearJoinCode, readJoinCode } from '../features/groups/joinLink.js';
 
@@ -565,9 +565,12 @@ export const App: React.FC = () => {
                 }}
               />
             ) : activeTab === 'leader' ? (
-              <LeaderboardView
+              <TrophiesView
+                uid={authUser.uid}
                 profiles={profiles}
+                requirePin={requireRecentParentPin}
                 onOpenParentReset={() => requireRecentParentPin(() => setShowParentArea(true))}
+                onOpenGroups={() => setActiveTab('groups')}
               />
             ) : (
               <CurriculumView

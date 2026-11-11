@@ -661,6 +661,21 @@ export async function fetchMyGroups(uid: string): Promise<MyGroup[]> {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export interface GroupStatus {
+  memberCount: number;
+  /** Families waiting for approval. Only the owner can see this, so it is 0 for members. */
+  waiting: number;
+}
+
+export async function fetchGroupStatus(groupId: string, isOwner: boolean): Promise<GroupStatus> {
+  const { db } = ensureFirebase();
+  const groupSnap = await getDoc(doc(db, 'groups', groupId));
+  const waiting = isOwner
+    ? (await getDocs(collection(db, 'groups', groupId, 'requests'))).size
+    : 0;
+  return { memberCount: asNumber(groupSnap.data()?.['memberCount']), waiting };
+}
+
 /** One read for the group and one for its board. */
 export async function fetchGroupBoard(groupId: string): Promise<GroupBoard | null> {
   const { db } = ensureFirebase();
