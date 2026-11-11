@@ -5,10 +5,13 @@ import { KidProfileSchema, triesLabel, type KidProfile } from '@kiyuv/shared';
 
 vi.mock('../../lib/firebase/index.js', () => ({
   loadChildNames: vi.fn().mockResolvedValue({}),
+  writeKidMaxTries: vi.fn().mockResolvedValue(undefined),
+  writeKidProfileDirect: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { ParentAreaModal } from './ParentAreaModal.js';
-import { mergeKidProfiles } from '../../lib/sync/index.js';
+import { loadLocalProfiles, mergeKidProfiles, saveLocalProfiles, setProfileMaxTries } from '../../lib/sync/index.js';
+import { writeKidMaxTries, writeKidProfileDirect } from '../../lib/firebase/index.js';
 
 afterEach(() => cleanup());
 
@@ -51,10 +54,16 @@ describe('tries per question setting', () => {
     await waitFor(() => expect(save).toHaveBeenCalledWith('k1', 1));
   });
 
-  it('tells the parent when it could not be saved', async () => {
-    renderModal(kid(), vi.fn().mockRejectedValue(new Error('denied')));
+  it('asks for the PIN again when the save is refused', async () => {
+    renderModal(kid(), vi.fn().mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' })));
     fireEvent.change(screen.getByLabelText('Tries per question'), { target: { value: '2' } });
     expect((await screen.findByRole('alert')).textContent).toContain('enter your PIN again');
+  });
+
+  it('points at the connection for any other failure', async () => {
+    renderModal(kid(), vi.fn().mockRejectedValue(new Error('offline')));
+    fireEvent.change(screen.getByLabelText('Tries per question'), { target: { value: '2' } });
+    expect((await screen.findByRole('alert')).textContent).toContain('connection');
   });
 });
 
@@ -72,5 +81,25 @@ describe('the setting in the data', () => {
     expect(mergeKidProfiles(kid(), kid({ maxTries: 2 })).maxTries).toBe(2);
     expect(mergeKidProfiles(kid({ maxTries: 1 }), kid({ maxTries: 3 })).maxTries).toBe(1);
     expect('maxTries' in mergeKidProfiles(kid(), kid())).toBe(false);
+  });
+});
+
+describe('saving the setting', () => {
+  it('changes only the tries field, so the encrypted name is never touched', async () => {
+    localStorage.clear();
+    saveLocalProfiles('u1', [kid({ name: '' })]);
+    const next = await setProfileMaxTries('u1', 'k1', 2);
+    expect(writeKidMaxTries).toHaveBeenCalledWith('u1', 'k1', 2);
+    expect(writeKidProfileDirect).not.toHaveBeenCalled();
+    expect(next[0]!.maxTries).toBe(2);
+    expect(loadLocalProfiles('u1')[0]!.maxTries).toBe(2);
+  });
+
+  it('keeps the old value on this device when the cloud save fails', async () => {
+    localStorage.clear();
+    saveLocalProfiles('u1', [kid({ maxTries: 1 })]);
+    vi.mocked(writeKidMaxTries).mockRejectedValueOnce(new Error('denied'));
+    await expect(setProfileMaxTries('u1', 'k1', 4)).rejects.toThrow();
+    expect(loadLocalProfiles('u1')[0]!.maxTries).toBe(1);
   });
 });

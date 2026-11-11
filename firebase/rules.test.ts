@@ -468,5 +468,25 @@ describe('Firestore Security Rules (Phase 3: real PIN enforcement)', () => {
         setDoc(doc(parent('alice', 600), 'users/alice/kids/k1'), profile({ stars: 30 }), { mergeFields: Object.keys(profile({ stars: 30 })) }),
       );
     });
+
+    it('lets a parent change only the setting with a partial update, as the app does', async () => {
+      await seedKid('alice', 'k1', { maxTries: 0 });
+      await assertSucceeds(
+        updateDoc(doc(parent('alice', 60), 'users/alice/kids/k1'), { maxTries: 3, updatedAt: serverTimestamp() }),
+      );
+    });
+
+    it('refuses the partial update without a fresh PIN, or with an invalid value', async () => {
+      await seedKid('alice', 'k1', { maxTries: 0 });
+      await assertFails(
+        updateDoc(doc(parent('alice', 600), 'users/alice/kids/k1'), { maxTries: 3, updatedAt: serverTimestamp() }),
+      );
+      await assertFails(
+        updateDoc(doc(parent('alice', 60), 'users/alice/kids/k1'), { maxTries: 9, updatedAt: serverTimestamp() }),
+      );
+      await assertFails(
+        updateDoc(doc(noPin('alice'), 'users/alice/kids/k1'), { maxTries: 2, updatedAt: serverTimestamp() }),
+      );
+    });
   });
 });

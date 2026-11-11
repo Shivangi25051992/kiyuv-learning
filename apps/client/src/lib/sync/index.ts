@@ -15,6 +15,7 @@ import {
   getCurrentAuthUser,
   removeKidProfileFromCloud,
   resetCloudKidsProgressBatch,
+  writeKidMaxTries,
   writeKidProfileDirect,
 } from '../firebase/index.js';
 
@@ -359,7 +360,7 @@ export async function setProfileMaxTries(
   if (!existing) return profiles;
   const updated: KidProfile = { ...existing, maxTries };
   KidProfileSchema.parse(updated);
-  await writeKidProfileDirect(uid, updated, getLocalResetEpoch(uid));
+  await writeKidMaxTries(uid, kidId, maxTries);
   const next = profiles.map((p) => (p.kidId === kidId ? updated : p));
   saveLocalProfiles(uid, next);
   return next;
