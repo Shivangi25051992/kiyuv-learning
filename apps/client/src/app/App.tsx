@@ -28,12 +28,31 @@ import {
   syncFamilyFromCloud,
   type LegacyImportCandidate,
 } from '../lib/sync/index.js';
-import { initAudio, isSoundEnabled, sfx, toggleSound } from '../lib/sound.js';
+import { initAudio, isSoundEnabled, sfx, startMusic, toggleSound } from '../lib/sound.js';
 import { LoginScreen } from '../features/auth/LoginScreen.js';
+import {
+  clearDeviceUnlock,
+  isDeviceStillUnlocked,
+  markDeviceUnlocked,
+} from '../features/auth/deviceUnlock.js';
+import { Mascot } from '../ui/Mascot.js';
+import { MusicControl } from '../ui/MusicControl.js';
+import {
+  IconBook,
+  IconGame,
+  IconLogout,
+  IconParent,
+  IconSoundOff,
+  IconSoundOn,
+  IconStar,
+  IconSwitch,
+  IconTrophy,
+} from '../ui/Icons.js';
 import {
   PinPromptModal,
   hasConfiguredPin,
   isPinFreshForParentAction,
+  refreshPinConfigured,
 } from '../features/auth/PinModal.js';
 import { OnboardingForm } from '../features/onboarding/OnboardingForm.js';
 import { ParentAreaModal } from '../features/parent/ParentAreaModal.js';
@@ -49,6 +68,8 @@ export const App: React.FC = () => {
   const [authUser, setAuthUser] = useState<AuthParentUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
+  // True while a refreshed page is restoring the parent's unlocked session.
+  const [resuming, setResuming] = useState(false);
   const [profiles, setProfiles] = useState<KidProfile[]>([]);
   const [activeKidId, setActiveKidId] = useState<KidId | null>(null);
   const [screenMode, setScreenMode] = useState<ScreenMode>('picker');
@@ -78,24 +99,12 @@ export const App: React.FC = () => {
     [authUser],
   );
 
-  // Subscribe to Firebase Auth state
-  useEffect(() => {
-    const unsub = subscribeAuthState((u) => {
-      setAuthUser(u);
-      setAuthReady(true);
-      if (!u) {
-        setUnlocked(false);
-        setProfiles([]);
-        setActiveKidId(null);
-      }
-    });
-    return unsub;
-  }, []);
-
   // Load family profiles once parent unlocks the device
-  const handleDeviceUnlocked = useCallback(async (user: AuthParentUser) => {
+  const handleDeviceUnlocked = useCallback(async (user: AuthParentUser, fromLogin = true) => {
     setAuthUser(user);
     setUnlocked(true);
+    // Remember this unlock for 12 hours, so a page refresh does not ask for the PIN again.
+    if (fromLogin) markDeviceUnlocked(user.uid);
     const legacy = detectLegacyLocalProgress();
     setLegacyCandidates(legacy);
 
@@ -125,6 +134,39 @@ export const App: React.FC = () => {
       setScreenMode('picker');
     }
   }, []);
+
+  // Subscribe to Firebase Auth state. After a refresh, a parent who unlocked within
+  // the last 12 hours goes straight back in instead of seeing the PIN screen.
+  useEffect(() => {
+    const unsub = subscribeAuthState((u) => {
+      setAuthUser(u);
+      setAuthReady(true);
+      if (!u) {
+        setUnlocked(false);
+        setResuming(false);
+        setProfiles([]);
+        setActiveKidId(null);
+        return;
+      }
+      if (isDeviceStillUnlocked(u.uid)) {
+        setResuming(true);
+        // Whether a PIN exists is only known to the server, so ask it before
+        // going straight back in.
+        void refreshPinConfigured(u.uid)
+          .then((configured) => {
+            if (!configured) throw new Error('no PIN set');
+            return handleDeviceUnlocked(u, false);
+          })
+          .catch(() => {
+            // If restoring fails, fall back to the normal unlock screen.
+            clearDeviceUnlock(u.uid);
+            setUnlocked(false);
+          })
+          .finally(() => setResuming(false));
+      }
+    });
+    return unsub;
+  }, [handleDeviceUnlocked]);
 
   // Flush dirty progress when tab becomes hidden; refresh active child when returning to foreground
   useEffect(() => {
@@ -171,6 +213,22 @@ export const App: React.FC = () => {
       clearInterval(interval);
     };
   }, [unlocked, screenMode]);
+
+  // A soft "pop" on every button press, except buttons that make their own sound.
+  useEffect(() => {
+    const onPress = (e: PointerEvent) => {
+      const target = e.target as HTMLElement | null;
+      const button = target?.closest('button');
+      if (!button || button.disabled) return;
+      // Browsers only allow sound after a tap, so the music starts on the first one.
+      initAudio();
+      startMusic();
+      if (button.hasAttribute('data-silent')) return;
+      sfx.tap();
+    };
+    document.addEventListener('pointerdown', onPress, { passive: true });
+    return () => document.removeEventListener('pointerdown', onPress);
+  }, []);
 
   const activeProfile =
     profiles.find((p) => p.kidId === activeKidId) ?? profiles[0] ?? null;
@@ -291,16 +349,33 @@ export const App: React.FC = () => {
     if (authUser) {
       await flushAllDirtyKidsForUser(authUser.uid);
     }
+    clearDeviceUnlock(authUser?.uid);
     await signOutParent();
     setUnlocked(false);
   };
 
-  if (!authReady) {
-    return null;
+  if (!authReady || resuming) {
+    return (
+      <div className="splash" role="status" aria-live="polite">
+        <Mascot mood="happy" size={132} />
+        <div className="splash-title">Kiyuv Learning</div>
+        <div className="splash-dots" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <span className="sr-only">Loading</span>
+      </div>
+    );
   }
 
   if (!authUser || !unlocked || !hasConfiguredPin(authUser.uid)) {
-    return <LoginScreen user={authUser} onUnlocked={handleDeviceUnlocked} />;
+    return (
+      <LoginScreen
+        user={authUser}
+        onUnlocked={(u) => void handleDeviceUnlocked(u, true)}
+      />
+    );
   }
 
   const activeTheme = activeProfile
@@ -308,18 +383,36 @@ export const App: React.FC = () => {
     : FAV_COLOR_THEMES.blue;
 
   return (
-    <div>
-      {/* Top Navigation Bar */}
-      <header className="nav">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div className="title">🧠 Kiyuv Learning</div>
+    <div className="app-shell">
+      <div className="bg-floaties" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
+
+      {/* Top bar */}
+      <header className="topbar">
+        <div className="brand">
+          <Mascot size={38} className="brand-mascot" />
+          <span className="brand-name">Kiyuv</span>
         </div>
 
-        <div className="right">
+        {screenMode === 'app' && activeProfile && (
+          <div className="star-counter" role="img" aria-label={`${activeProfile.stars} stars`}>
+            <IconStar size={20} />
+            <span key={activeProfile.stars} className="star-count bump">
+              {activeProfile.stars}
+            </span>
+          </div>
+        )}
+
+        <div className="topbar-actions">
           {screenMode === 'app' && activeProfile && (
             <button
               type="button"
-              className="profile-switch-pill"
+              className="chip-btn who-chip"
               style={{
                 borderColor: activeTheme.accent,
                 background: activeTheme.bgLight,
@@ -329,47 +422,52 @@ export const App: React.FC = () => {
                 setCurrentTopicId(null);
                 setScreenMode('picker');
               }}
-              title="Switch Learner Profile (No PIN required)"
+              aria-label={`Switch learner, now ${activeProfile.nickname}`}
+              title="Switch learner (no PIN needed)"
             >
-              <span>{activeProfile.avatar}</span>
-              <span>{activeProfile.nickname}</span>
-              <span style={{ fontSize: 11, opacity: 0.75 }}>⇄ Switch</span>
+              <span className="who-avatar">{activeProfile.avatar}</span>
+              <span className="who-name">{activeProfile.nickname}</span>
+              <IconSwitch size={18} />
             </button>
           )}
 
           <button
             type="button"
-            className="toggle"
-            onClick={() =>
-              requireRecentParentPin(() => {
-                setShowParentArea(true);
-              })
-            }
-            title="Parent Area (PIN required)"
+            className="icon-btn"
+            onClick={() => requireRecentParentPin(() => setShowParentArea(true))}
+            aria-label="Parent area (PIN needed)"
+            title="Parent area (PIN needed)"
           >
-            👨‍👩‍👧‍👦 Parent
+            <IconParent />
           </button>
+
+          <MusicControl />
 
           <button
             type="button"
-            className={`toggle ${soundOn ? '' : 'off'}`}
+            className={`icon-btn ${soundOn ? '' : 'is-off'}`}
             onClick={() => setSoundOn(toggleSound())}
+            aria-pressed={soundOn}
+            aria-label="Sound effects"
+            title={soundOn ? 'Sound on' : 'Sound off'}
+            data-silent
           >
-            {soundOn ? '🔊 Sound' : '🔇 Muted'}
+            {soundOn ? <IconSoundOn /> : <IconSoundOff />}
           </button>
 
           <button
             type="button"
-            className="logout-btn"
+            className="icon-btn subtle"
             onClick={() => void handleLogout()}
+            aria-label="Sign out"
             title="Sign out"
           >
-            🚪 Logout
+            <IconLogout />
           </button>
         </div>
       </header>
 
-      {/* Screen 1: "Who's learning?" OTT Multi-Profile Picker */}
+      {/* Screen 1: "Who's learning?" profile picker */}
       {screenMode === 'picker' && (
         <ProfilePicker
           profiles={profiles}
@@ -380,7 +478,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Screen 2: Parent-Gated Simple Onboarding / Edit Form */}
+      {/* Screen 2: simple parent onboarding / edit */}
       {screenMode === 'onboarding' && (
         <OnboardingForm
           existingProfile={editingProfile}
@@ -399,83 +497,28 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Screen 3: Active Learner App */}
+      {/* Screen 3: the learner's home */}
       {screenMode === 'app' && activeProfile && (
         <>
-          <div className="hero">
-            <h1>
-              Hi {activeProfile.nickname}! Let&apos;s Learn 🚀
-            </h1>
-            <p>
-              India CBSE · US Common Core · UK National Curriculum · Australia ACARA ·
-              Olympiad Prep
-            </p>
-          </div>
-
-          {/* Quick Profile Switcher Strip when multiple kids exist */}
-          {profiles.length > 1 && !currentTopicId && (
-            <div className="who-tabs">
-              {profiles.map((p) => {
-                const th = FAV_COLOR_THEMES[p.favColor] ?? FAV_COLOR_THEMES.blue;
-                const isSelected = p.kidId === activeProfile.kidId;
-                return (
-                  <button
-                    key={p.kidId}
-                    type="button"
-                    className={`who ${isSelected ? 'active' : ''}`}
-                    style={{
-                      color: th.hex,
-                      borderColor: isSelected ? th.accent : 'transparent',
-                      background: isSelected ? th.bgLight : '#fff',
-                    }}
-                    onClick={() => void handleSelectProfile(p)}
-                  >
-                    <span>
-                      {p.avatar} {p.nickname}
-                    </span>
-                    <span className="age">
-                      Ages {p.ageBand} · ⭐{p.stars}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          {!currentTopicId && (
+            <section className="hello">
+              <Mascot mood="happy" size={92} className="hello-mascot" />
+              <div className="hello-text">
+                <h1>Hi {activeProfile.nickname}!</h1>
+                <p>
+                  {activeProfile.streak >= 3
+                    ? `${activeProfile.streak} in a row. You're on fire!`
+                    : 'Ready to learn something fun today?'}
+                </p>
+              </div>
+            </section>
           )}
 
-          <div className="tab-switch">
-            <button
-              type="button"
-              className={activeTab === 'curriculum' ? 'active' : ''}
-              onClick={() => {
-                setCurrentTopicId(null);
-                setActiveTab('curriculum');
-              }}
-            >
-              📚 Curriculum Map
-            </button>
-            <button
-              type="button"
-              className={activeTab === 'games' ? 'active' : ''}
-              onClick={() => {
-                setCurrentTopicId(null);
-                setActiveTab('games');
-              }}
-            >
-              🎮 Play
-            </button>
-            <button
-              type="button"
-              className={activeTab === 'leader' ? 'active' : ''}
-              onClick={() => {
-                setCurrentTopicId(null);
-                setActiveTab('leader');
-              }}
-            >
-              🏆 Leaderboard
-            </button>
-          </div>
-
-          <main className="container">
+          <main
+            className="container screen-enter"
+            key={`${activeTab}-${currentTopicId ?? 'map'}`}
+            id="main"
+          >
             {currentTopicId ? (
               <TopicRunner
                 profile={activeProfile}
@@ -486,27 +529,67 @@ export const App: React.FC = () => {
             ) : activeTab === 'leader' ? (
               <LeaderboardView
                 profiles={profiles}
-                onOpenParentReset={() =>
-                  requireRecentParentPin(() => {
-                    setShowParentArea(true);
-                  })
-                }
+                onOpenParentReset={() => requireRecentParentPin(() => setShowParentArea(true))}
               />
             ) : (
               <CurriculumView
                 profile={activeProfile}
-                onStartTopic={(tid) => setCurrentTopicId(tid)}
+                mode={activeTab === 'games' ? 'play' : 'learn'}
+                onStartTopic={(tid) => {
+                  sfx.select();
+                  setCurrentTopicId(tid);
+                }}
               />
             )}
           </main>
+
+          {/* Bottom tab bar on phones, top pills on larger screens */}
+          {!currentTopicId && (
+            <nav className="tabbar" aria-label="Main">
+              <button
+                type="button"
+                className={activeTab === 'curriculum' ? 'active' : ''}
+                aria-current={activeTab === 'curriculum' ? 'page' : undefined}
+                onClick={() => {
+                  setCurrentTopicId(null);
+                  setActiveTab('curriculum');
+                }}
+              >
+                <IconBook size={26} />
+                <span>Learn</span>
+              </button>
+              <button
+                type="button"
+                className={activeTab === 'games' ? 'active' : ''}
+                aria-current={activeTab === 'games' ? 'page' : undefined}
+                onClick={() => {
+                  setCurrentTopicId(null);
+                  setActiveTab('games');
+                }}
+              >
+                <IconGame size={26} />
+                <span>Play</span>
+              </button>
+              <button
+                type="button"
+                className={activeTab === 'leader' ? 'active' : ''}
+                aria-current={activeTab === 'leader' ? 'page' : undefined}
+                onClick={() => {
+                  setCurrentTopicId(null);
+                  setActiveTab('leader');
+                }}
+              >
+                <IconTrophy size={26} />
+                <span>Trophies</span>
+              </button>
+            </nav>
+          )}
         </>
       )}
 
-      <footer className="footer">
-        Kiyuv Learning Academy · Offline-first · Ad-free · No third-party tracking
-      </footer>
+      <footer className="footer">Kiyuv Learning Academy · Ad-free · No tracking</footer>
 
-      {/* Parent 5-Minute PIN Re-Verification Modal */}
+      {/* Parent PIN re-check (5 minutes) */}
       {pendingParentAction && (
         <PinPromptModal
           uid={authUser.uid}
@@ -519,7 +602,7 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* Parent Area Modal */}
+      {/* Parent area */}
       {showParentArea && (
         <ParentAreaModal
           user={authUser}

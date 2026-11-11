@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AVATAR_PRESETS,
   COUNTRIES,
@@ -14,6 +14,8 @@ import {
 } from '@kiyuv/shared';
 import { getCurrentAuthUser, loadChildNames } from '../../lib/firebase/index.js';
 import type { LegacyImportCandidate } from '../../lib/sync/index.js';
+import { Mascot, type MascotMood } from '../../ui/Mascot.js';
+import { IconBack, IconCheck, IconClose } from '../../ui/Icons.js';
 
 interface OnboardingFormProps {
   existingProfile?: KidProfile | null;
@@ -38,6 +40,15 @@ function detectDefaultCountry(): string {
   return 'IN';
 }
 
+const STEP_COUNT = 3;
+const AGES = Array.from({ length: 12 }, (_, idx) => idx + 2);
+
+const STEP_TITLES: readonly { title: string; hint: string; mood: MascotMood }[] = [
+  { title: "Who's learning?", hint: 'Pick a nickname and a picture.', mood: 'cheer' },
+  { title: 'How old are they?', hint: 'We use this to pick the right questions.', mood: 'happy' },
+  { title: 'Almost done!', hint: 'Just a few last details.', mood: 'cheer' },
+];
+
 export const OnboardingForm: React.FC<OnboardingFormProps> = ({
   existingProfile,
   isFirstProfile = false,
@@ -46,6 +57,8 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
   onCancel,
   onDelete,
 }) => {
+  const [step, setStep] = useState(0);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const [nickname, setNickname] = useState(existingProfile?.nickname ?? '');
   const [name, setName] = useState(existingProfile?.name ?? '');
 
@@ -88,6 +101,14 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
 
   const computedBand = computeAgeBand(age);
 
+  // Move the reader to the new step's title when the step changes.
+  useEffect(() => {
+    if (step > 0) titleRef.current?.focus();
+  }, [step]);
+  const activeTheme = FAV_COLOR_THEMES[favColor];
+  const stepInfo = STEP_TITLES[step] ?? STEP_TITLES[0]!;
+  const isLastStep = step === STEP_COUNT - 1;
+
   const handleAgeChange = (nextAge: number) => {
     setAge(nextAge);
     if (!existingProfile) {
@@ -100,8 +121,26 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
     setState('');
   };
 
+  const goNext = () => {
+    setError('');
+    if (step === 0 && nickname.trim().length === 0) {
+      setError('Please type a nickname so we know who is learning.');
+      return;
+    }
+    setStep((s) => Math.min(STEP_COUNT - 1, s + 1));
+  };
+
+  const goBack = () => {
+    setError('');
+    setStep((s) => Math.max(0, s - 1));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLastStep) {
+      goNext();
+      return;
+    }
     setError('');
 
     const parsed = KidOnboardingInputSchema.safeParse({
@@ -117,7 +156,9 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
     });
 
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Please check the form fields');
+      const message = parsed.error.issues[0]?.message ?? 'Please check the details';
+      setError(message);
+      if (parsed.error.issues[0]?.path[0] === 'nickname') setStep(0);
       return;
     }
 
@@ -127,279 +168,306 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
         selectedLegacyIdx >= 0 ? (legacyCandidates[selectedLegacyIdx] ?? null) : null;
       await onSave(parsed.data, legacy);
     } catch (err) {
-      setError((err as Error)?.message || 'Could not save profile. Please try again.');
+      setError((err as Error)?.message || 'Could not save. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
-  const activeTheme = FAV_COLOR_THEMES[favColor];
-
   return (
-    <div className="onboarding-wrap">
+    <main className="wizard-wrap screen-enter" id="main">
       <div
-        className="onboarding-card"
-        style={{ borderTop: `6px solid ${activeTheme.accent}` }}
+        className="wizard-card"
+        style={{
+          ['--wizard-accent' as string]: activeTheme.accent,
+          ['--wizard-color' as string]: activeTheme.hex,
+          ['--wizard-bg' as string]: activeTheme.bgLight,
+        }}
       >
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <div
-            className="profile-avatar-preview"
-            style={{
-              borderColor: activeTheme.accent,
-              background: activeTheme.bgLight,
-            }}
-          >
+        {onCancel && (
+          <button type="button" className="wizard-close" onClick={onCancel} aria-label="Cancel">
+            <IconClose size={22} />
+          </button>
+        )}
+
+        <div className="wizard-head">
+          <div className="wizard-avatar" aria-hidden="true">
             {avatar}
           </div>
-          <h2 style={{ margin: '10px 0 4px', fontSize: 26 }}>
-            {existingProfile
-              ? `Edit ${existingProfile.nickname}'s Profile`
-              : isFirstProfile
-                ? 'Create First Learner Profile'
-                : 'Add Learner Profile'}
-          </h2>
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)' }}>
-            Simple setup · No birthdate, email, phone or address collected
-          </p>
+          <Mascot mood={stepInfo.mood} size={84} className="wizard-mascot" />
         </div>
 
-        <form onSubmit={handleSubmit} className="onboarding-form" noValidate>
-          <div className="form-row two-col">
-            <div className="form-field">
-              <label htmlFor="ob-nickname">
-                Nickname <span className="req">*</span>
-              </label>
-              <input
-                id="ob-nickname"
-                type="text"
-                maxLength={20}
-                required
-                placeholder="e.g. Ari, Kiki, Leo"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                className="login-input"
-              />
-              <span className="field-hint">Shown on the profile tile & leaderboard</span>
-            </div>
+        <ol className="wizard-steps" aria-label={`Step ${step + 1} of ${STEP_COUNT}`}>
+          {Array.from({ length: STEP_COUNT }, (_, i) => (
+            <li
+              key={i}
+              className={`step-dot ${i === step ? 'current' : ''} ${i < step ? 'done' : ''}`}
+              aria-current={i === step ? 'step' : undefined}
+            >
+              {i < step ? (
+                <>
+                  <IconCheck size={16} />
+                  <span className="sr-only">Step {i + 1}, done</span>
+                </>
+              ) : (
+                <>
+                  <span className="sr-only">Step </span>
+                  {i + 1}
+                </>
+              )}
+            </li>
+          ))}
+        </ol>
 
-            <div className="form-field">
-              <label htmlFor="ob-name">First Name (optional)</label>
-              <input
-                id="ob-name"
-                type="text"
-                maxLength={30}
-                placeholder="First name only"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="login-input"
-              />
-              <span className="field-hint">Shown only in the Parent Area</span>
-            </div>
-          </div>
+        <h1 className="wizard-title" ref={titleRef} tabIndex={-1}>
+          {existingProfile && step === 0 ? `Edit ${existingProfile.nickname}` : stepInfo.title}
+        </h1>
+        <p className="wizard-hint">
+          {isFirstProfile && step === 0 ? 'Let’s set up your first learner. It takes a minute.' : stepInfo.hint}
+        </p>
 
-          <div className="form-row two-col">
-            <div className="form-field">
-              <label htmlFor="ob-age">
-                Age (Years) <span className="req">*</span>
-              </label>
-              <select
-                id="ob-age"
-                value={age}
-                onChange={(e) => handleAgeChange(Number(e.target.value))}
-                className="login-input"
-              >
-                {Array.from({ length: 12 }, (_, idx) => idx + 2).map((yr) => (
-                  <option key={yr} value={yr}>
-                    {yr} years old (Band {computeAgeBand(yr)})
-                  </option>
-                ))}
-              </select>
-            </div>
+        <form onSubmit={(e) => void handleSubmit(e)} className="wizard-form" noValidate>
+          {/* STEP 1: nickname and picture */}
+          {step === 0 && (
+            <div className="wizard-panel">
+              <div className="field">
+                <label htmlFor="ob-nickname">
+                  Nickname <span className="req">(needed)</span>
+                </label>
+                <input
+                  id="ob-nickname"
+                  type="text"
+                  maxLength={20}
+                  autoFocus
+                  autoComplete="off"
+                  placeholder="For example: Ari"
+                  value={nickname}
+                  onChange={(e) => {
+                    setError('');
+                    setNickname(e.target.value);
+                  }}
+                  className="text-input"
+                  aria-describedby={error ? 'ob-nickname-hint ob-error' : 'ob-nickname-hint'}
+                  aria-invalid={error && nickname.trim().length === 0 ? true : undefined}
+                />
+                <span id="ob-nickname-hint" className="field-hint">
+                  This is the name your child sees on screen.
+                </span>
+              </div>
 
-            <div className="form-field">
-              <label htmlFor="ob-track">Curriculum Track</label>
-              <select
-                id="ob-track"
-                value={track}
-                onChange={(e) => setTrack(e.target.value as Track)}
-                className="login-input"
-              >
-                <option value="early">🌱 Early Years (Pre-K / Kindergarten)</option>
-                <option value="primary">🚀 Primary & Olympiad (Grades 1–5)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-row two-col">
-            <div className="form-field">
-              <label htmlFor="ob-country">
-                Country <span className="req">*</span>
-              </label>
-              <select
-                id="ob-country"
-                value={country}
-                onChange={(e) => handleCountryChange(e.target.value)}
-                className="login-input"
-              >
-                {COUNTRIES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.name} ({c.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="ob-state">State / Region (optional)</label>
-              <select
-                id="ob-state"
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                className="login-input"
-              >
-                <option value="">— Prefer not to say —</option>
-                {countryOption.states.map((st) => (
-                  <option key={st} value={st}>
-                    {st}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="form-field">
-            <label>Choose Avatar</label>
-            <div className="swatch-grid">
-              {AVATAR_PRESETS.map((em) => (
-                <button
-                  key={em}
-                  type="button"
-                  onClick={() => setAvatar(em)}
-                  className={`avatar-swatch ${avatar === em ? 'selected' : ''}`}
-                  style={
-                    avatar === em
-                      ? { borderColor: activeTheme.accent, background: activeTheme.bgLight }
-                      : undefined
-                  }
-                  aria-label={`Avatar ${em}`}
-                >
-                  {em}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="form-field">
-            <label>
-              Favourite Colour <span className="req">*</span> ({activeTheme.label})
-            </label>
-            <div className="color-swatch-row">
-              {FAV_COLORS.map((colKey) => {
-                const th = FAV_COLOR_THEMES[colKey];
-                const selected = favColor === colKey;
-                return (
-                  <button
-                    key={colKey}
-                    type="button"
-                    onClick={() => setFavColor(colKey)}
-                    className={`fav-color-swatch ${selected ? 'selected' : ''}`}
-                    style={{
-                      background: th.accent,
-                      outline: selected ? `3px solid ${th.hex}` : 'none',
-                    }}
-                    title={th.label}
-                    aria-label={th.label}
-                  />
-                );
-              })}
-            </div>
-          </div>
-
-          {!existingProfile && legacyCandidates.length > 0 && (
-            <div className="legacy-import-box">
-              <label htmlFor="ob-legacy">
-                📦 Import Previous Progress Found on This Device (Optional)
-              </label>
-              <select
-                id="ob-legacy"
-                value={selectedLegacyIdx}
-                onChange={(e) => setSelectedLegacyIdx(Number(e.target.value))}
-                className="login-input"
-              >
-                <option value={-1}>Start fresh (0 stars)</option>
-                {legacyCandidates.map((cand, idx) => (
-                  <option key={cand.legacyKey} value={idx}>
-                    Import {cand.stars} ⭐ ({Object.keys(cand.topics).length} topics played ·{' '}
-                    {cand.suggestedTrack === 'early' ? 'Early Years' : 'Primary'})
-                  </option>
-                ))}
-              </select>
+              <fieldset className="field">
+                <legend>Pick a picture</legend>
+                <div className="avatar-grid">
+                  {AVATAR_PRESETS.map((em) => (
+                    <button
+                      key={em}
+                      type="button"
+                      onClick={() => setAvatar(em)}
+                      className={`avatar-choice ${avatar === em ? 'selected' : ''}`}
+                      aria-label={`Picture ${em}`}
+                      aria-pressed={avatar === em}
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
             </div>
           )}
 
-          {error && <div className="login-err">{error}</div>}
+          {/* STEP 2: age and colour */}
+          {step === 1 && (
+            <div className="wizard-panel">
+              <fieldset className="field">
+                <legend>Age in years</legend>
+                <div className="age-grid">
+                  {AGES.map((yr) => (
+                    <button
+                      key={yr}
+                      type="button"
+                      onClick={() => handleAgeChange(yr)}
+                      className={`age-chip ${age === yr ? 'selected' : ''}`}
+                      aria-pressed={age === yr}
+                      aria-label={`${yr} years old`}
+                    >
+                      {yr}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
 
-          <div style={{ display: 'flex', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
-            {onCancel && (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="secondary-btn"
-                style={{ flex: 1 }}
-              >
-                Cancel
+              <fieldset className="field">
+                <legend>
+                  Favourite colour: <b style={{ color: activeTheme.hex }}>{activeTheme.label}</b>
+                </legend>
+                <div className="color-row">
+                  {FAV_COLORS.map((colKey) => {
+                    const th = FAV_COLOR_THEMES[colKey];
+                    const selected = favColor === colKey;
+                    return (
+                      <button
+                        key={colKey}
+                        type="button"
+                        onClick={() => setFavColor(colKey)}
+                        className={`color-choice ${selected ? 'selected' : ''}`}
+                        style={{ background: th.accent }}
+                        aria-label={th.label}
+                        aria-pressed={selected}
+                      >
+                        {selected && <IconCheck size={22} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+
+              <details className="more-options">
+                <summary>Change the learning level</summary>
+                <div className="field">
+                  <label htmlFor="ob-track">Level</label>
+                  <select
+                    id="ob-track"
+                    value={track}
+                    onChange={(e) => setTrack(e.target.value as Track)}
+                    className="text-input"
+                  >
+                    <option value="early">Early years (ages 2 to 4)</option>
+                    <option value="primary">Primary and Olympiad (grades 1 to 5)</option>
+                  </select>
+                  <span className="field-hint">
+                    We chose {track === 'early' ? 'Early years' : 'Primary'} from the age.
+                  </span>
+                </div>
+              </details>
+            </div>
+          )}
+
+          {/* STEP 3: location, optional name, import, delete */}
+          {step === 2 && (
+            <div className="wizard-panel">
+              <div className="field">
+                <label htmlFor="ob-country">Country</label>
+                <select
+                  id="ob-country"
+                  value={country}
+                  onChange={(e) => handleCountryChange(e.target.value)}
+                  className="text-input"
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="ob-state">State or region (optional)</label>
+                <select
+                  id="ob-state"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  className="text-input"
+                >
+                  <option value="">Prefer not to say</option>
+                  {countryOption.states.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="ob-name">First name (optional)</label>
+                <input
+                  id="ob-name"
+                  type="text"
+                  maxLength={30}
+                  autoComplete="off"
+                  placeholder="First name only"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="text-input"
+                  aria-describedby="ob-name-hint"
+                />
+                <span id="ob-name-hint" className="field-hint">
+                  Only grown-ups see this. We never ask for a birthday, address, email or phone.
+                </span>
+              </div>
+
+              {!existingProfile && legacyCandidates.length > 0 && (
+                <div className="field legacy-import-box">
+                  <label htmlFor="ob-legacy">Bring back old progress from this device</label>
+                  <select
+                    id="ob-legacy"
+                    value={selectedLegacyIdx}
+                    onChange={(e) => setSelectedLegacyIdx(Number(e.target.value))}
+                    className="text-input"
+                  >
+                    <option value={-1}>Start fresh</option>
+                    {legacyCandidates.map((cand, idx) => (
+                      <option key={cand.legacyKey} value={idx}>
+                        Keep {cand.stars} stars ({Object.keys(cand.topics).length} topics played)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {error && (
+            <div className="form-error" role="alert" id="ob-error">
+              {error}
+            </div>
+          )}
+
+          <div className="wizard-actions">
+            {step > 0 ? (
+              <button type="button" onClick={goBack} className="secondary-btn">
+                <IconBack size={18} /> Back
               </button>
+            ) : (
+              <span />
             )}
-            <button
-              type="submit"
-              disabled={saving}
-              className="login-btn"
-              style={{
-                flex: 2,
-                marginTop: 0,
-                background: activeTheme.hex,
-              }}
-            >
-              {saving
-                ? 'Saving...'
-                : existingProfile
-                  ? 'Save Changes'
-                  : 'Create Profile & Start Learning →'}
+            <button type="submit" disabled={saving} className="primary-btn">
+              {isLastStep
+                ? saving
+                  ? 'Saving…'
+                  : existingProfile
+                    ? 'Save changes'
+                    : 'Start learning!'
+                : 'Next'}
             </button>
           </div>
 
-          {existingProfile && onDelete && (
-            <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
+          {existingProfile && onDelete && isLastStep && (
+            <div className="wizard-danger">
               {!confirmDelete ? (
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(true)}
                   className="danger-outline-btn"
                 >
-                  🗑️ Delete {existingProfile.nickname}&apos;s Profile
+                  Delete {existingProfile.nickname}&apos;s profile
                 </button>
               ) : (
-                <div className="delete-confirm-box">
-                  <p style={{ margin: '0 0 10px', fontSize: 13, color: '#b91c1c', fontWeight: 700 }}>
-                    ⚠️ Deleting this profile permanently removes {existingProfile.nickname}&apos;s{' '}
-                    {existingProfile.stars} stars, badges, and topic progress.
+                <div className="delete-confirm-box" role="alertdialog" aria-label="Confirm delete">
+                  <p>
+                    This removes {existingProfile.nickname}&apos;s {existingProfile.stars} stars,
+                    badges and progress for good.
                   </p>
-                  <div style={{ display: 'flex', gap: 10 }}>
+                  <div className="wizard-actions">
                     <button
                       type="button"
                       onClick={() => setConfirmDelete(false)}
                       className="secondary-btn"
-                      style={{ flex: 1 }}
                     >
-                      Keep Profile
+                      Keep profile
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => void onDelete()}
-                      className="danger-btn"
-                      style={{ flex: 1 }}
-                    >
-                      Yes, Delete Permanently
+                    <button type="button" onClick={() => void onDelete()} className="danger-btn">
+                      Yes, delete
                     </button>
                   </div>
                 </div>
@@ -408,6 +476,6 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
           )}
         </form>
       </div>
-    </div>
+    </main>
   );
 };

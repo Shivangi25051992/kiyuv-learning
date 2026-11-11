@@ -6,6 +6,8 @@ import {
   type KidProfile,
 } from '@kiyuv/shared';
 import { loadChildNames, type AuthParentUser } from '../../lib/firebase/index.js';
+import { VoiceSettings } from './VoiceSettings.js';
+import { useModalFocus } from '../../ui/useModalFocus.js';
 
 interface ParentAreaModalProps {
   user: AuthParentUser;
@@ -47,6 +49,8 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
     };
   }, [user.uid, profiles]);
 
+  const dialogRef = useModalFocus<HTMLDivElement>(onClose);
+
   const handleConfirmReset = async () => {
     if (!confirmResetTarget) return;
     setBusy(true);
@@ -59,10 +63,19 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
   };
 
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Parent Area">
-      <div className="modal-card wide-modal">
+    <div className="modal-backdrop">
+      <div
+        className="modal-card wide-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Parent area"
+        ref={dialogRef}
+        tabIndex={-1}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: 22 }}>👨‍👩‍👧‍👦 Parent Area</h3>
+          <h2 style={{ margin: 0, fontSize: 24 }}>
+            <span aria-hidden="true">👨‍👩‍👧‍👦 </span>Parent area
+          </h2>
           <button type="button" onClick={onClose} className="close-icon-btn" aria-label="Close">
             ×
           </button>
@@ -162,6 +175,8 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
             </div>
           </div>
         )}
+
+        <VoiceSettings />
 
         <div
           style={{
