@@ -12,6 +12,7 @@ import {
   type KidProfile,
   type Track,
 } from '@kiyuv/shared';
+import { getCurrentAuthUser, loadChildNames } from '../../lib/firebase/index.js';
 import type { LegacyImportCandidate } from '../../lib/sync/index.js';
 import { Mascot, type MascotMood } from '../../ui/Mascot.js';
 import { IconBack, IconCheck, IconClose } from '../../ui/Icons.js';
@@ -60,6 +61,24 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [nickname, setNickname] = useState(existingProfile?.nickname ?? '');
   const [name, setName] = useState(existingProfile?.name ?? '');
+
+  // The saved name is encrypted in the cloud. Fetch it so the parent can edit it.
+  useEffect(() => {
+    const uid = getCurrentAuthUser()?.uid;
+    if (!existingProfile || !uid) return;
+    let cancelled = false;
+    loadChildNames(uid, [existingProfile.kidId])
+      .then((loaded) => {
+        const plain = loaded[existingProfile.kidId];
+        if (!cancelled && plain) setName((current) => current || plain);
+      })
+      .catch(() => {
+        // Leave the field empty; saving an empty name keeps the stored one.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [existingProfile]);
   const [age, setAge] = useState<number>(existingProfile?.age ?? 6);
   const [country, setCountry] = useState<string>(
     existingProfile?.country ?? detectDefaultCountry(),

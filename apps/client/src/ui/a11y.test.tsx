@@ -4,6 +4,10 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { KidProfile } from '@kiyuv/shared';
 
 vi.mock('../lib/firebase/index.js', () => ({
+  getCurrentAuthUser: () => null,
+  loadChildNames: vi.fn().mockResolvedValue({}),
+  getCachedPlainName: () => '',
+  clearNameCaches: vi.fn(),
   callSetParentPinServer: vi.fn().mockRejectedValue(new Error('offline')),
   callVerifyParentPinServer: vi.fn().mockRejectedValue(new Error('offline')),
 }));

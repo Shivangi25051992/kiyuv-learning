@@ -11,14 +11,16 @@ A cross-platform, multi-profile gamified learning application for children aged 
 
 ## ✨ Key Features
 
-- **OTT-Style Multi-Profile ("Who's learning today?"):** Up to 5 child profiles (`k1`..`k5`) under one parent account, with per-device active profile selection (`localStorage["activeKid:{uid}"]`) so siblings can learn simultaneously on different devices without overwriting each other.
-- **Simple Onboarding Form:** Full name, nickname, age (`2–13`), country, state/region, favourite colour theme (8 accessible palettes), and preset emoji avatar.
+- **OTT-Style Multi-Profile ("Who's learning today?"):** Up to 6 child profiles (`k1`..`k6`, `MAX_KIDS_PER_FAMILY`) under one parent account, with per-device active profile selection (`localStorage["activeKid:{uid}"]`, never stored in Firestore) so siblings can learn simultaneously on different devices without overwriting each other.
+- **Simple Onboarding Form:** Name (given name only, up to 30 characters, shown to the parent), nickname (shown to the child), age (`2–13`), country, state/region, favourite colour theme (8 accessible palettes), and preset emoji avatar. These are still personal information about a child, so treat them as such (see Decision D8 in the plan).
 - **Two Curriculum Tracks (`early` & `primary`):**
   - **Early Years (Ages 2–4):** Counting, English alphabet, colors, shapes, animals, fruits, body parts, opposites, and Hindi Varnamala.
   - **Primary & Olympiad (Ages 5–13):** Infinite math generators (addition, subtraction, multiplication, division, word problems, place value, time, rounding) plus curated banks for spelling bee, vocabulary, grammar, science, GK, and logic.
 - **6-Digit Parent PIN & Multi-Provider Auth:**
   - Google, Apple, and verified Email/Password sign-in, plus offline device mode.
-  - 6-digit Parent PIN rejecting repeated digits, sequences, and top-50 common PINs, backed by 2nd-gen Cloud Functions (`setPin`, `verifyPin`) using `HMAC-SHA256` pepper + `scrypt` + `timingSafeEqual` (with automatic client SHA-256 fallback when Cloud Functions are not yet active).
+  - 6-digit Parent PIN rejecting repeated digits, sequences, and top-50 common PINs, backed by 2nd-gen Cloud Functions (`setPin`, `verifyPin`) using `HMAC-SHA256` pepper + `scrypt` + `timingSafeEqual`.
+  - The browser no longer stores or checks any PIN value. Every check happens in `verifyPin` on the server, and `firestore.rules` requires the `pin_at` claim. **Not live until the functions and rules are deployed** (see `docs/PHASE3_CONSOLE_STEPS.md`).
+- **Encrypted child name:** the first name is stored only as `nameEnc`, encrypted on the server with the `NAME_KEY` secret. Nickname, age, country, state and colour are plain because the app needs them.
 - **Local-First Cloud Sync (Cloud Firestore):** Transactional per-kid sync with 90% write reduction, 5.5-second per-document spacing, monotonic topic merges, and `resetEpoch` cross-device reset consistency.
 - **Strict Security Boundary:** Firebase SDK isolated to `apps/client/src/lib/firebase`, zero real-time listeners (`onSnapshot` forbidden by ESLint), and owner-scoped Firestore Security Rules.
 
@@ -62,20 +64,23 @@ C:\Kiyuv\kiyuv-learning
   - **Usage & Quota Monitor:** https://console.firebase.google.com/project/kiyuv-learning/firestore/databases/-default-/usage
 
 ### 2. Firestore Data Model (Collections & Paths)
-All application data lives under `/families/{uid}` where `{uid}` is the parent's Firebase Auth UID:
+All application data is keyed by the parent's Firebase Auth UID (`{uid}`). The source of truth is `firestore.rules`; if this table and the rules disagree, the rules win.
 
 | Firestore Path | Access | Purpose |
 |---|---|---|
-| `/families/{uid}` | Read/Write by owner (`request.auth.uid == uid`) | Family metadata document (`kidCount: 0..5`, `schemaVersion: 2`, `updatedAt`, plus legacy `pinHash` fallback field). |
-| `/families/{uid}/kids/{kidId}` | Read/Write by owner (`kidId` in `k1`..`k5`) | Child profile & learning progress (`name`, `nickname`, `age`, `country`, `state`, `favColor`, `avatar`, `ageBand`, `track`, `stars`, `streak`, `bestStreak`, `totalCorrect`, `totalWrong`, `badges`, `topics`, `resetEpoch`, `updatedAt`). |
-| `/families/{uid}/private/pin` | **Server-only** (`allow read, write: if false;`) | Accessed exclusively by `functions/` via Firebase Admin SDK. Stores `hash` (`scrypt`), `salt`, `pepperVersion`, `failedAttempts`, `lockUntil`, and `hardLocked`. |
-| `/families/{uid}/consents/{consentId}` | Read by owner; Write via Admin SDK | Reserved for Phase 4 verifiable parental consent records. |
+| `users/{uid}` | Owner read; owner create/update of a few fields only; no delete or list | Family document: `createdAt`, `lastActiveDate`, `locale`, `resetEpoch`, `schemaVersion`. |
+| `users/{uid}/kids/{kidId}` | Owner only (`kidId` matches `^k[1-6]$`), validated by `validKid` | Child profile and progress: `nameEnc`, `nickname`, `age`, `country`, `state`, `favColor`, `avatar`, `ageBand`, `track`, `stars`, `streak`, `bestStreak`, `totalCorrect`, `totalWrong`, `badges`, `topics`, `resetEpoch`, `updatedAt`. |
+| `pinSecrets/{uid}` | **Server-only** (denied to all clients) | Read and written only by `functions/` through the Admin SDK: PIN hash (scrypt with a secret pepper), salt, pepper version, failed attempts, lock state. |
+| `consents/{uid}/records/{id}` | Owner read; writes denied to clients | Reserved for Phase 4 consent records, written only by Cloud Functions. |
+
+`pinFresh(seconds)` in `firestore.rules` checks the `pin_at` claim that only the Cloud Functions can set.
 
 ### 3. Access Firestore from Code
 All client-side Firestore calls are strictly isolated inside [`apps/client/src/lib/firebase/index.ts`](./apps/client/src/lib/firebase/index.ts):
-- **Read family & all kid profiles:** `fetchCloudFamily(uid)` (`getDoc` on `/families/{uid}` + `getDocs` on `/families/{uid}/kids`)
-- **Create or update a kid profile:** `saveKidProfileToCloud(uid, kidId, kid, isNewKid)` (`runTransaction` updating `/families/{uid}` and `/families/{uid}/kids/{kidId}`)
-- **Sync learning progress (stars/streaks/topics/badges):** `syncKidProgressTransaction(uid, kidId, localKid)` (`runTransaction` merging monotonic max counters and respecting `resetEpoch`)
+The functions below are in that file and use the `users/{uid}` paths. Check the file for current names and signatures, since they may change:
+- **Read family and all kid profiles:** `getDoc` on `users/{uid}` plus `getDocs` on `users/{uid}/kids`.
+- **Create, update or delete a kid profile:** writes to `users/{uid}/kids/{kidId}`.
+- **Sync learning progress (stars, streaks, topics, badges):** a transaction on one kid document that merges counters upward and respects `resetEpoch`.
 
 > **Important ESLint Rule:** Importing `firebase/*` outside `apps/client/src/lib/firebase/**` or using `onSnapshot` anywhere in the codebase is blocked by `eslint.config.js`.
 
@@ -94,6 +99,26 @@ npx -y firebase-tools@latest deploy --only firestore:rules --project kiyuv-learn
 # Deploy ONLY Firestore Indexes
 npx -y firebase-tools@latest deploy --only firestore:indexes --project kiyuv-learning
 ```
+
+---
+
+## 🧰 Prerequisites & Configuration
+
+| Need | Version / value | Used for |
+|---|---|---|
+| Node.js | 22 (matches CI and `functions/package.json`) | Everything |
+| Java | 21 or newer | Firestore emulator and rules tests only |
+| Firebase projects | `.firebaserc` aliases: `dev` = `kiyuv-learning-dev`, `prod` and `default` = `kiyuv-learning` | Test against `dev`, release to `prod` |
+
+**Client environment variables** (set in `apps/client/.env.local`, which must stay out of git):
+
+| Variable | Purpose |
+|---|---|
+| `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID` | Firebase web config. `apps/client/src/lib/firebase/index.ts` has the production values as fallbacks, so the app runs without them. |
+| `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY` | Turns on App Check. Unset means App Check is off. |
+| `VITE_USE_EMULATORS=true` | Connects the client to local Firebase emulators. |
+
+Firebase web API keys are not secret, but they must be restricted by referrer and app (plan task 3.8, still open). The `PIN_PEPPER` secret is different. It lives only in Secret Manager and must never appear in the repo, logs or chat.
 
 ---
 
@@ -132,6 +157,21 @@ npx -y firebase-tools@latest emulators:exec --only firestore --project demo-kiyu
 
 ---
 
+## 🛠️ How to Make Changes
+
+1. **Read first:** [`docs/IMPLEMENTATION_PLAN.md`](./docs/IMPLEMENTATION_PLAN.md) is the source of truth for scope, decisions (D1–D8) and the agent rules. Update its task checkboxes when you finish a task, and say plainly when a task is only partly done.
+2. **Branch and commit:** one branch per phase (for example `phase-4/privacy`) and one commit per task. Do not push straight to `main`.
+3. **Check before committing:** run `npm run lint`, `npm run typecheck` and `npm test`. For changes to `firestore.rules`, also run the rules tests (see below). CI runs the same checks.
+4. **Respect the boundaries:**
+   - Only `apps/client/src/lib/firebase/` may import Firebase. Never use `onSnapshot`.
+   - Never log or store a PIN, PIN hash, token, email, or any child profile field outside the paths the plan defines.
+   - Do not add analytics, ads, crash reporting or other third-party SDKs without an approved decision.
+5. **Develop against the emulators or the `dev` project, not production data.**
+6. **Stop at human gates.** Never delete a cloud resource, deploy to production, change billing, or run a bare `firebase deploy` without written approval for that exact action.
+7. **Keep local AI tooling out of git.** Folders such as `.claude/` and `.mcp.json` (UI UX Pro Max, ECC and similar) are for one machine only. They are listed in `.git/info/exclude`, not in a tracked file. Never commit, merge or push them, and check `git status` before using `git add`.
+
+---
+
 ## 🚀 Production Deployment Guide
 
 > **Safety Rule:** Never run a bare `firebase deploy`. Always pass `--only <targets>` and `--project kiyuv-learning`.
@@ -157,7 +197,7 @@ npm --workspace @kiyuv/functions run build
 npx -y firebase-tools@latest deploy --only functions --project kiyuv-learning
 ```
 
-*(Once `setPin` and `verifyPin` are live in production, update `pinFresh(seconds)` in `firestore.rules` to enforce `request.auth.token.get('pin_at', 0) * 1000 > request.time.toMillis() - seconds * 1000` per Task 3.5 of `docs/IMPLEMENTATION_PLAN.md`.)*
+*(The rules already enforce the `pin_at` claim on this branch. Deploy order matters: functions, then hosting, then rules. See `docs/PHASE3_CONSOLE_STEPS.md`.)*
 
 ---
 
@@ -166,9 +206,12 @@ npx -y firebase-tools@latest deploy --only functions --project kiyuv-learning
 ### Completed & Deployed (`main` branch)
 - **Phase 1 (Stop the Bleed & Lock Data):** Completed & deployed. Switched exclusively to Cloud Firestore (`asia-south1`), removed SQL Connect config, batched topic sync at end-of-round (90% write reduction), added `resetEpoch`, hardened `firestore.rules` (18-key `validKid(d)` schema, `ageBandOk`, 5-kid cap), and added `topics` map index exemption in `firestore.indexes.json`.
 - **Phase 2 (Modular TypeScript + React + Vite PWA Architecture):** Completed, CI-verified, and deployed. Split into `@kiyuv/shared`, `@kiyuv/content`, `@kiyuv/client`, and `@kiyuv/functions`. Implemented the Simple Onboarding Form, Netflix/YouTube **"Who's learning today?"** Profile Picker, Curriculum Map, 10-question Topic Runner, Family Leaderboard, Parent Area, Workbox PWA precache, and GitHub Actions CI (`.github/workflows/ci.yml`).
-- **Phase 3 (Server-Side 6-Digit PIN & Security):** Completed, tested (17 unit tests passing), pushed to `origin/main`, and web/Firestore targets deployed to `https://kiyuv-learning.web.app`. Includes 6-digit PIN strength validation, `@kiyuv/functions` (`setPin` / `verifyPin` with `HMAC-SHA256` pepper + `scrypt` + `timingSafeEqual` + 5/10-attempt lockout + Spike S1/S2 token claims), Google/Apple/Email auth UI, App Check hook, strict CSP headers in `firebase.json`, and `docs/threat-model.md`.
+- **Phase 3 (Server-Side 6-Digit PIN & Security): partly done, not finished.**
+  - **Built and merged:** 6-digit PIN strength validation; the `setPin` and `verifyPin` functions in `functions/` with unit tests (the README previously counted 17 passing; re-run `npm test` to confirm); Google, Apple and Email sign-in UI; App Check hook in the client; CSP headers in `firebase.json`; `docs/threat-model.md`. Web and Firestore targets are deployed to https://kiyuv-learning.web.app.
+  - **Code done, not deployed:** real PIN rules and rules tests, server-only PIN checks, encrypted child name (`nameEnc`). **Still open:** deploy functions, hosting and rules (task 3.5); enable Apple and Email providers (3.2); App Check (3.6); project lockdown (3.8); independent security review (3.10). Step-by-step instructions are in `docs/PHASE3_CONSOLE_STEPS.md`.
 
 ### Next Steps for Incoming Agent (See [`docs/IMPLEMENTATION_PLAN.md`](./docs/IMPLEMENTATION_PLAN.md))
+0. **Finish Phase 3 before starting Phase 4.** The plan requires the PIN to be checked on the server before other features are added. Task numbers in the list below may not match the plan exactly (for example, plan task 4.5 is consent and 4.7 is export and delete), so follow the plan's numbering.
 1. **Phase 4 — Child Privacy & Compliance (COPPA, GDPR-K, India DPDPA):**
    - Create `docs/data-inventory.md` & remove `measurementId` from Firebase config (Tasks 4.1–4.2).
    - Add `/privacy` and `/terms` views (Task 4.3).
@@ -183,4 +226,4 @@ npx -y firebase-tools@latest deploy --only functions --project kiyuv-learning
    - Spend caps, Cloud Monitoring alerts, Pub/Sub billing kill-switch function, daily Firestore backups, and multi-device soak test.
 5. **Pending Cloud Console / Human Gates:**
    - Delete unused SQL Connect service (`kiyuv-learning-service`) and Cloud SQL instance (`kiyuv-learning-fdc`) in `asia-south1` when ready.
-   - Enable Cloud Functions API + set `PIN_PEPPER` secret to deploy `functions` (`setPin`, `verifyPin`) and activate `pinFresh(300)` enforcement in `firestore.rules`.
+   - Follow `docs/PHASE3_CONSOLE_STEPS.md`: create the `PIN_PEPPER` and `NAME_KEY` secrets, enable the Cloud Functions APIs, then deploy functions, hosting and rules in that order.

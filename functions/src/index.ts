@@ -11,12 +11,26 @@ import {
   type PinSecretDocument,
   type PinSecretsStore,
 } from './pinService.js';
+import {
+  decryptKidName,
+  encryptKidName,
+  MAX_ENCRYPTED_LENGTH,
+} from './nameCrypto.js';
 
 if (getApps().length === 0) {
   initializeApp();
 }
 
 const pinPepperSecret = defineSecret('PIN_PEPPER');
+
+/** Fails closed: there is no built-in default pepper. */
+function requirePepper(): string {
+  const value = pinPepperSecret.value();
+  if (!value || value.length < 32) {
+    throw new HttpsError('failed-precondition', 'PIN service is not configured.');
+  }
+  return value;
+}
 
 function createFirestorePinStore(): PinSecretsStore {
   const db = getFirestore();
@@ -30,17 +44,28 @@ function createFirestorePinStore(): PinSecretsStore {
     },
 
     async saveSecret(uid: string, docData: PinSecretDocument): Promise<void> {
-      const batch = db.batch();
-      batch.set(db.doc(`pinSecrets/${uid}`), {
-        ...docData,
-        updatedAt: FieldValue.serverTimestamp(),
+      const userRef = db.doc(`users/${uid}`);
+      await db.runTransaction(async (tx) => {
+        const userSnap = await tx.get(userRef);
+        tx.set(db.doc(`pinSecrets/${uid}`), {
+          ...docData,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        if (userSnap.exists) {
+          tx.update(userRef, { pinConfigured: true });
+        } else {
+          // Create the full baseline document the client rules expect, so the
+          // client's later "update" passes validation on a brand-new account.
+          tx.set(userRef, {
+            createdAt: FieldValue.serverTimestamp(),
+            lastActiveDate: new Date().toISOString().slice(0, 10),
+            locale: 'en',
+            resetEpoch: 0,
+            schemaVersion: 1,
+            pinConfigured: true,
+          });
+        }
       });
-      batch.set(
-        db.doc(`users/${uid}`),
-        { pinConfigured: true },
-        { merge: true },
-      );
-      await batch.commit();
     },
 
     async reserveAttemptTransaction(uid: string, nowMs: number) {
@@ -142,13 +167,14 @@ function extractAuthContext(request: {
 export const setPin = onCall(
   {
     region: 'asia-south1',
+    invoker: 'public',
     maxInstances: 10,
     enforceAppCheck: false, // Monitor mode in 3.6; switched to true once App Check metrics pass
     secrets: [pinPepperSecret],
   },
   async (request) => {
     const ctx = extractAuthContext(request);
-    const pepper = pinPepperSecret.value() || 'dev-fallback-pepper-do-not-use-in-prod';
+    const pepper = requirePepper();
     const store = createFirestorePinStore();
     try {
       return await handleSetPin(ctx, request.data, store, {
@@ -164,16 +190,101 @@ export const setPin = onCall(
   },
 );
 
+const nameKeySecret = defineSecret('NAME_KEY');
+
+/** Requires a PIN verified in the last 5 minutes (the `pin_at` claim). */
+function requireFreshPin(request: {
+  auth?: { uid: string; token: Record<string, unknown> };
+}): string {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Parent authentication is required.');
+  }
+  const pinAt = request.auth.token['pin_at'];
+  const ageSec =
+    typeof pinAt === 'number' ? Math.floor(Date.now() / 1000) - pinAt : Infinity;
+  if (ageSec > 300) {
+    throw new HttpsError('permission-denied', 'Enter your Parent PIN again.');
+  }
+  return request.auth.uid;
+}
+
+const KID_ID_PATTERN = /^k[1-6]$/;
+
+export const encryptProfileName = onCall(
+  {
+    region: 'asia-south1',
+    invoker: 'public',
+    maxInstances: 10,
+    enforceAppCheck: false,
+    secrets: [nameKeySecret],
+  },
+  (request) => {
+    const uid = requireFreshPin(request);
+    const data = (request.data ?? {}) as { kidId?: unknown; name?: unknown };
+    if (typeof data.kidId !== 'string' || !KID_ID_PATTERN.test(data.kidId)) {
+      throw new HttpsError('invalid-argument', 'Invalid profile.');
+    }
+    if (typeof data.name !== 'string') {
+      throw new HttpsError('invalid-argument', 'Invalid name.');
+    }
+    try {
+      return { nameEnc: encryptKidName(nameKeySecret.value(), uid, data.kidId, data.name) };
+    } catch {
+      throw new HttpsError('invalid-argument', 'Name could not be saved.');
+    }
+  },
+);
+
+export const decryptProfileNames = onCall(
+  {
+    region: 'asia-south1',
+    invoker: 'public',
+    maxInstances: 10,
+    enforceAppCheck: false,
+    secrets: [nameKeySecret],
+  },
+  (request) => {
+    const uid = requireFreshPin(request);
+    const data = (request.data ?? {}) as { items?: unknown };
+    if (!Array.isArray(data.items) || data.items.length > 6) {
+      throw new HttpsError('invalid-argument', 'Invalid request.');
+    }
+    const names: Record<string, string> = {};
+    for (const item of data.items as Array<{ kidId?: unknown; nameEnc?: unknown }>) {
+      if (
+        typeof item?.kidId !== 'string' ||
+        !KID_ID_PATTERN.test(item.kidId) ||
+        typeof item.nameEnc !== 'string' ||
+        item.nameEnc.length > MAX_ENCRYPTED_LENGTH
+      ) {
+        continue;
+      }
+      try {
+        names[item.kidId] = decryptKidName(
+          nameKeySecret.value(),
+          uid,
+          item.kidId,
+          item.nameEnc,
+        );
+      } catch {
+        names[item.kidId] = '';
+      }
+    }
+    return { names };
+  },
+);
+
 export const verifyPin = onCall(
   {
     region: 'asia-south1',
+    invoker: 'public',
     maxInstances: 10,
     enforceAppCheck: false,
     secrets: [pinPepperSecret],
   },
   async (request) => {
     const ctx = extractAuthContext(request);
-    const pepper = pinPepperSecret.value() || 'dev-fallback-pepper-do-not-use-in-prod';
+    const pepper = requirePepper();
     const store = createFirestorePinStore();
     return handleVerifyPin(ctx, request.data, store, {
       currentVersion: 1,

@@ -52,6 +52,7 @@ import {
   PinPromptModal,
   hasConfiguredPin,
   isPinFreshForParentAction,
+  refreshPinConfigured,
 } from '../features/auth/PinModal.js';
 import { OnboardingForm } from '../features/onboarding/OnboardingForm.js';
 import { ParentAreaModal } from '../features/parent/ParentAreaModal.js';
@@ -147,9 +148,15 @@ export const App: React.FC = () => {
         setActiveKidId(null);
         return;
       }
-      if (isDeviceStillUnlocked(u.uid) && hasConfiguredPin(u.uid)) {
+      if (isDeviceStillUnlocked(u.uid)) {
         setResuming(true);
-        void handleDeviceUnlocked(u, false)
+        // Whether a PIN exists is only known to the server, so ask it before
+        // going straight back in.
+        void refreshPinConfigured(u.uid)
+          .then((configured) => {
+            if (!configured) throw new Error('no PIN set');
+            return handleDeviceUnlocked(u, false);
+          })
           .catch(() => {
             // If restoring fails, fall back to the normal unlock screen.
             clearDeviceUnlock(u.uid);

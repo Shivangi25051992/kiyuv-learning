@@ -5,6 +5,7 @@ import { PIN_FRESH_SESSION_MS } from '@kiyuv/shared';
 
 // A signed-in parent whose session Firebase restores after a page refresh.
 const h = vi.hoisted(() => ({
+  pinConfigured: true,
   user: {
     uid: 'u1',
     email: 'parent@example.com',
@@ -24,6 +25,10 @@ vi.mock('../lib/firebase/index.js', () => ({
   signInWithGoogle: vi.fn(),
   signInWithApple: vi.fn(),
   signInOrRegisterWithEmail: vi.fn(),
+  fetchPinConfigured: vi.fn(async () => h.pinConfigured),
+  loadChildNames: vi.fn().mockResolvedValue({}),
+  getCachedPlainName: () => '',
+  clearNameCaches: vi.fn(),
   signOutParent: vi.fn().mockResolvedValue(undefined),
   callSetParentPinServer: vi.fn().mockRejectedValue(new Error('offline')),
   callVerifyParentPinServer: vi.fn().mockRejectedValue(new Error('offline')),
@@ -38,15 +43,14 @@ vi.mock('../lib/firebase/index.js', () => ({
 
 import { App } from './App.js';
 
-const PIN_HASH_KEY = 'kiyuv_pinHash:u1';
 const UNLOCK_KEY = 'kiyuv_unlockedAt:u1';
 
 describe('a page refresh keeps a parent unlocked (the logout-on-refresh bug)', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
-    // The parent set a PIN earlier on this device.
-    localStorage.setItem(PIN_HASH_KEY, 'stored-digest');
+    // The server says this parent already has a PIN.
+    h.pinConfigured = true;
   });
 
   afterEach(() => cleanup());
@@ -72,8 +76,8 @@ describe('a page refresh keeps a parent unlocked (the logout-on-refresh bug)', (
     expect(await screen.findByLabelText('6-digit parent PIN')).toBeTruthy();
   });
 
-  it('does not skip the PIN if no PIN exists on this device', async () => {
-    localStorage.removeItem(PIN_HASH_KEY);
+  it('does not skip the PIN if the parent has not set one yet', async () => {
+    h.pinConfigured = false;
     localStorage.setItem(UNLOCK_KEY, String(Date.now()));
     render(<App />);
     // With no PIN set yet the parent is asked to create one, not let in.

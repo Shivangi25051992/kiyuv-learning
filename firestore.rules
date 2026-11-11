@@ -16,7 +16,7 @@ rules_version = '2';
 // Collection: users/{uid}/kids/{kidId}
 // Document ID: {kidId} matching ^k[1-6]$ (caps children at 6 per family)
 // Fields:
-//   - name: string (required, 0..30 chars; empty string allowed)
+//   - nameEnc: string (required, 0..200 chars; AES-256-GCM ciphertext from the encryptProfileName function; the plain name is never stored)
 //   - nickname: string (required, 1..20 chars)
 //   - age: int (required, 2..13)
 //   - country: string (required, 2-letter uppercase ISO code matching ^[A-Z]{2}$)
@@ -54,11 +54,11 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    // Phase 1 (Task 1.10 / 1.12): Temporarily returns true while PIN verification is not yet server-backed.
-    // Phase 3 replaces this with:
-    //   return request.auth.token.get('pin_at', 0) * 1000 > request.time.toMillis() - seconds * 1000;
+    // Phase 3 (Task 3.5): the `pin_at` claim (seconds) is set only by the verifyPin
+    // and setPin Cloud Functions after a correct PIN. Clients cannot forge it.
     function pinFresh(seconds) {
-      return seconds >= 0;
+      return request.auth.token.get('pin_at', 0) * 1000
+        > request.time.toMillis() - seconds * 1000;
     }
 
     function count(v) {
@@ -89,16 +89,16 @@ service cloud.firestore {
 
     function validKid(d) {
       return d.keys().hasAll([
-          'name', 'nickname', 'age', 'country', 'state', 'favColor',
+          'nameEnc', 'nickname', 'age', 'country', 'state', 'favColor',
           'avatar', 'ageBand', 'track', 'stars', 'streak',
           'bestStreak', 'totalCorrect', 'totalWrong', 'badges', 'topics', 'resetEpoch', 'updatedAt'
         ])
         && d.keys().hasOnly([
-          'name', 'nickname', 'age', 'country', 'state', 'favColor',
+          'nameEnc', 'nickname', 'age', 'country', 'state', 'favColor',
           'avatar', 'ageBand', 'track', 'stars', 'streak',
           'bestStreak', 'totalCorrect', 'totalWrong', 'badges', 'topics', 'resetEpoch', 'updatedAt'
         ])
-        && d.name is string && d.name.size() <= 30
+        && d.nameEnc is string && d.nameEnc.size() <= 200
         && d.nickname is string && d.nickname.size() >= 1 && d.nickname.size() <= 20
         && d.age is int && d.age >= 2 && d.age <= 13
         && d.country is string && d.country.matches('^[A-Z]{2}$')
@@ -138,7 +138,7 @@ service cloud.firestore {
           && (request.resource.data.resetEpoch == resource.data.resetEpoch
               || (pinFresh(300) && request.resource.data.resetEpoch > resource.data.resetEpoch))
           && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(
-              ['name', 'nickname', 'age', 'country', 'state', 'favColor', 'avatar', 'ageBand', 'track'])
+              ['nameEnc', 'nickname', 'age', 'country', 'state', 'favColor', 'avatar', 'ageBand', 'track'])
               || pinFresh(300));
         allow delete: if isOwner(uid) && pinFresh(300);
       }

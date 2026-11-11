@@ -9,7 +9,7 @@ import {
 import {
   checkParentPin,
   clearParentPin,
-  hasConfiguredPin,
+  refreshPinConfigured,
   saveParentPin,
 } from './PinModal.js';
 import { Mascot } from '../../ui/Mascot.js';
@@ -25,10 +25,12 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) => {
-  const [step, setStep] = useState<'provider' | 'setpin' | 'verifypin'>(() => {
-    if (!user) return 'provider';
-    return hasConfiguredPin(user.uid) ? 'verifypin' : 'setpin';
-  });
+  const [step, setStep] = useState<'provider' | 'checking' | 'setpin' | 'verifypin'>(
+    user ? 'checking' : 'provider',
+  );
+  // True after "Forgot PIN": the parent signs in again with a provider and then
+  // chooses a new PIN instead of being asked for the old one.
+  const [resetting, setResetting] = useState(false);
   const [activeUser, setActiveUser] = useState<AuthParentUser | null>(user);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
@@ -38,18 +40,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
-  const [resettingHint, setResettingHint] = useState(false);
+
+  const chooseStepFor = React.useCallback(async (uid: string, forceNewPin: boolean) => {
+    if (forceNewPin) {
+      setStep('setpin');
+      return;
+    }
+    setStep('checking');
+    try {
+      setStep((await refreshPinConfigured(uid)) ? 'verifypin' : 'setpin');
+    } catch {
+      setError('Cannot reach the server. Check your connection and try again.');
+      setStep('provider');
+    }
+  }, []);
 
   React.useEffect(() => {
     setActiveUser(user);
     if (!user) {
       setStep('provider');
-    } else if (hasConfiguredPin(user.uid)) {
-      setStep('verifypin');
     } else {
-      setStep('setpin');
+      void chooseStepFor(user.uid, false);
     }
-  }, [user]);
+  }, [user, chooseStepFor]);
 
   const handleProviderAuth = async (fn: () => Promise<AuthParentUser>) => {
     setError('');
@@ -58,11 +71,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
     try {
       const signedIn = await fn();
       setActiveUser(signedIn);
-      if (hasConfiguredPin(signedIn.uid)) {
-        setStep('verifypin');
-      } else {
-        setStep('setpin');
-      }
+      await chooseStepFor(signedIn.uid, resetting);
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code === 'auth/popup-closed-by-user') {
@@ -94,11 +103,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
         return;
       }
       setActiveUser(res.user);
-      if (hasConfiguredPin(res.user.uid)) {
-        setStep('verifypin');
-      } else {
-        setStep('setpin');
-      }
+      await chooseStepFor(res.user.uid, resetting);
     } catch (err) {
       setError((err as Error)?.message || 'Email sign-in failed.');
     } finally {
@@ -119,6 +124,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
     setBusy(true);
     try {
       await saveParentPin(activeUser.uid, entered);
+      setResetting(false);
       onUnlocked(activeUser);
     } catch (err) {
       setError((err as Error)?.message || 'Failed to save PIN');
@@ -153,9 +159,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
     if (activeUser) {
       clearParentPin(activeUser.uid);
     }
+    setResetting(true);
     setPin('');
     setError('');
-    setResettingHint(true);
     setStep('provider');
   };
 
@@ -183,9 +189,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
         <h1 className="login-title">Kiyuv Learning</h1>
         <p className="login-sub">A happy place to learn and play</p>
 
+        {step === 'checking' && <p className="sub">Checking your account…</p>}
+
         {step === 'provider' && (
           <div className="login-body">
-            {resettingHint && <p className="login-hint">Sign in again to choose a new PIN.</p>}
+            {resetting && <p className="login-hint">Sign in again to choose a new PIN.</p>}
 
             <button
               type="button"

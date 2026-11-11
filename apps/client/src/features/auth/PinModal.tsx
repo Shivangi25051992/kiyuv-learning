@@ -9,29 +9,25 @@ import {
 import {
   callSetParentPinServer,
   callVerifyParentPinServer,
+  fetchPinConfigured,
 } from '../../lib/firebase/index.js';
 
-const PIN_HASH_KEY_PREFIX = 'kiyuv_pinHash:';
 const PIN_VERIFIED_AT_PREFIX = 'kiyuv_pinAt:';
 
-export async function hashPinLocally(uid: string, pin: string): Promise<string> {
-  const data = new TextEncoder().encode(`${uid}:${pin}:kiyuv-v3`);
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const digest = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(digest))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-  }
-  let hash = 2166136261;
-  for (const byte of data) {
-    hash ^= byte;
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(16);
+// The server is the only place a PIN is stored or checked. Nothing derived from
+// the PIN (no hash, no digest) is ever kept on this device.
+const pinConfiguredCache = new Map<string, boolean>();
+
+/** Asks the server whether this parent has a PIN, and remembers the answer. */
+export async function refreshPinConfigured(uid: string): Promise<boolean> {
+  const configured = await fetchPinConfigured(uid);
+  pinConfiguredCache.set(uid, configured);
+  return configured;
 }
 
+/** Last answer from `refreshPinConfigured` (false until it has been called). */
 export function hasConfiguredPin(uid: string): boolean {
-  return Boolean(localStorage.getItem(`${PIN_HASH_KEY_PREFIX}${uid}`));
+  return pinConfiguredCache.get(uid) === true;
 }
 
 export async function saveParentPin(uid: string, pin: string): Promise<void> {
@@ -41,12 +37,25 @@ export async function saveParentPin(uid: string, pin: string): Promise<void> {
   }
   try {
     await callSetParentPinServer(pin);
-  } catch {
-    // Graceful fallback when Cloud Functions are not yet deployed in dev
+  } catch (err) {
+    throw new Error(friendlyPinServiceError(err));
   }
-  const digest = await hashPinLocally(uid, pin);
-  localStorage.setItem(`${PIN_HASH_KEY_PREFIX}${uid}`, digest);
+  pinConfiguredCache.set(uid, true);
   recordPinVerifiedNow(uid);
+}
+
+function friendlyPinServiceError(err: unknown): string {
+  const code = (err as { code?: string })?.code ?? '';
+  if (code.includes('unavailable') || code.includes('not-found') || code.includes('internal')) {
+    return 'Cannot reach the PIN service right now. Check your connection and try again.';
+  }
+  if (code.includes('unauthenticated')) {
+    return 'Please sign in again.';
+  }
+  if (code.includes('failed-precondition') || code.includes('permission-denied')) {
+    return (err as Error).message || 'Please sign in again with your provider, then retry.';
+  }
+  return 'Something went wrong. Please try again.';
 }
 
 export async function checkParentPin(
@@ -59,33 +68,24 @@ export async function checkParentPin(
       recordPinVerifiedNow(uid);
       return { ok: true };
     }
-    if (
-      serverRes.lockedUntilMs ||
-      serverRes.requiresProviderSignIn ||
-      typeof serverRes.remainingAttempts === 'number'
-    ) {
-      return {
-        ok: false,
-        message: serverRes.message || 'Incorrect PIN. Please try again.',
-      };
-    }
-  } catch {
-    // Fallback to local SHA-256 digest when Cloud Functions are not yet deployed
+    return {
+      ok: false,
+      message: serverRes.message || 'Incorrect PIN. Please try again.',
+    };
+  } catch (err) {
+    // Fail closed: when the server cannot be reached the device stays locked.
+    return { ok: false, message: friendlyPinServiceError(err) };
   }
-
-  const expected = localStorage.getItem(`${PIN_HASH_KEY_PREFIX}${uid}`);
-  if (!expected) return { ok: false, message: 'No PIN configured yet.' };
-  const actual = await hashPinLocally(uid, pin);
-  if (actual === expected) {
-    recordPinVerifiedNow(uid);
-    return { ok: true };
-  }
-  return { ok: false, message: 'Incorrect PIN. Please try again.' };
 }
 
 export function clearParentPin(uid: string): void {
-  localStorage.removeItem(`${PIN_HASH_KEY_PREFIX}${uid}`);
   sessionStorage.removeItem(`${PIN_VERIFIED_AT_PREFIX}${uid}`);
+  // Remove any PIN hash left behind by older builds of the app.
+  try {
+    localStorage.removeItem(`kiyuv_pinHash:${uid}`);
+  } catch {
+    // storage unavailable
+  }
 }
 
 export function recordPinVerifiedNow(uid: string): void {
