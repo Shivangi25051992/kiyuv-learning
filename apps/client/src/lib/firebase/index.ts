@@ -588,3 +588,145 @@ export async function resetCloudKidsProgressBatch(
 
   await batch.commit();
 }
+
+// ---------------------------------------------------------------------------
+// Family groups. Every change goes through a Cloud Function that needs a PIN
+// entered in the last 5 minutes. Reads come straight from Firestore.
+// ---------------------------------------------------------------------------
+
+export interface MyGroup {
+  groupId: string;
+  name: string;
+  role: 'owner' | 'member';
+}
+
+export interface BoardEntry {
+  entryId: string;
+  boardName: string;
+  avatar: string;
+  favColor: string;
+  weekKey: string;
+  weekStars: number;
+}
+
+export interface GroupBoard {
+  groupId: string;
+  name: string;
+  ownerUid: string;
+  memberCount: number;
+  timezone: string;
+  entries: BoardEntry[];
+}
+
+export interface GroupMemberInfo {
+  uid: string;
+  role: 'owner' | 'member';
+  /** kidId -> what that child is called on the board. */
+  shared: Record<string, { entryId: string; boardName: string }>;
+}
+
+export interface GroupJoinRequest {
+  uid: string;
+  children: Record<string, { boardName: string; avatar: string; favColor: string }>;
+}
+
+const asRecord = (v: unknown): Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+const asString = (v: unknown): string => (typeof v === 'string' ? v : '');
+const asNumber = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+export async function callGroupFunction<T = { ok: true }>(
+  name: string,
+  data: Record<string, unknown>,
+): Promise<T> {
+  const { functions } = ensureFirebase();
+  const res = await httpsCallable<Record<string, unknown>, T>(functions, name)(data);
+  return res.data;
+}
+
+export async function fetchMyGroups(uid: string): Promise<MyGroup[]> {
+  const { db } = ensureFirebase();
+  const snap = await getDocs(collection(db, 'users', uid, 'groups'));
+  return snap.docs
+    .map((d) => ({
+      groupId: d.id,
+      name: asString(d.data()['name']),
+      role: d.data()['role'] === 'owner' ? ('owner' as const) : ('member' as const),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** One read for the group and one for its board. */
+export async function fetchGroupBoard(groupId: string): Promise<GroupBoard | null> {
+  const { db } = ensureFirebase();
+  const [groupSnap, boardSnap] = await Promise.all([
+    getDoc(doc(db, 'groups', groupId)),
+    getDoc(doc(db, 'groups', groupId, 'board', 'current')),
+  ]);
+  if (!groupSnap.exists()) return null;
+  const g = groupSnap.data();
+  const raw = asRecord(boardSnap.data()?.['entries']);
+  const entries: BoardEntry[] = Object.entries(raw).map(([entryId, value]) => {
+    const e = asRecord(value);
+    return {
+      entryId,
+      boardName: asString(e['boardName']),
+      avatar: asString(e['avatar']),
+      favColor: asString(e['favColor']),
+      weekKey: asString(e['weekKey']),
+      weekStars: asNumber(e['weekStars']),
+    };
+  });
+  return {
+    groupId,
+    name: asString(g['name']),
+    ownerUid: asString(g['ownerUid']),
+    memberCount: asNumber(g['memberCount']),
+    timezone: asString(g['timezone']),
+    entries,
+  };
+}
+
+function parseMember(uid: string, data: Record<string, unknown>): GroupMemberInfo {
+  const shared: GroupMemberInfo['shared'] = {};
+  for (const [kidId, value] of Object.entries(asRecord(data['shared']))) {
+    const e = asRecord(value);
+    shared[kidId] = { entryId: asString(e['entryId']), boardName: asString(e['boardName']) };
+  }
+  return { uid, role: data['role'] === 'owner' ? 'owner' : 'member', shared };
+}
+
+export async function fetchMyMembership(
+  groupId: string,
+  uid: string,
+): Promise<GroupMemberInfo | null> {
+  const { db } = ensureFirebase();
+  const snap = await getDoc(doc(db, 'groups', groupId, 'members', uid));
+  return snap.exists() ? parseMember(uid, snap.data()) : null;
+}
+
+/** Owner only: every family in the group, and who is waiting to join. */
+export async function fetchGroupAdmin(
+  groupId: string,
+): Promise<{ members: GroupMemberInfo[]; requests: GroupJoinRequest[] }> {
+  const { db } = ensureFirebase();
+  const [members, requests] = await Promise.all([
+    getDocs(collection(db, 'groups', groupId, 'members')),
+    getDocs(collection(db, 'groups', groupId, 'requests')),
+  ]);
+  return {
+    members: members.docs.map((d) => parseMember(d.id, d.data())),
+    requests: requests.docs.map((d) => {
+      const children: GroupJoinRequest['children'] = {};
+      for (const [kidId, value] of Object.entries(asRecord(d.data()['children']))) {
+        const c = asRecord(value);
+        children[kidId] = {
+          boardName: asString(c['boardName']),
+          avatar: asString(c['avatar']),
+          favColor: asString(c['favColor']),
+        };
+      }
+      return { uid: d.id, children };
+    }),
+  };
+}

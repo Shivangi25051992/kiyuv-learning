@@ -40,6 +40,7 @@ import { MusicControl } from '../ui/MusicControl.js';
 import {
   IconBook,
   IconGame,
+  IconGroup,
   IconLogout,
   IconParent,
   IconSoundOff,
@@ -60,9 +61,11 @@ import { CurriculumView } from '../features/play/CurriculumView.js';
 import { TopicRunner } from '../features/play/TopicRunner.js';
 import { ProfilePicker } from '../features/profiles/ProfilePicker.js';
 import { LeaderboardView } from '../features/progress/LeaderboardView.js';
+import { GroupsView } from '../features/groups/GroupsView.js';
+import { clearJoinCode, readJoinCode } from '../features/groups/joinLink.js';
 
 type ScreenMode = 'picker' | 'onboarding' | 'app';
-type AppTab = 'curriculum' | 'games' | 'leader';
+type AppTab = 'curriculum' | 'games' | 'leader' | 'groups';
 
 export const App: React.FC = () => {
   const [authUser, setAuthUser] = useState<AuthParentUser | null>(null);
@@ -75,6 +78,8 @@ export const App: React.FC = () => {
   const [screenMode, setScreenMode] = useState<ScreenMode>('picker');
   const [editingProfile, setEditingProfile] = useState<KidProfile | null>(null);
   const [activeTab, setActiveTab] = useState<AppTab>('curriculum');
+  // A code from a join link (/join#CODE), kept until the parent has used it.
+  const [joinCode, setJoinCode] = useState<string | null>(() => readJoinCode());
   const [currentTopicId, setCurrentTopicId] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState<boolean>(() => isSoundEnabled());
   const [legacyCandidates, setLegacyCandidates] = useState<LegacyImportCandidate[]>([]);
@@ -245,6 +250,14 @@ export const App: React.FC = () => {
 
   const activeProfile =
     profiles.find((p) => p.kidId === activeKidId) ?? profiles[0] ?? null;
+
+  // Someone opened a join link: once they are in the app, take them to Groups.
+  useEffect(() => {
+    if (joinCode && unlocked && screenMode === 'app') {
+      setCurrentTopicId(null);
+      setActiveTab('groups');
+    }
+  }, [joinCode, unlocked, screenMode]);
 
   // Apply active child's favourite colour theme CSS variables
   useEffect(() => {
@@ -539,6 +552,17 @@ export const App: React.FC = () => {
                 onUpdateProfile={handleUpdateActiveProfileProgress}
                 onExitToMap={() => setCurrentTopicId(null)}
               />
+            ) : activeTab === 'groups' ? (
+              <GroupsView
+                uid={authUser.uid}
+                profiles={profiles}
+                requirePin={requireRecentParentPin}
+                initialCode={joinCode}
+                onCodeHandled={() => {
+                  clearJoinCode();
+                  setJoinCode(null);
+                }}
+              />
             ) : activeTab === 'leader' ? (
               <LeaderboardView
                 profiles={profiles}
@@ -582,6 +606,18 @@ export const App: React.FC = () => {
               >
                 <IconGame size={26} />
                 <span>Play</span>
+              </button>
+              <button
+                type="button"
+                className={activeTab === 'groups' ? 'active' : ''}
+                aria-current={activeTab === 'groups' ? 'page' : undefined}
+                onClick={() => {
+                  setCurrentTopicId(null);
+                  setActiveTab('groups');
+                }}
+              >
+                <IconGroup size={26} />
+                <span>Groups</span>
               </button>
               <button
                 type="button"
