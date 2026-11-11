@@ -2515,16 +2515,6 @@ select.text-input {
 /* ==========================================================================
    Family groups
    ========================================================================== */
-.tabbar {
-  width: min(96vw, 520px);
-}
-@media (max-width: 400px) {
-  .tabbar button {
-    font-size: 13px;
-    padding: var(--s2) 2px;
-  }
-}
-
 .field-error {
   margin-top: var(--s2);
   padding: var(--s2) var(--s3);
@@ -2765,4 +2755,34 @@ select.text-input {
   color: var(--muted);
   font-size: 15px;
   margin: 0;
+}
+
+.board-choices {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  margin-bottom: var(--s4);
+}
+.board-choice {
+  min-height: 48px;
+  padding: 0 var(--s4);
+  border-radius: 999px;
+  border: var(--edge) solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 17px;
+}
+.board-choice.active {
+  background: var(--kid-primary);
+  border-color: var(--kid-primary);
+  color: #fff;
+}
+.trophies-groups {
+  display: grid;
+  gap: var(--s3);
+  justify-items: center;
+  margin-top: var(--s5);
+  padding-bottom: 120px;
 }

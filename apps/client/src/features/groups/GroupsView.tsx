@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { isGroupNameAllowed, type KidProfile } from '@kiyuv/shared';
 import { callGroupFunction, fetchMyGroups, type MyGroup } from '../../lib/firebase/index.js';
+import { IconBack } from '../../ui/Icons.js';
 import { Mascot } from '../../ui/Mascot.js';
 import { GroupDetail } from './GroupDetail.js';
 import { JoinGroupForm } from './JoinGroupForm.js';
@@ -14,6 +15,8 @@ interface GroupsViewProps {
   /** A code from a join link, if the parent opened one. */
   initialCode: string | null;
   onCodeHandled: () => void;
+  /** Leave Manage groups and go back to Trophies. */
+  onExit: () => void;
 }
 
 type View =
@@ -28,6 +31,7 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
   requirePin,
   initialCode,
   onCodeHandled,
+  onExit,
 }) => {
   const [view, setView] = useState<View>(initialCode ? { kind: 'join' } : { kind: 'home' });
   const [groups, setGroups] = useState<MyGroup[] | null>(null);
@@ -86,7 +90,12 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
 
   return (
     <div className="groups">
-      <h1 className="groups-title">Groups</h1>
+      <div className="groups-head">
+        <button type="button" className="secondary-btn small" onClick={onExit}>
+          <IconBack size={18} /> Back to Trophies
+        </button>
+      </div>
+      <h1 className="groups-title">Manage groups</h1>
       <p className="groups-lead">Play along with friends and family. Each week the stars start again.</p>
 
       {loadError && (

@@ -40,7 +40,6 @@ import { MusicControl } from '../ui/MusicControl.js';
 import {
   IconBook,
   IconGame,
-  IconGroup,
   IconLogout,
   IconParent,
   IconSoundOff,
@@ -60,7 +59,7 @@ import { ParentAreaModal } from '../features/parent/ParentAreaModal.js';
 import { CurriculumView } from '../features/play/CurriculumView.js';
 import { TopicRunner } from '../features/play/TopicRunner.js';
 import { ProfilePicker } from '../features/profiles/ProfilePicker.js';
-import { LeaderboardView } from '../features/progress/LeaderboardView.js';
+import { TrophiesView } from '../features/progress/TrophiesView.js';
 import { GroupsView } from '../features/groups/GroupsView.js';
 import { clearJoinCode, readJoinCode } from '../features/groups/joinLink.js';
 
@@ -557,6 +556,7 @@ export const App: React.FC = () => {
                 uid={authUser.uid}
                 profiles={profiles}
                 requirePin={requireRecentParentPin}
+                onExit={() => setActiveTab('leader')}
                 initialCode={joinCode}
                 onCodeHandled={() => {
                   clearJoinCode();
@@ -564,9 +564,12 @@ export const App: React.FC = () => {
                 }}
               />
             ) : activeTab === 'leader' ? (
-              <LeaderboardView
+              <TrophiesView
+                uid={authUser.uid}
                 profiles={profiles}
+                requirePin={requireRecentParentPin}
                 onOpenParentReset={() => requireRecentParentPin(() => setShowParentArea(true))}
+                onManageGroups={() => setActiveTab('groups')}
               />
             ) : (
               <CurriculumView
@@ -609,20 +612,8 @@ export const App: React.FC = () => {
               </button>
               <button
                 type="button"
-                className={activeTab === 'groups' ? 'active' : ''}
-                aria-current={activeTab === 'groups' ? 'page' : undefined}
-                onClick={() => {
-                  setCurrentTopicId(null);
-                  setActiveTab('groups');
-                }}
-              >
-                <IconGroup size={26} />
-                <span>Groups</span>
-              </button>
-              <button
-                type="button"
-                className={activeTab === 'leader' ? 'active' : ''}
-                aria-current={activeTab === 'leader' ? 'page' : undefined}
+                className={activeTab === 'leader' || activeTab === 'groups' ? 'active' : ''}
+                aria-current={activeTab === 'leader' || activeTab === 'groups' ? 'page' : undefined}
                 onClick={() => {
                   setCurrentTopicId(null);
                   setActiveTab('leader');
