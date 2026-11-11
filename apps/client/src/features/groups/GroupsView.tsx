@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { isGroupNameAllowed, type KidProfile } from '@kiyuv/shared';
-import { callGroupFunction, fetchMyGroups, type MyGroup } from '../../lib/firebase/index.js';
+import {
+  callGroupFunction,
+  fetchGroupStatus,
+  fetchMyGroups,
+  type GroupStatus,
+  type MyGroup,
+} from '../../lib/firebase/index.js';
 import { Mascot } from '../../ui/Mascot.js';
 import { GroupDetail } from './GroupDetail.js';
 import { JoinGroupForm } from './JoinGroupForm.js';
@@ -32,11 +38,22 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
   const [view, setView] = useState<View>(initialCode ? { kind: 'join' } : { kind: 'home' });
   const [groups, setGroups] = useState<MyGroup[] | null>(null);
   const [loadError, setLoadError] = useState('');
+  const [status, setStatus] = useState<Record<string, GroupStatus>>({});
 
   const reload = useCallback(async () => {
     try {
-      setGroups(await fetchMyGroups(uid));
+      const mine = await fetchMyGroups(uid);
+      setGroups(mine);
       setLoadError('');
+      // Member counts and waiting requests are a nicety: a failure here is not an error.
+      const results = await Promise.allSettled(
+        mine.map((g) => fetchGroupStatus(g.groupId, g.role === 'owner')),
+      );
+      const next: Record<string, GroupStatus> = {};
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') next[mine[i]!.groupId] = r.value;
+      });
+      setStatus(next);
     } catch {
       setLoadError('Could not load your groups. Check your connection and try again.');
     }
@@ -114,7 +131,14 @@ export const GroupsView: React.FC<GroupsViewProps> = ({
                 <span className="group-card-name">{g.name}</span>
                 <span className="group-card-role">
                   {g.role === 'owner' ? 'You run this group' : 'Member'}
+                  {status[g.groupId] &&
+                    ` · ${status[g.groupId]!.memberCount} ${status[g.groupId]!.memberCount === 1 ? 'family' : 'families'}`}
                 </span>
+                {status[g.groupId] && status[g.groupId]!.waiting > 0 && (
+                  <span className="group-card-waiting">
+                    {status[g.groupId]!.waiting} waiting to join
+                  </span>
+                )}
               </button>
             </li>
           ))}

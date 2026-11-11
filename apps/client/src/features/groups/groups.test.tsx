@@ -7,11 +7,13 @@ const h = vi.hoisted(() => ({
   calls: [] as Array<{ name: string; data: Record<string, unknown> }>,
   groups: [] as Array<{ groupId: string; name: string; role: 'owner' | 'member' }>,
   board: null as null | Record<string, unknown>,
+  waiting: 0,
 }));
 
 vi.mock('../../lib/firebase/index.js', () => ({
   fetchMyGroups: vi.fn(async () => h.groups),
   fetchGroupBoard: vi.fn(async () => h.board),
+  fetchGroupStatus: vi.fn(async () => ({ memberCount: 3, waiting: h.waiting })),
   fetchMyMembership: vi.fn(async () => ({ uid: 'u1', role: 'member', shared: {} })),
   fetchGroupAdmin: vi.fn(async () => ({ members: [], requests: [] })),
   callGroupFunction: vi.fn(async (name: string, data: Record<string, unknown>) => {
@@ -23,6 +25,7 @@ vi.mock('../../lib/firebase/index.js', () => ({
 }));
 
 import { GroupsView } from './GroupsView.js';
+import { TrophiesView } from '../progress/TrophiesView.js';
 import { clearJoinCode, readJoinCode } from './joinLink.js';
 
 const kid = (over: Partial<KidProfile>): KidProfile => ({
@@ -38,6 +41,7 @@ beforeEach(() => {
   h.calls.length = 0;
   h.groups = [];
   h.board = null;
+  h.waiting = 0;
   sessionStorage.clear();
 });
 afterEach(() => cleanup());
@@ -51,11 +55,19 @@ describe('Groups tab', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
+  it('shows how many families a group has, and how many are waiting for its owner', async () => {
+    h.groups = [{ groupId: 'g1', name: 'Sunrise Club', role: 'owner' }];
+    h.waiting = 2;
+    render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} />);
+    expect(await screen.findByText(/3 families/)).toBeTruthy();
+    expect(await screen.findByText('2 waiting to join')).toBeTruthy();
+  });
+
   it('lists the groups a family is in', async () => {
     h.groups = [{ groupId: 'g1', name: 'Sunrise Club', role: 'owner' }];
     render(<GroupsView uid="u1" profiles={[kid({})]} requirePin={requirePin} initialCode={null} onCodeHandled={() => {}} />);
     expect(await screen.findByRole('button', { name: /Sunrise Club/ })).toBeTruthy();
-    expect(screen.getByText('You run this group')).toBeTruthy();
+    expect(screen.getByText(/You run this group/)).toBeTruthy();
   });
 
   it('will not create a group with a rude or too short name', async () => {
@@ -139,5 +151,52 @@ describe('join links', () => {
 
   it('ignores a malformed code', () => {
     expect(readJoinCode({ pathname: '/join', hash: '#nope' })).toBeNull();
+  });
+});
+
+describe('Trophies with group boards', () => {
+  const week = () => import('@kiyuv/shared').then((m) => m.weekKey(Date.now(), 'Asia/Kolkata'));
+  const family = [kid({ nickname: 'Ari', stars: 7 })];
+
+  const renderTrophies = (onManage = () => {}) =>
+    render(
+      <TrophiesView uid="u1" profiles={family} requirePin={requirePin} onOpenParentReset={() => {}} onOpenGroups={onManage} />,
+    );
+
+  it('shows only the family board, and a Play with friends button, when there are no groups', async () => {
+    const manage = vi.fn();
+    renderTrophies(manage);
+    expect(await screen.findByRole('heading', { name: /Family Leaderboard/ })).toBeTruthy();
+    expect(screen.queryByRole('group', { name: 'Choose a leaderboard' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Play with friends/ }));
+    expect(manage).toHaveBeenCalled();
+  });
+
+  it('adds a choice for each group and switches to that weekly board', async () => {
+    h.groups = [{ groupId: 'g1', name: 'Sunrise Club', role: 'member' }];
+    const w = await week();
+    h.board = {
+      groupId: 'g1', name: 'Sunrise Club', ownerUid: 'boss', memberCount: 2, timezone: 'Asia/Kolkata',
+      entries: [{ entryId: 'e1', boardName: 'Brave Otter', avatar: '🦦', favColor: 'blue', weekKey: w, weekStars: 4 }],
+    };
+    renderTrophies();
+    const familyChoice = await screen.findByRole('button', { name: 'My family' });
+    expect(familyChoice.getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Sunrise Club' }));
+    expect(await screen.findByText('Brave Otter')).toBeTruthy();
+    expect(screen.getByText('⭐ 4')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: /Family Leaderboard/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Open Groups/ })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'My family' }));
+    expect(await screen.findByRole('heading', { name: /Family Leaderboard/ })).toBeTruthy();
+  });
+
+  it('keeps the family board working when the groups cannot be loaded', async () => {
+    const mod = await import('../../lib/firebase/index.js');
+    vi.mocked(mod.fetchMyGroups).mockRejectedValueOnce(new Error('offline'));
+    renderTrophies();
+    expect(await screen.findByRole('heading', { name: /Family Leaderboard/ })).toBeTruthy();
   });
 });

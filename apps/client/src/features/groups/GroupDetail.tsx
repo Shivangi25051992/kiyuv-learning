@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FAV_COLOR_THEMES, visibleWeekStars, weekKey, type KidProfile } from '@kiyuv/shared';
+import React, { useCallback, useEffect, useState } from 'react';
+import type { KidProfile } from '@kiyuv/shared';
 import {
   callGroupFunction,
   fetchGroupAdmin,
@@ -16,6 +16,7 @@ import {
   shareChoiceIsValid,
   type ShareChoice,
 } from './ChildSharePicker.js';
+import { BoardList } from './BoardList.js';
 import { OwnerPanel } from './OwnerPanel.js';
 import { useGroupAction } from './useGroupAction.js';
 
@@ -74,14 +75,6 @@ export const GroupDetail: React.FC<GroupDetailProps> = ({
   useEffect(() => {
     void load();
   }, [load]);
-
-  const ranked = useMemo(() => {
-    if (!data) return [];
-    const week = weekKey(Date.now(), data.board.timezone);
-    return data.board.entries
-      .map((e) => ({ ...e, stars: visibleWeekStars(e, week) }))
-      .sort((a, b) => b.stars - a.stars || a.boardName.localeCompare(b.boardName));
-  }, [data]);
 
   if (gone || loadError) {
     return (
@@ -157,60 +150,14 @@ export const GroupDetail: React.FC<GroupDetailProps> = ({
         <h2 className="groups-sub" id="board-heading">
           This week
         </h2>
-        {ranked.length === 0 ? (
-          <p className="groups-lead">No children are on the board yet. Share a child below to start.</p>
-        ) : (
-          <ol className="board-list">
-            {ranked.map((e, i) => {
-              const theme = FAV_COLOR_THEMES[e.favColor as keyof typeof FAV_COLOR_THEMES] ?? FAV_COLOR_THEMES.blue;
-              const isMine = mine.has(e.entryId);
-              return (
-                <li
-                  key={e.entryId}
-                  className={`board-row ${isMine ? 'mine' : ''}`}
-                  style={{ borderColor: theme.accent, background: theme.bgLight }}
-                >
-                  <span className="board-rank">{i === 0 && e.stars > 0 ? '👑' : `#${i + 1}`}</span>
-                  <span className="board-avatar" aria-hidden="true">
-                    {e.avatar}
-                  </span>
-                  <span className="board-name" style={{ color: theme.hex }}>
-                    {e.boardName}
-                    {isMine && <span className="board-you"> (yours)</span>}
-                  </span>
-                  <span className="board-stars">⭐ {e.stars}</span>
-                  {!isMine && (
-                    <span className="board-actions">
-                      <button
-                        type="button"
-                        className="link-btn"
-                        onClick={() => {
-                          if (window.confirm('Report this name to the group owner?')) {
-                            act('reportEntry', { entryId: e.entryId }, 'Thank you. We will look at it.');
-                          }
-                        }}
-                      >
-                        Report
-                      </button>
-                      {isOwner && (
-                        <button
-                          type="button"
-                          className="link-btn"
-                          onClick={() => act('hideEntry', { entryId: e.entryId }, 'Hidden from the board.')}
-                        >
-                          Hide
-                        </button>
-                      )}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        <p className="field-hint">
-          Stars come from each child's app and are not checked, so this board is just for fun.
-        </p>
+        <BoardList
+          board={board}
+          mineEntryIds={mine}
+          isOwner={isOwner}
+          disabled={busy}
+          onReport={(entryId) => act('reportEntry', { entryId }, 'Thank you. We will look at it.')}
+          onHide={(entryId) => act('hideEntry', { entryId }, 'Hidden from the board.')}
+        />
       </section>
 
       <section aria-labelledby="mine-heading">
