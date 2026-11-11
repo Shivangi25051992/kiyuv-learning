@@ -2870,3 +2870,233 @@ select.text-input {
 .ask-parent p {
   margin: 0;
 }
+
+/* Drawn pictures in place of plain emoji */
+.pic {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.14em;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Game feel: livelier answers, mascot, progress, streak, topics, balloons
+   ========================================================================== */
+
+/* 1. Answer buttons spring when pressed; the right answer glows */
+.op,
+.kiki-obj-btn,
+.color-btn {
+  transition:
+    transform 0.18s var(--ease-bounce),
+    box-shadow 0.18s var(--ease-out);
+}
+.op:hover:not(:disabled),
+.kiki-obj-btn:hover:not(:disabled) {
+  transform: translateY(-4px) rotate(-1deg) scale(1.03);
+}
+.op.correct,
+.kiki-obj-btn.correct,
+.color-btn.correct {
+  animation:
+    correct-pop 0.55s var(--ease-bounce),
+    glow-ring 1s ease-out 0.1s 2;
+}
+@keyframes glow-ring {
+  0% {
+    box-shadow: 0 6px 0 var(--green), 0 0 0 0 rgb(61 220 151 / 0.7);
+  }
+  100% {
+    box-shadow: 0 6px 0 var(--green), 0 0 0 22px rgb(61 220 151 / 0);
+  }
+}
+.op.wrong,
+.kiki-obj-btn.wrong,
+.color-btn.wrong {
+  animation: shake 0.45s ease;
+}
+.pic {
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.18));
+}
+.count-item .pic,
+.hero-emoji .pic {
+  animation: bob 2.6s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 120ms);
+}
+
+/* 2. Mascot: a happy hop on a right answer, a puzzled head-tilt on a wrong one */
+.game .mascot-cheer .mascot-bob {
+  animation: mascot-hop 0.6s var(--ease-bounce) 2;
+}
+.game .mascot-oops .mascot-bob {
+  animation: mascot-tilt 0.9s ease-in-out 1;
+}
+@keyframes mascot-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  30% {
+    transform: translateY(6px) scale(1.08, 0.9);
+  }
+  60% {
+    transform: translateY(-26px) scale(0.95, 1.08);
+  }
+}
+@keyframes mascot-tilt {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30% {
+    transform: rotate(-12deg) translateY(4px);
+  }
+  65% {
+    transform: rotate(8deg);
+  }
+}
+
+/* 3. Progress path: a gold star lights up for each question done */
+.progress-dots {
+  gap: 6px;
+}
+.pdot {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 0;
+  background: #d9deef;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.pdot.done {
+  background: #ffc933;
+  animation: star-light 0.6s var(--ease-bounce);
+}
+.pdot.current {
+  background: var(--run-color, var(--kid-primary));
+  transform: scale(1.3);
+  animation: current-pulse 1.4s ease-in-out infinite;
+}
+@keyframes star-light {
+  0% {
+    transform: scale(0.4) rotate(-40deg);
+    filter: brightness(1.8);
+  }
+  60% {
+    transform: scale(1.5) rotate(10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    filter: none;
+  }
+}
+@keyframes current-pulse {
+  0%,
+  100% {
+    transform: scale(1.25);
+  }
+  50% {
+    transform: scale(1.45);
+  }
+}
+
+/* 4. Streak flame grows and flickers */
+.streak-pill svg {
+  transform-origin: 50% 90%;
+}
+.streak-pill.streak-3 svg {
+  animation: flame 0.9s ease-in-out infinite;
+  transform: scale(1.2);
+}
+.streak-pill.streak-5 svg {
+  animation: flame 0.55s ease-in-out infinite;
+  transform: scale(1.5);
+  filter: drop-shadow(0 0 6px #ff9f43);
+}
+.streak-pill.streak-5 {
+  box-shadow: 0 0 0 3px rgb(255 159 67 / 0.35);
+}
+@keyframes flame {
+  0%,
+  100% {
+    transform: scale(1.2) rotate(-4deg);
+  }
+  50% {
+    transform: scale(1.4) rotate(4deg);
+  }
+}
+
+/* 5. Star counter: sparkle while it counts up */
+.star-count.bump,
+.score-pill .bump {
+  display: inline-block;
+  min-width: 1ch;
+}
+
+/* 6. Topic cards drift gently; a topic in progress says Continue */
+.topic-chip {
+  position: relative;
+  animation: card-float 5s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -0.35s);
+}
+.topic-chip:hover,
+.topic-chip:active {
+  animation-play-state: paused;
+}
+@keyframes card-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.topic-resume {
+  position: absolute;
+  top: -9px;
+  right: 8px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #ff7a1a;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  box-shadow: 0 2px 0 #c75a07;
+  animation: bump 1.8s ease-in-out infinite;
+}
+
+/* 7. Balloons at the end of a round */
+.balloon {
+  position: fixed;
+  z-index: 205;
+  bottom: -90px;
+  font-size: 56px;
+  pointer-events: none;
+  filter: hue-rotate(var(--balloon-hue, 0deg));
+  animation: balloon-up 4s ease-in forwards;
+}
+@keyframes balloon-up {
+  0% {
+    transform: translate(0, 0) rotate(-6deg);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(var(--balloon-sway, 0px), -55vh) rotate(6deg);
+  }
+  100% {
+    transform: translate(0, -125vh) rotate(-4deg);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .topic-chip,
+  .count-item .pic,
+  .hero-emoji .pic {
+    animation: none;
+  }
+}

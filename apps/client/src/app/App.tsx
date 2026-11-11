@@ -38,6 +38,7 @@ import {
   markDeviceUnlocked,
 } from '../features/auth/deviceUnlock.js';
 import { clearView, loadView, saveView, type AppTab } from './viewState.js';
+import { CountUp } from '../ui/CountUp.js';
 import { loadRound } from '../features/play/roundState.js';
 import { Mascot } from '../ui/Mascot.js';
 import { MusicControl } from '../ui/MusicControl.js';
@@ -474,7 +475,7 @@ export const App: React.FC = () => {
           <div className="star-counter" role="img" aria-label={`${activeProfile.stars} stars`}>
             <IconStar size={20} />
             <span key={activeProfile.stars} className="star-count bump">
-              {activeProfile.stars}
+              <CountUp value={activeProfile.stars} />
             </span>
           </div>
         )}
@@ -621,6 +622,7 @@ export const App: React.FC = () => {
             ) : (
               <CurriculumView
                 profile={activeProfile}
+                roundKey={`${authUser.uid}:${activeProfile.kidId}`}
                 mode={activeTab === 'games' ? 'play' : 'learn'}
                 onStartTopic={(tid) => {
                   sfx.select();
