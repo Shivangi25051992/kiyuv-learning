@@ -145,12 +145,11 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     return () => setMusicScene('home');
   }, []);
 
-  // The youngest learners cannot read yet, so their questions are read aloud.
+  // The voice speaks only when the child presses "Listen". A new question, or leaving
+  // the round, stops whatever is being read.
   useEffect(() => {
-    if (finished || !isEarly) return;
-    speak(speechFor(question));
     return () => stopSpeaking();
-  }, [question, finished, isEarly]);
+  }, [question, finished]);
 
   // Keyboard and screen-reader users land on each new question.
   useEffect(() => {
@@ -269,7 +268,6 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
             earnedStars === 1 ? 'star' : 'stars'
           }.`,
         );
-        if (isEarly) speak(praise);
       }
 
       setTimeout(() => {
@@ -301,7 +299,6 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         setLocked(true);
         setHelpStage('blocked');
         setFeedbackMsg('You used all your tries. Please ask a parent to help!');
-        if (isEarly) speak('Please ask a grown up to help!');
         return;
       }
       const left = maxTries > 0 ? maxTries - triesUsed : 0;
@@ -314,7 +311,6 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
             ? 'Oopsie! Try again!'
             : 'Not quite. Try again!') + leftText,
       );
-      if (isEarly) speak('Try again!');
       // The message stays until the next answer, so it can be read at any pace.
       setTimeout(() => {
         setSelectedOption(null);
