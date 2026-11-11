@@ -181,3 +181,12 @@ export const IconMusicOff: React.FC<IconProps> = (p) => (
     <path d="M3 3l18 18" />
   </Svg>
 );
+
+export const IconGroup: React.FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <circle cx="9" cy="8" r="3.2" />
+    <path d="M3.5 19c.4-3.2 2.6-5 5.5-5s5.1 1.8 5.5 5" />
+    <circle cx="17" cy="9.5" r="2.5" />
+    <path d="M16.5 14.2c2.4.1 3.8 1.6 4.2 4.3" />
+  </Svg>
+);
