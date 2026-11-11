@@ -170,7 +170,7 @@ const CreateGroupForm: React.FC<CreateGroupFormProps> = ({ requirePin, onCreated
         onChange={(e) => setName(e.target.value)}
       />
       <p className="field-hint">
-        3 to 30 letters or numbers. Keep it kind, and do not use a child's real name.
+        3 to 30 English letters or numbers. Keep it kind, and do not use a child's real name.
       </p>
       {error && (
         <p className="field-error" role="alert">

@@ -72,7 +72,7 @@ export const ChildSharePicker: React.FC<ChildSharePickerProps> = ({
               </div>
               {invalid && (
                 <p id={`${inputId}-err`} className="field-error">
-                  Use 2 to 20 letters or numbers. Please keep it kind and not a real name.
+                  Use 2 to 20 English letters or numbers. Please keep it kind, and not a real name.
                 </p>
               )}
             </div>

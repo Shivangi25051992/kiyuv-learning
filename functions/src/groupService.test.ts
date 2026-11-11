@@ -172,16 +172,40 @@ describe('joining', () => {
 
   it('revokes a code after 20 failed tries on it', async () => {
     const g = await newGroup();
+    const { code } = await createInvite(ctx, 'owner', { groupId: g, days: 3, uses: 1 });
+    seedKid('first');
+    await requestJoin(ctx, 'first', { code, children: [{ kidId: 'k1', boardName: 'Brave Otter' }] }); // uses it up
+    seedKid('late');
+    for (let i = 0; i < 20; i++) {
+      store.put('groupMeta/late', { groupCount: 0 });
+      await errCode(requestJoin(ctx, 'late', { code, children: [{ kidId: 'k1', boardName: 'Happy Fox' }] }));
+    }
+    const hash = [...store.data.keys()].find((k) => k.startsWith('groupInvites/'))!;
+    expect(store.read(hash)).toMatchObject({ revoked: true });
+  });
+
+  it('a banned family cannot burn or revoke a code that belongs to others', async () => {
+    const g = await newGroup();
     const { code } = await createInvite(ctx, 'owner', { groupId: g, days: 3, uses: 5 });
-    // Make the code fail for other reasons: a banned family keeps hitting it.
     store.put(`groups/${g}/banned/pest`, { at: 1 });
     seedKid('pest');
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 25; i++) {
       store.put('groupMeta/pest', { groupCount: 0 });
       await errCode(requestJoin(ctx, 'pest', { code, children: [{ kidId: 'k1', boardName: 'Brave Otter' }] }));
     }
     const hash = [...store.data.keys()].find((k) => k.startsWith('groupInvites/'))!;
-    expect(store.read(hash)).toMatchObject({ revoked: true });
+    expect(store.read(hash)).toMatchObject({ revoked: false, failures: 0, uses: 0 });
+  });
+
+  it('asking again before an answer replaces the request and costs no extra use', async () => {
+    const g = await newGroup();
+    const { code } = await createInvite(ctx, 'owner', { groupId: g, days: 3, uses: 2 });
+    seedKid('mia');
+    await requestJoin(ctx, 'mia', { code, children: [{ kidId: 'k1', boardName: 'Brave Otter' }] });
+    await requestJoin(ctx, 'mia', { code, children: [{ kidId: 'k1', boardName: 'Happy Fox' }] });
+    const hash = [...store.data.keys()].find((k) => k.startsWith('groupInvites/'))!;
+    expect(store.read(hash)).toMatchObject({ uses: 1 });
+    expect(JSON.stringify(store.read(`groups/${g}/requests/mia`))).toContain('Happy Fox');
   });
 
   it('counts uses and refuses once an invite is used up', async () => {
@@ -417,5 +441,62 @@ describe('clean-up job', () => {
     expect(result).toEqual({ invites: 1, groups: 1 });
     expect(store.read(`groups/${idle}`)).toBeUndefined();
     expect(store.read(`groups/${g}`)).toBeDefined();
+  });
+});
+
+describe('what a client can read', () => {
+  it('keeps child ids, the week base and write times out of every readable document', async () => {
+    const g = await newGroup();
+    await join(g, 'mia');
+    await join(g, 'noah', 'Happy Fox', false);
+    const readable = [...store.data.entries()].filter(
+      ([path]) =>
+        path.startsWith(`groups/${g}`) &&
+        !path.includes('/privateMembers/') && !path.includes('/privateRequests/') && !path.includes('/banned/'),
+    );
+    expect(readable.length).toBeGreaterThan(4);
+    for (const [path, doc] of readable) {
+      const text = JSON.stringify(doc);
+      for (const secret of ['childId', 'weekBase', 'sourceUpdatedAt', CHILD('m'), CHILD('n')]) {
+        expect(text, `${path} holds ${secret}`).not.toContain(secret);
+      }
+    }
+    expect(JSON.stringify(store.read(`groups/${g}/privateMembers/mia`))).toContain('weekBase');
+  });
+
+  it('only avatars from the app list reach a board', async () => {
+    const g = await newGroup();
+    seedKid('mia', 'k1', { avatar: 'Call 98765 now' });
+    const { code } = await createInvite(ctx, 'owner', { groupId: g, days: 3, uses: 5 });
+    await requestJoin(ctx, 'mia', { code, children: [{ kidId: 'k1', boardName: 'Brave Otter' }] });
+    await approveMember(ctx, 'owner', g, 'mia');
+    expect(Object.values(entries(g))[0]!['avatar']).toBe('🧒');
+  });
+
+  it('refuses a board name written with look-alike letters from another script', async () => {
+    const g = await newGroup();
+    seedKid('mia');
+    const { code } = await createInvite(ctx, 'owner', { groupId: g, days: 3, uses: 5 });
+    // "ѕһіt" uses Cyrillic look-alikes.
+    expect(await errCode(requestJoin(ctx, 'mia', { code, children: [{ kidId: 'k1', boardName: 'ѕһіt' }] }))).toMatch(/invalid-argument/);
+  });
+
+  it('refuses to approve a banned family, and a report about an entry that is not there', async () => {
+    const g = await newGroup();
+    await join(g, 'mia');
+    await join(g, 'noah', 'Happy Fox', false);
+    store.put(`groups/${g}/banned/noah`, { at: 1 });
+    expect(await errCode(approveMember(ctx, 'owner', g, 'noah'))).toMatch(/permission-denied/);
+    const { reportEntry } = await import('./groupService.js');
+    expect(await errCode(reportEntry(ctx, 'mia', g, 'deadbeefdeadbeef'))).toMatch(/not-found/);
+  });
+
+  it('the daily job finishes closing a group that was left half closed', async () => {
+    const g = await newGroup();
+    await join(g, 'mia');
+    store.put(`groups/${g}`, { ...group(g), status: 'closed' });
+    await cleanupGroups(ctx);
+    expect([...store.data.keys()].filter((k) => k.startsWith('groups/'))).toEqual([]);
+    expect(kid('mia')['sharedIn']).toEqual([]);
   });
 });

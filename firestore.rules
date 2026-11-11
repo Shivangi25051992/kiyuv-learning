@@ -41,8 +41,9 @@ rules_version = '2';
 // Family groups (see docs/GROUPS_FEATURE.md). Clients never write under these paths.
 //   groups/{gid}                    readable by members only
 //   groups/{gid}/board/current      readable by members only (the leaderboard)
-//   groups/{gid}/members/{uid}      readable by the group owner, and by that member (get)
+//   groups/{gid}/members/{uid}      readable by the group owner, and by that member (get); board names only
 //   groups/{gid}/requests/{uid}     readable by the group owner (board names and avatars only)
+//   groups/{gid}/privateMembers, privateRequests  server-only bookkeeping (no rule matches, so denied)
 //   users/{uid}/groups/{gid}        the owner's list of "my groups"
 //   groupInvites, groupMeta, banned  closed to clients (no rule matches, so they are denied)
 //

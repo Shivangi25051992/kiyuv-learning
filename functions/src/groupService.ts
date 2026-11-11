@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto';
 import {
+  AVATAR_PRESETS,
   INVITE_ALPHABET,
   INVITE_CODE_LENGTH,
   MAX_FAMILIES_PER_GROUP,
@@ -18,6 +19,11 @@ import { DELETE_FIELD, type Doc, type Store, type Tx } from './groupStore.js';
  * Family groups (see docs/GROUPS_FEATURE.md). Every function here is a plain
  * async function over a `Store`, so the rules are unit tested without Firebase.
  * Callers check the parent's PIN before calling these.
+ *
+ * Privacy split: documents a client may read (members, requests, board) hold
+ * only board names, avatars, colours and weekly stars. Everything used for
+ * bookkeeping (child ids, the week's starting total, write times) lives in the
+ * `privateMembers` and `privateRequests` collections, which no client can read.
  */
 
 export type ServiceErrorCode =
@@ -55,6 +61,7 @@ const INACTIVE_GROUP_MS = 365 * DAY_MS;
 const ACTIVITY_TOUCH_MS = DAY_MS;
 const DELETE_CHUNK = 200;
 const BAD_CODE = 'That code did not work. Check it, or ask for a new one.';
+const DEFAULT_AVATAR = '🧒';
 
 // ------------------------------------------------------------------- shapes
 
@@ -64,15 +71,25 @@ interface SharedEntry {
   childId: string;
   weekKey: string;
   weekBase: number;
+  sourceUpdatedAt: number;
+}
+
+/** A member as the server sees it: the public document joined with the private one. */
+interface MemberRec {
+  doc: Doc;
+  shared: Record<string, SharedEntry>;
 }
 
 const P = {
   group: (g: string) => `groups/${g}`,
   member: (g: string, u: string) => `groups/${g}/members/${u}`,
   members: (g: string) => `groups/${g}/members`,
+  privMember: (g: string, u: string) => `groups/${g}/privateMembers/${u}`,
   board: (g: string) => `groups/${g}/board/current`,
   request: (g: string, u: string) => `groups/${g}/requests/${u}`,
   requests: (g: string) => `groups/${g}/requests`,
+  privRequest: (g: string, u: string) => `groups/${g}/privateRequests/${u}`,
+  privRequests: (g: string) => `groups/${g}/privateRequests`,
   banned: (g: string, u: string) => `groups/${g}/banned/${u}`,
   bannedAll: (g: string) => `groups/${g}/banned`,
   invite: (hash: string) => `groupInvites/${hash}`,
@@ -88,19 +105,50 @@ const rec = (v: unknown): Record<string, unknown> =>
 const list = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
 
-function sharedOf(member: Doc): Record<string, SharedEntry> {
-  const out: Record<string, SharedEntry> = {};
-  for (const [kidId, raw] of Object.entries(rec(member['shared']))) {
-    const e = rec(raw);
-    out[kidId] = {
-      entryId: str(e['entryId']),
-      boardName: str(e['boardName']),
-      childId: str(e['childId']),
-      weekKey: str(e['weekKey']),
-      weekBase: num(e['weekBase']),
+/** Only avatars from the app's own list reach a board, whatever the client wrote. */
+export function safeAvatar(v: unknown): string {
+  const value = str(v);
+  return (AVATAR_PRESETS as readonly string[]).includes(value) ? value : DEFAULT_AVATAR;
+}
+
+function publicShared(shared: Record<string, SharedEntry>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(shared).map(([k, e]) => [k, { entryId: e.entryId, boardName: e.boardName }]),
+  );
+}
+
+function privateShared(shared: Record<string, SharedEntry>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(shared).map(([k, e]) => [
+      k,
+      { childId: e.childId, weekKey: e.weekKey, weekBase: e.weekBase, sourceUpdatedAt: e.sourceUpdatedAt },
+    ]),
+  );
+}
+
+async function readMember(tx: Tx, groupId: string, uid: string): Promise<MemberRec | null> {
+  const doc = await tx.get(P.member(groupId, uid));
+  if (!doc) return null;
+  const priv = rec((await tx.get(P.privMember(groupId, uid)))?.['shared']);
+  const shared: Record<string, SharedEntry> = {};
+  for (const [kidId, raw] of Object.entries(rec(doc['shared']))) {
+    const pub = rec(raw);
+    const p = rec(priv[kidId]);
+    shared[kidId] = {
+      entryId: str(pub['entryId']),
+      boardName: str(pub['boardName']),
+      childId: str(p['childId']),
+      weekKey: str(p['weekKey']),
+      weekBase: num(p['weekBase']),
+      sourceUpdatedAt: num(p['sourceUpdatedAt']),
     };
   }
-  return out;
+  return { doc, shared };
+}
+
+function writeShared(tx: Tx, groupId: string, uid: string, shared: Record<string, SharedEntry>): void {
+  tx.update(P.member(groupId, uid), { shared: publicShared(shared) });
+  tx.set(P.privMember(groupId, uid), { shared: privateShared(shared) });
 }
 
 export function hashInviteCode(code: string, key: string): string {
@@ -143,22 +191,23 @@ function requireBoardNames(children: readonly SharedChildInput[]): void {
 
 interface MemberBundle {
   uid: string;
-  member: Doc;
+  member: MemberRec;
   kids: Record<string, Doc | null>;
   meta: Doc | null;
 }
 
-async function readBundle(tx: Tx, uid: string, member: Doc): Promise<MemberBundle> {
+async function readBundle(tx: Tx, uid: string, member: MemberRec): Promise<MemberBundle> {
   const kids: Record<string, Doc | null> = {};
-  for (const kidId of Object.keys(sharedOf(member))) kids[kidId] = await tx.get(P.kid(uid, kidId));
+  for (const kidId of Object.keys(member.shared)) kids[kidId] = await tx.get(P.kid(uid, kidId));
   return { uid, member, kids, meta: await tx.get(P.meta(uid)) };
 }
 
 /** Writes that take one family out of a group. Call only after all reads are done. */
 function planRemoval(tx: Tx, groupId: string, b: MemberBundle, opts: { keepBoard: boolean }): void {
   tx.delete(P.member(groupId, b.uid));
+  tx.delete(P.privMember(groupId, b.uid));
   tx.delete(P.myGroup(b.uid, groupId));
-  for (const [kidId, entry] of Object.entries(sharedOf(b.member))) {
+  for (const [kidId, entry] of Object.entries(b.member.shared)) {
     if (!opts.keepBoard) tx.update(P.board(groupId), { [`entries.${entry.entryId}`]: DELETE_FIELD });
     const kid = b.kids[kidId];
     if (kid) tx.update(P.kid(b.uid, kidId), { sharedIn: list(kid['sharedIn']).filter((g) => g !== groupId) });
@@ -169,6 +218,16 @@ function planRemoval(tx: Tx, groupId: string, b: MemberBundle, opts: { keepBoard
 function touchMeta(tx: Tx, uid: string, meta: Doc | null, patch: Doc): void {
   if (meta) tx.update(P.meta(uid), patch);
   else tx.set(P.meta(uid), { groupCount: 0, ...patch });
+}
+
+function boardEntry(boardName: string, kid: Doc, week: string): Doc {
+  return {
+    boardName,
+    avatar: safeAvatar(kid['avatar']),
+    favColor: str(kid['favColor']),
+    weekKey: week,
+    weekStars: 0,
+  };
 }
 
 // ------------------------------------------------------------ create group
@@ -199,6 +258,7 @@ export async function createGroup(
       activityAt: now,
     });
     tx.set(P.member(groupId, uid), { role: 'owner', joinedAt: now, shared: {} });
+    tx.set(P.privMember(groupId, uid), { shared: {} });
     tx.set(P.board(groupId), { entries: {} });
     tx.set(P.myGroup(uid, groupId), { name: input.name, role: 'owner' });
     touchMeta(tx, uid, meta, { groupCount: count + 1 });
@@ -283,7 +343,8 @@ export async function requestJoin(
         joinWindowStart: inWindow ? windowStart : now,
         joinFails: inWindow ? num(meta?.['joinFails']) + 1 : 1,
       });
-      if (invite) {
+      // A banned family must not be able to burn a code that belongs to others.
+      if (invite && banned === null) {
         const failures = num(invite['failures']) + 1;
         tx.update(P.invite(hash), {
           failures,
@@ -294,6 +355,7 @@ export async function requestJoin(
     }
 
     const member = await tx.get(P.member(groupId, uid));
+    const earlier = await tx.get(P.request(groupId, uid));
     const kids: Array<Doc | null> = [];
     for (const c of input.children) kids.push(await tx.get(P.kid(uid, c.kidId)));
     if (member) return { kind: 'already-member' };
@@ -301,6 +363,7 @@ export async function requestJoin(
     if (num(meta?.['groupCount']) >= MAX_GROUPS_PER_FAMILY) return { kind: 'too-many-groups' };
 
     const offered: Record<string, Doc> = {};
+    const childIds: Record<string, Doc> = {};
     input.children.forEach((c, i) => {
       const kid = kids[i];
       if (!kid) throw new ServiceError('invalid-argument', 'One of the children was not found.');
@@ -309,10 +372,13 @@ export async function requestJoin(
         childId = ctx.randomHex(16);
         tx.update(P.kid(uid, c.kidId), { childId });
       }
-      offered[c.kidId] = { boardName: c.boardName, childId, avatar: str(kid['avatar']), favColor: str(kid['favColor']) };
+      offered[c.kidId] = { boardName: c.boardName, avatar: safeAvatar(kid['avatar']), favColor: str(kid['favColor']) };
+      childIds[c.kidId] = { childId };
     });
     tx.set(P.request(groupId, uid), { children: offered, requestedAt: now });
-    tx.update(P.invite(hash), { uses: num(invite['uses']) + 1 });
+    tx.set(P.privRequest(groupId, uid), { children: childIds });
+    // Asking again before the owner answers replaces the request and costs no extra use.
+    if (!earlier) tx.update(P.invite(hash), { uses: num(invite['uses']) + 1 });
     return { kind: 'ok', groupName: str(group['name']) };
   });
 
@@ -344,13 +410,16 @@ export async function approveMember(
     requireOwner(group, ownerUid);
     const request = await tx.get(P.request(groupId, targetUid));
     if (!request) throw new ServiceError('not-found', 'That request is no longer there.');
+    const privRequest = rec((await tx.get(P.privRequest(groupId, targetUid)))?.['children']);
     const existing = await tx.get(P.member(groupId, targetUid));
+    const banned = await tx.get(P.banned(groupId, targetUid));
     const meta = await tx.get(P.meta(targetUid));
     const offered = rec(request['children']);
     const kids: Record<string, Doc | null> = {};
     for (const kidId of Object.keys(offered)) kids[kidId] = await tx.get(P.kid(targetUid, kidId));
 
     if (existing) throw new ServiceError('already-exists', 'That family is already in the group.');
+    if (banned) throw new ServiceError('permission-denied', 'That family cannot join this group.');
     if (num(group['memberCount']) >= MAX_FAMILIES_PER_GROUP) {
       throw new ServiceError('failed-precondition', 'This group is full.');
     }
@@ -364,27 +433,22 @@ export async function approveMember(
     const shared: Record<string, SharedEntry> = {};
     for (const [kidId, raw] of Object.entries(offered)) {
       const kid = kids[kidId];
-      const want = rec(raw);
+      const childId = str(rec(privRequest[kidId])['childId']);
       // A child replaced since the request was made does not carry over.
-      if (!kid || str(kid['childId']) !== str(want['childId'])) continue;
+      if (!kid || !childId || str(kid['childId']) !== childId) continue;
       const entryId = ctx.randomHex(8);
-      shared[kidId] = {
-        entryId, boardName: str(want['boardName']), childId: str(want['childId']),
-        weekKey: week, weekBase: num(kid['stars']),
-      };
-      tx.update(P.board(groupId), {
-        [`entries.${entryId}`]: {
-          boardName: str(want['boardName']), avatar: str(kid['avatar']), favColor: str(kid['favColor']),
-          weekKey: week, weekStars: 0, sourceUpdatedAt: now,
-        },
-      });
+      const boardName = str(rec(raw)['boardName']);
+      shared[kidId] = { entryId, boardName, childId, weekKey: week, weekBase: num(kid['stars']), sourceUpdatedAt: now };
+      tx.update(P.board(groupId), { [`entries.${entryId}`]: boardEntry(boardName, kid, week) });
       tx.update(P.kid(targetUid, kidId), { sharedIn: [...list(kid['sharedIn']), groupId] });
     }
-    tx.set(P.member(groupId, targetUid), { role: 'member', joinedAt: now, shared });
+    tx.set(P.member(groupId, targetUid), { role: 'member', joinedAt: now, shared: publicShared(shared) });
+    tx.set(P.privMember(groupId, targetUid), { shared: privateShared(shared) });
     tx.set(P.myGroup(targetUid, groupId), { name: str(group['name']), role: 'member' });
     touchMeta(tx, targetUid, meta, { groupCount: groupCount + 1 });
     tx.update(P.group(groupId), { memberCount: num(group['memberCount']) + 1, activityAt: now });
     tx.delete(P.request(groupId, targetUid));
+    tx.delete(P.privRequest(groupId, targetUid));
   });
 }
 
@@ -398,6 +462,7 @@ export async function declineMember(
     const group = await mustGroup(tx, groupId);
     requireOwner(group, ownerUid);
     tx.delete(P.request(groupId, targetUid));
+    tx.delete(P.privRequest(groupId, targetUid));
     tx.set(P.banned(groupId, targetUid), { at: ctx.now() });
   });
 }
@@ -414,9 +479,9 @@ export async function setSharedChildren(
   await ctx.store.transact(async (tx) => {
     const group = await mustGroup(tx, groupId);
     requireActive(group);
-    const member = await tx.get(P.member(groupId, uid));
+    const member = await readMember(tx, groupId, uid);
     if (!member) throw new ServiceError('not-found', 'Group not found.');
-    const current = sharedOf(member);
+    const current = member.shared;
     const kidIds = new Set([...Object.keys(current), ...children.map((c) => c.kidId)]);
     const kids: Record<string, Doc | null> = {};
     for (const kidId of kidIds) kids[kidId] = await tx.get(P.kid(uid, kidId));
@@ -424,47 +489,40 @@ export async function setSharedChildren(
     const now = ctx.now();
     const week = weekKey(now, str(group['timezone']));
     const wanted = new Map(children.map((c) => [c.kidId, c.boardName]));
-    const memberPatch: Record<string, unknown> = {};
+    const next: Record<string, SharedEntry> = {};
 
     for (const [kidId, entry] of Object.entries(current)) {
       const kid = kids[kidId];
+      const boardName = wanted.get(kidId);
       const replaced = !kid || str(kid['childId']) !== entry.childId;
-      if (wanted.has(kidId) && !replaced) continue;
+      if (boardName !== undefined && !replaced) {
+        next[kidId] = { ...entry, boardName };
+        if (entry.boardName !== boardName) {
+          tx.update(P.board(groupId), { [`entries.${entry.entryId}.boardName`]: boardName });
+        }
+        continue;
+      }
       tx.update(P.board(groupId), { [`entries.${entry.entryId}`]: DELETE_FIELD });
-      memberPatch[`shared.${kidId}`] = DELETE_FIELD;
-      if (kid && !wanted.has(kidId)) {
+      if (kid && boardName === undefined) {
         tx.update(P.kid(uid, kidId), { sharedIn: list(kid['sharedIn']).filter((g) => g !== groupId) });
       }
     }
 
     for (const [kidId, boardName] of wanted) {
+      if (next[kidId]) continue;
       const kid = kids[kidId];
       if (!kid) throw new ServiceError('invalid-argument', 'One of the children was not found.');
-      const entry = current[kidId];
-      const kidChildId = str(kid['childId']);
-      if (entry && kidChildId === entry.childId) {
-        if (entry.boardName !== boardName) {
-          tx.update(P.board(groupId), { [`entries.${entry.entryId}.boardName`]: boardName });
-          memberPatch[`shared.${kidId}.boardName`] = boardName;
-        }
-        continue;
-      }
-      const childId = kidChildId || ctx.randomHex(16);
+      const childId = str(kid['childId']) || ctx.randomHex(16);
       const entryId = ctx.randomHex(8);
       const sharedIn = list(kid['sharedIn']);
       tx.update(P.kid(uid, kidId), {
         childId,
         sharedIn: sharedIn.includes(groupId) ? sharedIn : [...sharedIn, groupId],
       });
-      tx.update(P.board(groupId), {
-        [`entries.${entryId}`]: {
-          boardName, avatar: str(kid['avatar']), favColor: str(kid['favColor']),
-          weekKey: week, weekStars: 0, sourceUpdatedAt: now,
-        },
-      });
-      memberPatch[`shared.${kidId}`] = { entryId, boardName, childId, weekKey: week, weekBase: num(kid['stars']) };
+      tx.update(P.board(groupId), { [`entries.${entryId}`]: boardEntry(boardName, kid, week) });
+      next[kidId] = { entryId, boardName, childId, weekKey: week, weekBase: num(kid['stars']), sourceUpdatedAt: now };
     }
-    if (Object.keys(memberPatch).length > 0) tx.update(P.member(groupId, uid), memberPatch);
+    writeShared(tx, groupId, uid, next);
     tx.update(P.group(groupId), { activityAt: now });
   });
 }
@@ -472,7 +530,7 @@ export async function setSharedChildren(
 export async function leaveGroup(ctx: GroupContext, uid: string, groupId: string): Promise<void> {
   await ctx.store.transact(async (tx) => {
     const group = await mustGroup(tx, groupId);
-    const member = await tx.get(P.member(groupId, uid));
+    const member = await readMember(tx, groupId, uid);
     if (!member) throw new ServiceError('not-found', 'Group not found.');
     if (group['ownerUid'] === uid) {
       throw new ServiceError('failed-precondition', 'Pass ownership to another family, or close the group, before leaving.');
@@ -495,7 +553,7 @@ export async function removeMember(
   await ctx.store.transact(async (tx) => {
     const group = await mustGroup(tx, groupId);
     requireOwner(group, ownerUid);
-    const member = await tx.get(P.member(groupId, targetUid));
+    const member = await readMember(tx, groupId, targetUid);
     if (!member) throw new ServiceError('not-found', 'That family is not in the group.');
     const bundle = await readBundle(tx, targetUid, member);
     planRemoval(tx, groupId, bundle, { keepBoard: false });
@@ -515,18 +573,19 @@ export async function hideEntry(
   await ctx.store.transact(async (tx) => {
     const group = await mustGroup(tx, groupId);
     requireOwner(group, ownerUid);
-    const members: Array<[string, Doc]> = [];
+    const members: Array<[string, MemberRec]> = [];
     for (const id of memberIds) {
-      const m = await tx.get(P.member(groupId, id));
+      const m = await readMember(tx, groupId, id);
       if (m) members.push([id, m]);
     }
-    const hit = members.find(([, m]) => Object.values(sharedOf(m)).some((e) => e.entryId === entryId));
+    const hit = members.find(([, m]) => Object.values(m.shared).some((e) => e.entryId === entryId));
     if (!hit) throw new ServiceError('not-found', 'That entry is not on the board.');
     const [uid, member] = hit;
-    const kidId = Object.keys(sharedOf(member)).find((k) => sharedOf(member)[k]!.entryId === entryId)!;
+    const kidId = Object.keys(member.shared).find((k) => member.shared[k]!.entryId === entryId)!;
     const kid = await tx.get(P.kid(uid, kidId));
     tx.update(P.board(groupId), { [`entries.${entryId}`]: DELETE_FIELD });
     tx.update(P.member(groupId, uid), { [`shared.${kidId}`]: DELETE_FIELD });
+    tx.update(P.privMember(groupId, uid), { [`shared.${kidId}`]: DELETE_FIELD });
     if (kid) tx.update(P.kid(uid, kidId), { sharedIn: list(kid['sharedIn']).filter((g) => g !== groupId) });
   });
 }
@@ -584,30 +643,43 @@ async function deleteAll(ctx: GroupContext, paths: string[]): Promise<void> {
   }
 }
 
-/** Closes a group and removes everything in it. `ownerUid` null means the system (clean-up job). */
+/**
+ * Closes a group and removes everything in it. `ownerUid` null means the system.
+ * The group is marked closed first, which stops new families and requests, and
+ * is deleted last. If this stops half way, the daily job finishes it.
+ */
 export async function closeGroup(ctx: GroupContext, ownerUid: string | null, groupId: string): Promise<void> {
-  const memberIds = await ctx.store.ids(P.members(groupId));
   await ctx.store.transact(async (tx) => {
     const group = await mustGroup(tx, groupId);
     if (ownerUid !== null) requireOwner(group, ownerUid);
+    if (group['status'] !== 'closed') tx.update(P.group(groupId), { status: 'closed' });
+  });
+
+  // Pending requests, removed families and invites can be many, so they go in chunks.
+  const requestIds = await ctx.store.ids(P.requests(groupId));
+  const privRequestIds = await ctx.store.ids(P.privRequests(groupId));
+  const bannedIds = await ctx.store.ids(P.bannedAll(groupId));
+  const inviteHashes = await ctx.store.where('groupInvites', 'groupId', '==', groupId);
+  await deleteAll(ctx, [
+    ...requestIds.map((id) => P.request(groupId, id)),
+    ...privRequestIds.map((id) => P.privRequest(groupId, id)),
+    ...bannedIds.map((id) => P.banned(groupId, id)),
+    ...inviteHashes.map((h) => P.invite(h)),
+  ]);
+
+  const memberIds = await ctx.store.ids(P.members(groupId));
+  await ctx.store.transact(async (tx) => {
+    const group = await tx.get(P.group(groupId));
+    if (!group) return;
     const bundles: MemberBundle[] = [];
     for (const id of memberIds) {
-      const m = await tx.get(P.member(groupId, id));
+      const m = await readMember(tx, groupId, id);
       if (m) bundles.push(await readBundle(tx, id, m));
     }
     for (const b of bundles) planRemoval(tx, groupId, b, { keepBoard: true });
     tx.delete(P.board(groupId));
     tx.delete(P.group(groupId));
   });
-  // Pending requests, removed families and invites can be many, so they go in chunks.
-  const requestIds = await ctx.store.ids(P.requests(groupId));
-  const bannedIds = await ctx.store.ids(P.bannedAll(groupId));
-  const inviteHashes = await ctx.store.where('groupInvites', 'groupId', '==', groupId);
-  await deleteAll(ctx, [
-    ...requestIds.map((id) => P.request(groupId, id)),
-    ...bannedIds.map((id) => P.banned(groupId, id)),
-    ...inviteHashes.map((h) => P.invite(h)),
-  ]);
 }
 
 export async function reportEntry(
@@ -621,6 +693,8 @@ export async function reportEntry(
     await mustGroup(tx, groupId);
     const member = await tx.get(P.member(groupId, uid));
     if (!member) throw new ServiceError('not-found', 'Group not found.');
+    const board = await tx.get(P.board(groupId));
+    if (!rec(board?.['entries'])[entryId]) throw new ServiceError('not-found', 'That entry is not on the board.');
     // The reporter is not stored. The operator reads these from the console.
     tx.set(`reports/${reportId}`, { groupId, entryId, at: ctx.now() });
   });
@@ -643,35 +717,36 @@ export async function syncKidToGroups(ctx: GroupContext, change: KidChange): Pro
   for (const groupId of change.groupIds) {
     await ctx.store.transact(async (tx) => {
       const group = await tx.get(P.group(groupId));
-      const member = group ? await tx.get(P.member(groupId, change.uid)) : null;
+      const member = group ? await readMember(tx, groupId, change.uid) : null;
       const board = member ? await tx.get(P.board(groupId)) : null;
       if (!group || !member || !board) return;
-      const entry = sharedOf(member)[change.kidId];
+      const entry = member.shared[change.kidId];
       if (!entry || entry.childId !== change.after.childId) return;
       const current = rec(rec(board['entries'])[entry.entryId]);
       if (Object.keys(current).length === 0) return;
-      if (num(current['sourceUpdatedAt']) > change.writtenAtMs) return;
+      if (entry.sourceUpdatedAt > change.writtenAtMs) return;
 
       const week = weekKey(ctx.now(), str(group['timezone']));
+      const avatar = safeAvatar(change.after.avatar);
       const result = nextWeekly(
         { weekKey: entry.weekKey, weekBase: entry.weekBase },
         change.starsBefore, change.after.stars, week,
       );
       const unchanged =
         current['weekKey'] === week && num(current['weekStars']) === result.weekStars &&
-        current['avatar'] === change.after.avatar && current['favColor'] === change.after.favColor;
+        current['avatar'] === avatar && current['favColor'] === change.after.favColor;
       if (unchanged) return;
 
       tx.update(P.board(groupId), {
-        [`entries.${entry.entryId}.avatar`]: change.after.avatar,
+        [`entries.${entry.entryId}.avatar`]: avatar,
         [`entries.${entry.entryId}.favColor`]: change.after.favColor,
         [`entries.${entry.entryId}.weekKey`]: result.weekKey,
         [`entries.${entry.entryId}.weekStars`]: result.weekStars,
-        [`entries.${entry.entryId}.sourceUpdatedAt`]: change.writtenAtMs,
       });
-      tx.update(P.member(groupId, change.uid), {
+      tx.update(P.privMember(groupId, change.uid), {
         [`shared.${change.kidId}.weekKey`]: result.weekKey,
         [`shared.${change.kidId}.weekBase`]: result.weekBase,
+        [`shared.${change.kidId}.sourceUpdatedAt`]: change.writtenAtMs,
       });
       if (ctx.now() - num(group['activityAt']) > ACTIVITY_TOUCH_MS) {
         tx.update(P.group(groupId), { activityAt: ctx.now() });
@@ -691,23 +766,29 @@ export async function removeDeletedKid(
   for (const groupId of groupIds) {
     await ctx.store.transact(async (tx) => {
       const group = await tx.get(P.group(groupId));
-      const member = group ? await tx.get(P.member(groupId, uid)) : null;
-      const entry = member ? sharedOf(member)[kidId] : undefined;
+      const member = group ? await readMember(tx, groupId, uid) : null;
+      const entry = member?.shared[kidId];
       if (!member || !entry || (childId && entry.childId !== childId)) return;
       tx.update(P.board(groupId), { [`entries.${entry.entryId}`]: DELETE_FIELD });
       tx.update(P.member(groupId, uid), { [`shared.${kidId}`]: DELETE_FIELD });
+      tx.update(P.privMember(groupId, uid), { [`shared.${kidId}`]: DELETE_FIELD });
     });
   }
 }
 
 // ----------------------------------------------------------------- clean-up
 
-/** Daily job: forget old invites, and close groups nobody has used for 12 months. */
+/**
+ * Daily job: forget old invites, finish closing any group that was left half
+ * closed, and close groups nobody has used for 12 months.
+ */
 export async function cleanupGroups(ctx: GroupContext): Promise<{ invites: number; groups: number }> {
   const now = ctx.now();
   const oldInvites = await ctx.store.where('groupInvites', 'expiresAt', '<', now - 7 * DAY_MS);
   await deleteAll(ctx, oldInvites.map((h) => P.invite(h)));
   const idle = await ctx.store.where('groups', 'activityAt', '<', now - INACTIVE_GROUP_MS);
-  for (const groupId of idle) await closeGroup(ctx, null, groupId);
-  return { invites: oldInvites.length, groups: idle.length };
+  const halfClosed = await ctx.store.where('groups', 'status', '==', 'closed');
+  const toClose = [...new Set([...idle, ...halfClosed])];
+  for (const groupId of toClose) await closeGroup(ctx, null, groupId);
+  return { invites: oldInvites.length, groups: toClose.length };
 }

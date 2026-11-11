@@ -166,7 +166,8 @@ export function cleanDisplayName(input: string): string {
 
 function isSafeText(name: string, min: number, max: number): boolean {
   if (name.length < min || name.length > max) return false;
-  if (!/^[\p{L}\p{N} ]+$/u.test(name)) return false;
+  // Latin letters only: look-alike letters from other scripts could hide a rude word.
+  if (!/^[\p{Script=Latin}\p{N} ]+$/u.test(name)) return false;
   // Four or more digits could be a phone number or a house number.
   if ((name.match(/\p{N}/gu) ?? []).length >= 4) return false;
   const squashed = squash(name);

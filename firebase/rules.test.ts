@@ -355,6 +355,19 @@ describe('Firestore Security Rules (Phase 3: real PIN enforcement)', () => {
       await assertFails(setDoc(doc(parent('mia', 0), 'groupMeta/mia'), { groupCount: 0 }));
     });
 
+    it('keeps the private bookkeeping closed to every client, including the owner', async () => {
+      await seedGroups();
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), `groups/${G1}/privateMembers/mia`), { shared: {} });
+        await setDoc(doc(ctx.firestore(), `groups/${G1}/privateRequests/zed`), { children: {} });
+      });
+      for (const who of ['owner', 'mia', 'zoe']) {
+        await assertFails(getDoc(doc(parent(who), `groups/${G1}/privateMembers/mia`)));
+        await assertFails(getDoc(doc(parent(who), `groups/${G1}/privateRequests/zed`)));
+        await assertFails(getDocs(collection(parent(who), `groups/${G1}/privateMembers`)));
+      }
+    });
+
     it('lets a parent read their own group index, and never write it', async () => {
       await testEnv.withSecurityRulesDisabled(async (ctx) => {
         await setDoc(doc(ctx.firestore(), `users/mia/groups/${G1}`), { name: 'Sunrise', role: 'member' });

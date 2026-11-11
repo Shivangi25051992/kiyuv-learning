@@ -439,7 +439,7 @@ function toCloudKidPayload(uid: string, profile: KidProfile): Record<string, unk
 
 /** Makes sure the cached ciphertext for this child is known before a full overwrite. */
 async function ensureNameEncKnown(uid: string, kidId: string): Promise<void> {
-  if (nameEncCache.has(nameKey(uid, kidId))) return;
+  if (nameEncCache.has(nameKey(uid, kidId)) && childIdCache.has(nameKey(uid, kidId))) return;
   const { db } = ensureFirebase();
   const snap = await getDoc(doc(db, 'users', uid, 'kids', kidId));
   const enc = snap.exists() ? snap.data()['nameEnc'] : '';
