@@ -45,7 +45,7 @@ export function loadView(uid: string): SavedView | null {
       (TABS as readonly string[]).includes(v.tab)
     ) {
       const topicId =
-        typeof v.topicId === 'string' && /^[a-z0-9-]{1,40}$/.test(v.topicId) ? v.topicId : undefined;
+        typeof v.topicId === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v.topicId) ? v.topicId : undefined;
       return { mode: 'app', kidId: v.kidId as KidId, tab: v.tab as AppTab, ...(topicId ? { topicId } : {}) };
     }
     return null;
