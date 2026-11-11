@@ -3056,16 +3056,15 @@ select.text-input {
   }
 }
 .topic-resume {
-  position: absolute;
-  top: -9px;
-  right: 8px;
-  padding: 2px 9px;
+  justify-self: start;
+  padding: 2px 10px;
   border-radius: 999px;
   background: #ff7a1a;
   color: #fff;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 12px;
+  line-height: 1.4;
   box-shadow: 0 2px 0 #c75a07;
   animation: bump 1.8s ease-in-out infinite;
 }
