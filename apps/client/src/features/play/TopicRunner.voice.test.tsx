@@ -13,9 +13,9 @@ import { TopicRunner } from './TopicRunner.js';
 
 const kid = (track: 'early' | 'primary'): KidProfile => ({
   kidId: 'k1', name: '', nickname: 'Ari', age: 4, country: 'IN', state: '', favColor: 'blue',
-  avatar: '👦', ageBand: '3-4', track, stars: 0, streak: 0, bestStreak: 0,
+  avatar: '👦', ageBand: '2-4', track, stars: 0, streak: 0, bestStreak: 0,
   totalCorrect: 0, totalWrong: 0, badges: [], topics: {}, resetEpoch: 0,
-} as KidProfile);
+});
 
 afterEach(() => {
   cleanup();
