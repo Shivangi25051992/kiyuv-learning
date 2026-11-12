@@ -73,11 +73,11 @@ describe('levels on the topic list', () => {
   });
 });
 
-describe('bonus courses', () => {
-  it('shows bonus courses for the primary track and starts one', () => {
+describe('bonus courses button', () => {
+  it('opens the courses page from the Learn tab', () => {
     const onStart = vi.fn();
     render(<CurriculumView profile={kid()} onStartTopic={onStart} />);
-    fireEvent.click(screen.getByRole('button', { name: /Space Explorers/ }));
-    expect(onStart).toHaveBeenCalledWith('c-space');
+    fireEvent.click(screen.getByRole('button', { name: /Bonus courses/ }));
+    expect(onStart).toHaveBeenCalledWith('courses');
   });
 });

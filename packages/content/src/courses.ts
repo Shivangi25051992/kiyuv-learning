@@ -1,16 +1,11 @@
 import type { MultipleChoiceItem } from './banks.js';
+import type { Course } from './course-types.js';
+import { EARLY_COURSES } from './courses-early.js';
+import { SCIENCE_COURSES } from './courses-science.js';
+import { SKILLS_COURSES } from './courses-skills.js';
+import { WORLD_COURSES } from './courses-world.js';
 
-/**
- * Bonus courses: extra topics outside the 10 levels. They never gate a level.
- * Written by hand and read through before release; every answer must be a settled fact.
- */
-export interface Course {
-  id: string;
-  name: string;
-  emoji: string;
-  blurb: string;
-  items: readonly MultipleChoiceItem[];
-}
+export type { Course } from './course-types.js';
 
 const q = (question: string, a: string, opts: [string, string, string, string]): MultipleChoiceItem => ({
   q: question,
@@ -81,14 +76,34 @@ const EARTH: readonly MultipleChoiceItem[] = [
   q('What do we call frozen water?', 'Ice', ['Steam', 'Ice', 'Fog', 'Dew']),
 ];
 
+/** The first three primary courses, free for everyone. */
+const FREE_PRIMARY: readonly Course[] = [
+  { id: 'c-space', name: 'Space Explorers', emoji: '🚀', blurb: 'Planets, stars and astronauts', track: 'primary', group: 'Science', ages: 'Ages 7 to 12', free: true, items: SPACE },
+  { id: 'c-body', name: 'Amazing Body', emoji: '🧠', blurb: 'How your body works', track: 'primary', group: 'Science', ages: 'Ages 6 to 10', free: true, items: BODY },
+  { id: 'c-earth', name: 'Planet Earth', emoji: '🌍', blurb: 'Oceans, mountains and weather', track: 'primary', group: 'Science', ages: 'Ages 7 to 12', free: true, items: EARTH },
+];
+
+/** Every bonus course, little ones first. */
 export const COURSES: readonly Course[] = [
-  { id: 'c-space', name: 'Space Explorers', emoji: '🚀', blurb: 'Planets, stars and astronauts', items: SPACE },
-  { id: 'c-body', name: 'Amazing Body', emoji: '🧠', blurb: 'How your body works', items: BODY },
-  { id: 'c-earth', name: 'Planet Earth', emoji: '🌍', blurb: 'Oceans, mountains and weather', items: EARTH },
+  ...EARLY_COURSES,
+  ...FREE_PRIMARY,
+  ...SCIENCE_COURSES,
+  ...WORLD_COURSES,
+  ...SKILLS_COURSES,
 ];
 
 export const COURSE_BANKS: Record<string, readonly MultipleChoiceItem[]> = Object.fromEntries(
   COURSES.map((c) => [c.id, c.items]),
 );
 
+/** Special screen id for the bonus courses page. Not a course, never stored as progress. */
+export const COURSES_PAGE_ID = 'courses';
+
 export const isCourseId = (id: string): boolean => id in COURSE_BANKS;
+
+/** The courses a child on this track can see. */
+export const coursesForTrack = (track: Course['track']): Course[] => COURSES.filter((c) => c.track === track);
+
+/** How many courses are free on a track. The rest are premium. */
+export const freeCourseCount = (track: Course['track']): number =>
+  coursesForTrack(track).filter((c) => c.free).length;

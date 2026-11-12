@@ -167,6 +167,11 @@ export interface GeneratedQuestion {
   correctValue: string;
 }
 
+const PICTURE_ONLY = /^(?:\p{Extended_Pictographic}|‍|️)+$/u;
+
+/** True for an answer that is nothing but one or more emoji. */
+export const isPictureOnly = (text: string): boolean => PICTURE_ONLY.test(text);
+
 export function generateQuestionForTopic(topicId: string): GeneratedQuestion {
   // 1. Counting
   if (topicId === 'k-count5' || topicId === 'k-count10' || topicId === 'k-count20') {
@@ -419,11 +424,13 @@ export function generateQuestionForTopic(topicId: string): GeneratedQuestion {
   if (bank) {
     const item = pick(bank);
     const opts = shuffle(item.opts);
+    // Answers made only of pictures are shown as big picture buttons, for children who cannot read yet.
+    const pictureAnswers = opts.every(isPictureOnly);
     return {
       topicId,
       prompt: item.q,
       hint: item.hint,
-      options: opts.map((o) => ({ label: o, value: o })),
+      options: opts.map((o) => ({ label: o, value: o, ...(pictureAnswers ? { isLargeEmoji: true } : {}) })),
       correctValue: item.a,
     };
   }

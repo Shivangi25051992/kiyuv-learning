@@ -65,12 +65,18 @@ import { OnboardingForm } from '../features/onboarding/OnboardingForm.js';
 import { ParentAreaModal } from '../features/parent/ParentAreaModal.js';
 import { CurriculumView } from '../features/play/CurriculumView.js';
 import { TopicRunner } from '../features/play/TopicRunner.js';
+import { CoursesView } from '../features/play/CoursesView.js';
+import { COURSES_PAGE_ID, isCourseId } from '@kiyuv/content';
 import { ProfilePicker } from '../features/profiles/ProfilePicker.js';
 import { TrophiesView } from '../features/progress/TrophiesView.js';
 import { GroupsView } from '../features/groups/GroupsView.js';
 import { clearJoinCode, readJoinCode } from '../features/groups/joinLink.js';
 
 type ScreenMode = 'picker' | 'onboarding' | 'app';
+
+/** Where leaving a round goes: a bonus course returns to the course list, the rest to the topic list. */
+const backTarget = (current: string | null): string | null =>
+  current && isCourseId(current) ? COURSES_PAGE_ID : null;
 
 export const App: React.FC = () => {
   const [authUser, setAuthUser] = useState<AuthParentUser | null>(null);
@@ -186,7 +192,9 @@ export const App: React.FC = () => {
     }
   }, [authUser, unlocked, resuming, screenMode, activeKidId, activeTab, currentTopicId]);
 
-  useTopicBackButton(currentTopicId, () => setCurrentTopicId(null));
+  // Leaving a round returns to where it was started: a bonus course goes back to the course
+  // list, everything else to the topic list.
+  useTopicBackButton(currentTopicId, () => setCurrentTopicId((cur) => backTarget(cur)));
 
   // Subscribe to Firebase Auth state. After a refresh, a parent who unlocked within
   // the last 12 hours goes straight back in instead of seeing the PIN screen.
@@ -594,12 +602,21 @@ export const App: React.FC = () => {
             key={`${activeTab}-${currentTopicId ?? 'map'}`}
             id="main"
           >
-            {currentTopicId ? (
+            {currentTopicId === COURSES_PAGE_ID ? (
+              <CoursesView
+                profile={activeProfile}
+                onBack={() => setCurrentTopicId(null)}
+                onStart={(id) => {
+                  sfx.select();
+                  setCurrentTopicId(id);
+                }}
+              />
+            ) : currentTopicId ? (
               <TopicRunner
                 profile={activeProfile}
                 topicId={currentTopicId}
                 onUpdateProfile={handleUpdateActiveProfileProgress}
-                onExitToMap={() => setCurrentTopicId(null)}
+                onExitToMap={() => setCurrentTopicId(backTarget(currentTopicId))}
                 onPlayTopic={(tid) => {
                   sfx.select();
                   setCurrentTopicId(tid);
