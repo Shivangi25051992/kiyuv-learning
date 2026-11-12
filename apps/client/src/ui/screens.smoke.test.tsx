@@ -83,10 +83,10 @@ describe('redesigned screens render and respond', () => {
     expect(saved).toMatchObject({ nickname: 'Leo', age: 9, ageBand: '8-10', track: 'primary' });
   });
 
-  it('learn tab offers a next challenge and the play tab a surprise', () => {
+  it('learn tab offers a clear next step and the play tab a surprise', () => {
     const onStart = vi.fn();
     const { unmount } = render(<CurriculumView profile={kid()} onStartTopic={onStart} />);
-    fireEvent.click(screen.getByRole('button', { name: /Play next challenge/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Play$/ }));
     expect(onStart).toHaveBeenCalledTimes(1);
     unmount();
 
