@@ -1,0 +1,18 @@
+Sound recordings used in Play time. Trimmed to about 2.5 seconds, levelled and converted to mp3.
+
+Google Sound Library (https://developers.google.com/assistant/tools/sound-library), licence CC BY 4.0
+  dog (dog_barking), car (car_horn), bus (engine_bus), ship (ship_bell), heli (helicopter_by),
+  fire (emergency_siren_approaching), amb (ambulance_siren), tractor (tractor_background_noise)
+
+Wikimedia Commons (https://commons.wikimedia.org)
+  cow   "Single Cow Moo.ogg"                              CC BY-SA 4.0
+  cat   "Meow of a pleading cat.oga"                      Public domain
+  duck  "Pekin duck & mallard.ogg"                        CC BY-SA 4.0
+  pig   "Mudchute pig 1.ogg"                              CC BY-SA 3.0
+  sheep "Sheep bleat.ogg"                                 CC0
+  horse "Wiehern.ogg"                                     Public domain
+  lion  "Lion raring-sound1TamilNadu178.ogg"              Public domain
+  frog  "Frogs croak calling chorus at night.ogg"         CC BY-SA 4.0
+  train "Parovoz sound.ogg"                               Public domain
+
+Please check the author names on each Commons file page before a public launch.

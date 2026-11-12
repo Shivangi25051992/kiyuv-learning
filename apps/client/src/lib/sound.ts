@@ -285,6 +285,42 @@ function chosenVoice(): SpeechSynthesisVoice | null {
   return (saved ? voices.find((v) => v.name === saved) : undefined) ?? voices[0] ?? null;
 }
 
+let currentClip: HTMLAudioElement | null = null;
+
+/**
+ * Plays a real recording from /sounds (a cow, a fire engine ...) and then says the name.
+ * If the recording cannot play (offline for the first time, or the browser refuses), the
+ * voice says the fallback words instead, so a tap is never silent. Does nothing when sound is off.
+ */
+export function playClip(clip: string, name: string, fallback: string): void {
+  if (!soundEnabled) return;
+  if (typeof Audio === 'undefined') {
+    speak(fallback);
+    return;
+  }
+  try {
+    currentClip?.pause();
+    stopSpeaking();
+    const audio = new Audio(`/sounds/${clip}.mp3`);
+    audio.volume = 0.9;
+    currentClip = audio;
+    audio.onended = () => {
+      if (currentClip === audio) speak(name);
+    };
+    audio.onerror = () => {
+      if (currentClip === audio) speak(fallback);
+    };
+    const started = audio.play();
+    if (started) {
+      started.catch(() => {
+        if (currentClip === audio) speak(fallback);
+      });
+    }
+  } catch {
+    speak(fallback);
+  }
+}
+
 /** Speaks a short phrase slowly and softly. Does nothing when sound is off. */
 export function speak(text: string): void {
   if (!soundEnabled || !canSpeak() || !text.trim()) return;

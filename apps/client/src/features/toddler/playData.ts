@@ -13,17 +13,19 @@ export interface TapItem {
   say: string;
   /** What is shown after the tap. */
   caption: string;
+  /** A real recording in /sounds. Without one, the voice says the words. */
+  clip?: string;
 }
 
 export const VEHICLES: readonly TapItem[] = [
-  { key: 'car', emoji: '🚗', label: 'Car', say: 'Car! Beep beep!', caption: 'Car says beep beep!' },
-  { key: 'bus', emoji: '🚌', label: 'Bus', say: 'Bus! Beep beep!', caption: 'Bus says beep beep!' },
-  { key: 'train', emoji: '🚆', label: 'Train', say: 'Train! Choo choo!', caption: 'Train says choo choo!' },
-  { key: 'ship', emoji: '🚢', label: 'Boat', say: 'Boat! Toot toot!', caption: 'Boat says toot toot!' },
-  { key: 'heli', emoji: '🚁', label: 'Helicopter', say: 'Helicopter! Whirr whirr!', caption: 'Helicopter says whirr!' },
-  { key: 'fire', emoji: '🚒', label: 'Fire truck', say: 'Fire truck! Wee-oo wee-oo!', caption: 'Fire truck says wee-oo!' },
-  { key: 'amb', emoji: '🚑', label: 'Ambulance', say: 'Ambulance! Wee-oo wee-oo!', caption: 'Ambulance says wee-oo!' },
-  { key: 'tractor', emoji: '🚜', label: 'Tractor', say: 'Tractor! Putt putt!', caption: 'Tractor says putt putt!' },
+  { key: 'car', emoji: '🚗', label: 'Car', say: 'Car! Beep beep!', caption: 'Car says beep beep!', clip: 'car' },
+  { key: 'bus', emoji: '🚌', label: 'Bus', say: 'Bus! Beep beep!', caption: 'Bus says beep beep!', clip: 'bus' },
+  { key: 'train', emoji: '🚆', label: 'Train', say: 'Train! Choo choo!', caption: 'Train says choo choo!', clip: 'train' },
+  { key: 'ship', emoji: '🚢', label: 'Boat', say: 'Boat! Ding ding!', caption: 'Boat says ding ding!', clip: 'ship' },
+  { key: 'heli', emoji: '🚁', label: 'Helicopter', say: 'Helicopter! Whirr whirr!', caption: 'Helicopter says whirr!', clip: 'heli' },
+  { key: 'fire', emoji: '🚒', label: 'Fire truck', say: 'Fire truck! Wee-oo wee-oo!', caption: 'Fire truck says wee-oo!', clip: 'fire' },
+  { key: 'amb', emoji: '🚑', label: 'Ambulance', say: 'Ambulance! Wee-oo wee-oo!', caption: 'Ambulance says wee-oo!', clip: 'amb' },
+  { key: 'tractor', emoji: '🚜', label: 'Tractor', say: 'Tractor! Putt putt!', caption: 'Tractor says putt putt!', clip: 'tractor' },
   { key: 'bike', emoji: '🚲', label: 'Bicycle', say: 'Bicycle! Ring ring!', caption: 'Bicycle says ring ring!' },
 ];
 

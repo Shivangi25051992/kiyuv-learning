@@ -11,6 +11,7 @@ vi.mock('../../lib/sound.js', async (importOriginal) => {
     ...actual,
     initAudio: () => {},
     speak: (t: string) => spoken.push(t),
+    playClip: (_clip: string, _name: string, fallback: string) => spoken.push(fallback),
     playNote: (i: number) => notes.push(i),
     sfx: new Proxy({}, { get: () => () => {} }),
   };
