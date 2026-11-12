@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { TopicProgress, Track } from '@kiyuv/shared';
 import { CURRICULUM } from './curriculum.js';
 import {
+  challengePool,
+  isChallengeUnlocked,
   isCleared,
   isTopicUnlocked,
   LEVEL_COUNT,
@@ -79,5 +81,15 @@ describe('clearing and unlocking', () => {
     const s = levelStatus('early', all);
     expect(s.allCleared).toBe(true);
     expect(s.current).toBe(LEVEL_COUNT);
+  });
+});
+
+describe('challenge', () => {
+  it('opens after enough topics are cleared and draws only from cleared topics', () => {
+    const two = { 'y-add-e': tp(8), 'y-sub-e': tp(7) };
+    expect(isChallengeUnlocked('primary', two)).toBe(false);
+    const three = { ...two, 'y-mul-e': tp(9), 'y-syn': tp(5) };
+    expect(isChallengeUnlocked('primary', three)).toBe(true);
+    expect(challengePool('primary', three).sort()).toEqual(['y-add-e', 'y-mul-e', 'y-sub-e']);
   });
 });

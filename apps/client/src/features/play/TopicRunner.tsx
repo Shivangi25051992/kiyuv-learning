@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BADGES,
+  CHALLENGE_ID,
+  CHALLENGE_WIN,
+  challengePool,
   evaluateEarnedBadgeIds,
   generateQuestionForTopic,
   levelStatus,
@@ -75,14 +78,21 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   const askedRef = useRef<string[]>(restored?.asked ?? []);
   // Where the child stood when this round began, so the end screen can say "Level cleared!"
   const levelAtStart = useRef(levelStatus(profile.track, profile.topics));
+  const isChallenge = topicId === CHALLENGE_ID;
+  // A challenge mixes questions from every topic the child has cleared.
+  const poolRef = useRef(isChallenge ? challengePool(profile.track, profile.topics) : []);
+  const draw = useCallback(
+    () => generateQuestionForTopic(isChallenge ? pick(poolRef.current) : topicId),
+    [isChallenge, topicId],
+  );
   const freshQuestion = useCallback((): GeneratedQuestion => {
-    let q = generateQuestionForTopic(topicId);
+    let q = draw();
     for (let i = 0; i < MAX_REDRAWS && askedRef.current.includes(questionKey(q)); i++) {
-      q = generateQuestionForTopic(topicId);
+      q = draw();
     }
     askedRef.current = [...askedRef.current, questionKey(q)];
     return q;
-  }, [topicId]);
+  }, [draw]);
   const [question, setQuestion] = useState<GeneratedQuestion>(() => restored?.question ?? freshQuestion());
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [optionState, setOptionState] = useState<'idle' | 'correct' | 'wrong'>('idle');
@@ -229,16 +239,19 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       const nextSessionCorrect = sessionCorrect + 1;
       setSessionCorrect(nextSessionCorrect);
 
+      // A challenge earns stars and streaks but never changes a topic's best score.
       const nextTopicBest = Math.max(existingTopic.b, nextSessionCorrect);
-      const nextTopics = {
-        ...profile.topics,
-        [topicId]: {
-          p: existingTopic.p + 1,
-          c: existingTopic.c + 1,
-          b: nextTopicBest,
-          m: nextTopicBest >= 10 || existingTopic.m,
-        },
-      };
+      const nextTopics = isChallenge
+        ? profile.topics
+        : {
+            ...profile.topics,
+            [topicId]: {
+              p: existingTopic.p + 1,
+              c: existingTopic.c + 1,
+              b: nextTopicBest,
+              m: nextTopicBest >= 10 || existingTopic.m,
+            },
+          };
 
       const oldEarnedIds = new Set(
         evaluateEarnedBadgeIds({
@@ -308,13 +321,15 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         ...profile,
         streak: 0,
         totalWrong: profile.totalWrong + 1,
-        topics: {
-          ...profile.topics,
-          [topicId]: {
-            ...existingTopic,
-            p: existingTopic.p + 1,
-          },
-        },
+        topics: isChallenge
+          ? profile.topics
+          : {
+              ...profile.topics,
+              [topicId]: {
+                ...existingTopic,
+                p: existingTopic.p + 1,
+              },
+            },
       };
       onUpdateProfile(updatedProfile, false);
       sfx.wrong();
@@ -370,8 +385,11 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   if (finished) {
     const medal =
       sessionCorrect >= 9 ? '🏆' : sessionCorrect >= 7 ? '🥇' : sessionCorrect >= 5 ? '🥈' : '🥉';
-    const message =
-      sessionCorrect >= 9
+    const message = isChallenge
+      ? sessionCorrect >= CHALLENGE_WIN
+        ? 'Challenge won! You are a champion.'
+        : `Good try! Get ${CHALLENGE_WIN} or more right to win the challenge.`
+      : sessionCorrect >= 9
         ? 'Mastered! Brilliant work.'
         : sessionCorrect >= PASS_MARK
           ? 'Topic cleared! Play again to score even higher.'

@@ -86,3 +86,21 @@ export function isTopicUnlocked(track: Track, topics: Topics, topicId: string): 
   if ((topics[topicId]?.p ?? 0) > 0 || (topics[topicId]?.b ?? 0) > 0) return true;
   return levelOf(track, topicId) <= levelStatus(track, topics).current;
 }
+
+/** Special topic id for a mixed challenge round (not a real topic, never stored in progress). */
+export const CHALLENGE_ID = 'challenge';
+
+/** Correct answers (out of 10) that win a challenge. */
+export const CHALLENGE_WIN = 9;
+
+/** A challenge opens once the child has cleared this many topics. */
+export const CHALLENGE_MIN_TOPICS = 3;
+
+/** The topics a challenge draws from: every topic the child has cleared. */
+export function challengePool(track: Track, topics: Topics): string[] {
+  return Object.keys(TOPIC_LEVEL[track]).filter((id) => isCleared(topics[id]));
+}
+
+export function isChallengeUnlocked(track: Track, topics: Topics): boolean {
+  return challengePool(track, topics).length >= CHALLENGE_MIN_TOPICS;
+}
