@@ -8,9 +8,11 @@ import {
   isTopicUnlocked,
   LEVEL_COUNT,
   levelOf,
+  nextUnclearedTopic,
   levelStatus,
   PASS_MARK,
   TOPIC_LEVEL,
+  upNextTopics,
 } from './levels.js';
 
 const tp = (b: number, over: Partial<TopicProgress> = {}): TopicProgress => ({ p: 1, c: b, b, m: false, ...over });
@@ -52,11 +54,33 @@ describe('clearing and unlocking', () => {
     expect(isCleared(undefined)).toBe(false);
   });
 
+  it('clearing a topic opens the very next one straight away', () => {
+    const one = { 'y-add-e': tp(8) };
+    // Level 1 is not finished yet, but the topic after the one still to clear is open.
+    expect(levelStatus('primary', one).current).toBe(1);
+    expect(levelStatus('primary', one).clearedInCurrent).toBe(1);
+    expect(isTopicUnlocked('primary', one, 'y-sub-e')).toBe(true);
+    expect(isTopicUnlocked('primary', one, 'y-mul-e')).toBe(true);
+    // ...but not two steps further.
+    expect(isTopicUnlocked('primary', one, 'y-syn')).toBe(false);
+    expect(isTopicUnlocked('primary', one, 'y-add-m')).toBe(false);
+  });
+
+  it('keeps one topic open ahead of the child, all the way along', () => {
+    expect(isTopicUnlocked('primary', {}, 'y-add-e')).toBe(true);
+    expect(isTopicUnlocked('primary', {}, 'y-sub-e')).toBe(true);
+    expect(isTopicUnlocked('primary', {}, 'y-mul-e')).toBe(false);
+    const two = { 'y-add-e': tp(8), 'y-sub-e': tp(8) };
+    expect(isTopicUnlocked('primary', two, 'y-mul-e')).toBe(true);
+    expect(isTopicUnlocked('primary', two, 'y-syn')).toBe(true);
+    expect(isTopicUnlocked('primary', two, 'y-add-m')).toBe(false);
+    expect(nextUnclearedTopic('primary', two)).toBe('y-mul-e');
+    expect(nextUnclearedTopic('early', Object.fromEntries(Object.keys(TOPIC_LEVEL.early).map((id) => [id, tp(10)])))).toBeNull();
+  });
+
   it('opens the next level only when every topic of this level is cleared', () => {
     const one = { 'y-add-e': tp(8) };
     expect(levelStatus('primary', one).current).toBe(1);
-    expect(levelStatus('primary', one).clearedInCurrent).toBe(1);
-    expect(isTopicUnlocked('primary', one, 'y-mul-e')).toBe(false);
 
     const both = { 'y-add-e': tp(8), 'y-sub-e': tp(7) };
     expect(levelStatus('primary', both).current).toBe(2);
@@ -91,5 +115,21 @@ describe('challenge', () => {
     const three = { ...two, 'y-mul-e': tp(9), 'y-syn': tp(5) };
     expect(isChallengeUnlocked('primary', three)).toBe(true);
     expect(challengePool('primary', three).sort()).toEqual(['y-add-e', 'y-mul-e', 'y-sub-e']);
+  });
+});
+
+describe('up next suggestions', () => {
+  it('suggests open, uncleared topics in order and skips the one just played', () => {
+    expect(upNextTopics('primary', {}, 'y-add-e')).toEqual(['y-sub-e']);
+    const one = { 'y-add-e': tp(8) };
+    expect(upNextTopics('primary', one, 'y-add-e')).toEqual(['y-sub-e', 'y-mul-e']);
+    const two = { 'y-add-e': tp(8), 'y-sub-e': tp(8) };
+    expect(upNextTopics('primary', two, 'y-sub-e')).toEqual(['y-mul-e', 'y-syn']);
+    expect(upNextTopics('primary', two, 'y-sub-e', 1)).toEqual(['y-mul-e']);
+  });
+
+  it('suggests nothing once every topic is cleared', () => {
+    const all = Object.fromEntries(Object.keys(TOPIC_LEVEL.early).map((id) => [id, tp(10)]));
+    expect(upNextTopics('early', all, 'k-count5')).toEqual([]);
   });
 });

@@ -4,11 +4,14 @@ import {
   CHALLENGE_ID,
   CHALLENGE_WIN,
   challengePool,
+  CURRICULUM,
   evaluateEarnedBadgeIds,
   generateQuestionForTopic,
+  levelOf,
   levelStatus,
   PASS_MARK,
   pick,
+  upNextTopics,
   type GeneratedQuestion,
 } from '@kiyuv/content';
 import {
@@ -23,13 +26,15 @@ import { canSpeak, initAudio, setMusicScene, sfx, speak, stopSpeaking } from '..
 import { Mascot, type MascotMood } from '../../ui/Mascot.js';
 import { questionKey } from './questionKey.js';
 import { clearRound, loadRound, saveRound } from './roundState.js';
-import { IconBack, IconFlame, IconRefresh, IconSpeaker, IconStar, IconBook } from '../../ui/Icons.js';
+import { IconBack, IconFlame, IconPlay, IconRefresh, IconSpeaker, IconStar, IconBook } from '../../ui/Icons.js';
 
 interface TopicRunnerProps {
   profile: KidProfile;
   topicId: string;
   onUpdateProfile: (next: KidProfile, flushImmediately: boolean) => void;
   onExitToMap: () => void;
+  /** Starts another topic straight from the finish screen ("Next up" tiles). */
+  onPlayTopic?: (topicId: string) => void;
   /** Runs the action once the parent's PIN is fresh (asks for it if not). */
   requireParentPin?: (action: () => void) => void;
   /**
@@ -66,6 +71,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   topicId,
   onUpdateProfile,
   onExitToMap,
+  onPlayTopic,
   requireParentPin,
   storageKey,
 }) => {
@@ -395,6 +401,13 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
           ? 'Topic cleared! Play again to score even higher.'
           : `Good try! Get ${PASS_MARK} or more right to clear this topic.`;
     const mood: MascotMood = sessionCorrect >= PASS_MARK ? 'cheer' : 'happy';
+    const upNext = upNextTopics(profile.track, profile.topics, topicId, 2).flatMap((id) => {
+      for (const subject of CURRICULUM[profile.track].subjects) {
+        const found = subject.topics.find((x) => x.id === id);
+        if (found) return [{ id, name: found.name, emoji: subject.emoji, level: levelOf(profile.track, id) }];
+      }
+      return [];
+    });
     const before = levelAtStart.current;
     const now = levelStatus(profile.track, profile.topics);
     const levelUp = now.allCleared
@@ -421,6 +434,27 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
           <p className="finish-level pop-in" role="status">
             <span aria-hidden="true">🎉</span> {levelUp}
           </p>
+        )}
+        {onPlayTopic && upNext.length > 0 && (
+          <section className="finish-next" aria-label="Next up">
+            <h2>Next up</h2>
+            <ul>
+              {upNext.map((t) => (
+                <li key={t.id}>
+                  <button type="button" className="next-tile" data-silent onClick={() => onPlayTopic(t.id)}>
+                    <span className="next-tile-emoji" aria-hidden="true">
+                      <Pic emoji={t.emoji} />
+                    </span>
+                    <span className="next-tile-text">
+                      <b>{t.name}</b>
+                      <small>Level {t.level}</small>
+                    </span>
+                    <IconPlay size={24} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
         <div className="finish-actions">
           <button type="button" className="primary-btn big" onClick={startRound} data-silent>
