@@ -3,15 +3,34 @@ import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
 import { Pic } from '../../ui/Pic.js';
 import { IconBack } from '../../ui/Icons.js';
 import { AnimalsPlay, BalloonsPlay, CountPlay, MusicPlay, ShapesPlay } from './activities.js';
-import { PLAY_ACTIVITIES, PLAY_TIME_ID } from './playTime.js';
+import {
+  BodyPlay,
+  ColoursPlay,
+  DayPlay,
+  FruitPlay,
+  OppositesPlay,
+  PeekabooPlay,
+  SongPlay,
+  VehiclesPlay,
+} from './moreActivities.js';
+import { PLAY_ACTIVITIES, PLAY_GROUPS, PLAY_TIME_ID } from './playTime.js';
 import './toddler.css';
+import './toddler2.css';
 
 const ACTIVITY_VIEWS: Record<string, React.FC> = {
   'play-animals': AnimalsPlay,
+  'play-peekaboo': PeekabooPlay,
+  'play-vehicles': VehiclesPlay,
+  'play-colours': ColoursPlay,
+  'play-shapes': ShapesPlay,
+  'play-opposites': OppositesPlay,
   'play-balloons': BalloonsPlay,
   'play-count': CountPlay,
-  'play-shapes': ShapesPlay,
+  'play-body': BodyPlay,
+  'play-day': DayPlay,
+  'play-fruit': FruitPlay,
   'play-music': MusicPlay,
+  'play-song': SongPlay,
 };
 
 interface ToddlerScreenProps {
@@ -24,7 +43,7 @@ interface ToddlerScreenProps {
   onClose: () => void;
 }
 
-/** Play time: a hub of five tap-and-see activities for the youngest children. */
+/** Play time: tap-and-see activities for the youngest children, in sections. */
 export const ToddlerScreen: React.FC<ToddlerScreenProps> = ({ id, profile, onOpen, onClose }) => {
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
   const isHub = id === PLAY_TIME_ID;
@@ -47,19 +66,27 @@ export const ToddlerScreen: React.FC<ToddlerScreenProps> = ({ id, profile, onOpe
       <h1 className="play-title">{isHub ? 'Play time' : (activity?.name ?? 'Play time')}</h1>
 
       {isHub ? (
-        <ul className="play-hub">
-          {PLAY_ACTIVITIES.map((a) => (
-            <li key={a.id}>
-              <button type="button" className="play-tile" data-silent onClick={() => onOpen(a.id)}>
-                <span className="play-tile-emoji" aria-hidden="true">
-                  <Pic emoji={a.emoji} />
-                </span>
-                <span className="play-tile-name">{a.name}</span>
-                <span className="play-tile-blurb">{a.blurb}</span>
-              </button>
-            </li>
+        <>
+          <p className="play-intro">Tap, look and listen. There are no wrong answers!</p>
+          {PLAY_GROUPS.map((group) => (
+            <section key={group} className="play-group" aria-label={group}>
+              <h2 className="play-group-title">{group}</h2>
+              <ul className="play-hub">
+                {PLAY_ACTIVITIES.filter((a) => a.group === group).map((a) => (
+                  <li key={a.id}>
+                    <button type="button" className="play-tile" data-silent onClick={() => onOpen(a.id)}>
+                      <span className="play-tile-emoji" aria-hidden="true">
+                        <Pic emoji={a.emoji} />
+                      </span>
+                      <span className="play-tile-name">{a.name}</span>
+                      <span className="play-tile-blurb">{a.blurb}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </>
       ) : View ? (
         <div className="play-stage">
           <View />
