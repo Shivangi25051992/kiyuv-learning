@@ -80,7 +80,7 @@ interface MemberRec {
   shared: Record<string, SharedEntry>;
 }
 
-const P = {
+export const P = {
   group: (g: string) => `groups/${g}`,
   member: (g: string, u: string) => `groups/${g}/members/${u}`,
   members: (g: string) => `groups/${g}/members`,
@@ -375,7 +375,7 @@ export async function requestJoin(
       offered[c.kidId] = { boardName: c.boardName, avatar: safeAvatar(kid['avatar']), favColor: str(kid['favColor']) };
       childIds[c.kidId] = { childId };
     });
-    tx.set(P.request(groupId, uid), { children: offered, requestedAt: now });
+    tx.set(P.request(groupId, uid), { uid, children: offered, requestedAt: now });
     tx.set(P.privRequest(groupId, uid), { children: childIds });
     // Asking again before the owner answers replaces the request and costs no extra use.
     if (!earlier) tx.update(P.invite(hash), { uses: num(invite['uses']) + 1 });
@@ -634,7 +634,7 @@ export async function renameGroup(
 
 // ------------------------------------------------------------------- closing
 
-async function deleteAll(ctx: GroupContext, paths: string[]): Promise<void> {
+export async function deleteAll(ctx: GroupContext, paths: string[]): Promise<void> {
   for (let i = 0; i < paths.length; i += DELETE_CHUNK) {
     const chunk = paths.slice(i, i + DELETE_CHUNK);
     await ctx.store.transact(async (tx) => {

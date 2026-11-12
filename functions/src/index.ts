@@ -19,6 +19,7 @@ import { requireFreshPin } from './authGuard.js';
 import { nameKeySecret, pinPepperSecret } from './secrets.js';
 
 export * from './groupFunctions.js';
+export * from './accountFunctions.js';
 
 if (getApps().length === 0) {
   initializeApp();

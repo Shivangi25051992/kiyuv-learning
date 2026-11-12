@@ -32,6 +32,8 @@ function renderModal(profile: KidProfile, onChangeTries: (k: string, n: number) 
       onEditProfile={() => {}}
       onResetProgress={async () => {}}
       onChangeTries={onChangeTries as never}
+      onExportData={async () => '{}'}
+      onDeleteAccount={async () => {}}
       onClose={() => {}}
     />,
   );

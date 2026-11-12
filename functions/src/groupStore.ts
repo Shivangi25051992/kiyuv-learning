@@ -30,6 +30,8 @@ export interface Store {
     op: '==' | '<',
     value: string | number,
   ): Promise<string[]>;
+  /** Full paths of every document, in any collection with this id, whose `field` equals `value`. */
+  whereAnywhere(collectionId: string, field: string, value: string): Promise<string[]>;
 }
 
 // ------------------------------------------------------------------ memory
@@ -131,6 +133,17 @@ export class MemoryStore implements Store {
       const found = getNested(this.data.get(`${collectionPath}/${id}`)!, field);
       if (op === '==' ? found === value : typeof found === 'number' && found < Number(value)) {
         out.push(id);
+      }
+    }
+    return out;
+  }
+
+  async whereAnywhere(collectionId: string, field: string, value: string): Promise<string[]> {
+    const out: string[] = [];
+    for (const [path, doc] of this.data) {
+      const parts = path.split('/');
+      if (parts.length % 2 === 0 && parts[parts.length - 2] === collectionId && getNested(doc, field) === value) {
+        out.push(path);
       }
     }
     return out;
