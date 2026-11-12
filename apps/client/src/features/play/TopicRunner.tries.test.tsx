@@ -231,3 +231,26 @@ describe('a refresh in the middle of a round', () => {
 function container_has_answer(): boolean {
   return document.body.textContent?.includes('the answer is') ?? false;
 }
+
+describe('mixed challenge', () => {
+  const cleared = (b: number) => ({ p: 1, c: b, b, m: false });
+  const done = { 'y-add-e': cleared(8), 'y-sub-e': cleared(8), 'y-mul-e': cleared(8) };
+
+  it('earns stars but never changes a topic score', () => {
+    const updates: KidProfile[] = [];
+    render(
+      <TopicRunner
+        profile={kid({ topics: done })}
+        topicId="challenge"
+        onUpdateProfile={(p) => updates.push(p)}
+        onExitToMap={() => {}}
+      />,
+    );
+    fireEvent.click(choice('B'));
+    fireEvent.click(choice('A'));
+    const last = updates.at(-1)!;
+    expect(last.stars).toBeGreaterThan(0);
+    expect(last.topics).toEqual(done);
+    expect(Object.keys(last.topics)).not.toContain('challenge');
+  });
+});

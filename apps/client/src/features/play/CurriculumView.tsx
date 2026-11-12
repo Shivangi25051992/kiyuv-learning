@@ -1,7 +1,12 @@
 import React from 'react';
 import {
   ALIGNMENT_LABELS,
+  CHALLENGE_ID,
+  CHALLENGE_MIN_TOPICS,
+  CHALLENGE_WIN,
+  challengePool,
   CURRICULUM,
+  isChallengeUnlocked,
   EXAM_PREP_BY_TRACK,
   isTopicUnlocked,
   LEVEL_COUNT,
@@ -65,6 +70,28 @@ function pickRandomTopicId(profile: KidProfile, subjects: SubjectList): string |
   const pool = notMastered.length > 0 ? notMastered : all;
   return pool[Math.floor(Math.random() * pool.length)]?.id ?? null;
 }
+
+/** A harder replay: 10 mixed questions from topics already cleared. Opens after a few clears. */
+const ChallengeButton: React.FC<{ profile: KidProfile; onStart: () => void }> = ({ profile, onStart }) => {
+  const have = challengePool(profile.track, profile.topics).length;
+  if (!isChallengeUnlocked(profile.track, profile.topics)) {
+    return (
+      <p className="challenge-hint">
+        <IconLock size={14} /> Clear {CHALLENGE_MIN_TOPICS} topics to unlock the Mixed Challenge ({have}/{CHALLENGE_MIN_TOPICS}).
+      </p>
+    );
+  }
+  return (
+    <button type="button" className="challenge-btn" data-silent onClick={onStart}>
+      <span aria-hidden="true">🏅</span>
+      <span>
+        <b>Mixed Challenge</b>
+        <small>Win with {CHALLENGE_WIN} or more out of 10</small>
+      </span>
+      <IconPlay size={26} />
+    </button>
+  );
+};
 
 /** Level 1 to 10: where the child is, and what opens the next level. */
 export const LevelBanner: React.FC<{ profile: KidProfile }> = ({ profile }) => {
@@ -169,6 +196,8 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
           <IconPlay size={30} />
         </button>
 
+        <ChallengeButton profile={profile} onStart={() => onStartTopic(CHALLENGE_ID)} />
+
         <h2 className="section-title">Pick a game</h2>
         <ul className="game-grid">
           {cur.subjects.map((subject, i) => {
@@ -247,6 +276,8 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
           </span>
         </button>
       )}
+
+      <ChallengeButton profile={profile} onStart={() => onStartTopic(CHALLENGE_ID)} />
 
       <h2 className="section-title">
         {cur.label}
