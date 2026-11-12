@@ -3363,3 +3363,77 @@ select.text-input {
 .bonus-courses > .section-title {
   margin: 0 0 var(--s3);
 }
+
+/* ==========================================================================
+   Answer buttons: long words and phrases must stay inside their button.
+   ========================================================================== */
+.op {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  line-height: 1.15;
+  text-align: center;
+}
+.op.op-md {
+  font-size: clamp(22px, 5.2vw, 30px);
+}
+.op.op-long {
+  font-size: clamp(19px, 4.6vw, 24px);
+}
+.op.op-xl {
+  font-size: clamp(17px, 4.2vw, 21px);
+}
+/* Words and phrases: one column on a phone, two on a tablet or desktop. */
+.ops.ops-wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 600px) {
+  .ops.ops-wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 599px) {
+  /* Stacked word answers: shorter buttons and a tighter gap, so all four are in view */
+  .ops.ops-wide {
+    gap: var(--s3);
+    margin-top: var(--s4);
+  }
+  .ops.ops-wide .op {
+    min-height: 64px;
+    padding: var(--s2) var(--s3);
+  }
+}
+
+/* Play tab: same even spacing as the Learn tab */
+.play-home {
+  display: grid;
+  gap: var(--s5);
+}
+.play-home > .section-title {
+  margin: var(--s2) 0 0;
+}
+.play-home > .surprise-btn {
+  margin-bottom: var(--s2);
+}
+.play-home > .challenge-btn {
+  margin-bottom: var(--s2);
+}
+
+/* Locked cards: readable, and the "Level N" tag must be visible */
+.game-card.locked {
+  opacity: 0.85;
+  background: #f3f1fa;
+}
+.game-card.locked .game-go {
+  background: #e4dff3;
+  color: #4b4468;
+}
+
+/* Three picture answers sit side by side, never two plus one alone */
+.ops.ops-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s3);
+}
+.ops.ops-three .kiki-obj-btn {
+  font-size: clamp(44px, 14vw, 64px);
+}
