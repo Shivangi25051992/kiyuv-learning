@@ -10,6 +10,7 @@ import {
   levelOf,
   levelStatus,
   PASS_MARK,
+  pathwayOf,
   pick,
   upNextTopics,
   type GeneratedQuestion,
@@ -105,10 +106,10 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   // Questions already asked in this round, so the same one never comes twice.
   const askedRef = useRef<string[]>(restored?.asked ?? []);
   // Where the child stood when this round began, so the end screen can say "Level cleared!"
-  const levelAtStart = useRef(levelStatus(profile.track, profile.topics));
+  const levelAtStart = useRef(levelStatus(pathwayOf(profile), profile.topics));
   const isChallenge = topicId === CHALLENGE_ID;
   // A challenge mixes questions from every topic the child has cleared.
-  const poolRef = useRef(isChallenge ? challengePool(profile.track, profile.topics) : []);
+  const poolRef = useRef(isChallenge ? challengePool(pathwayOf(profile), profile.topics) : []);
   const draw = useCallback(
     () => generateQuestionForTopic(isChallenge ? pick(poolRef.current) : topicId),
     [isChallenge, topicId],
@@ -176,7 +177,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
 
   const questionRef = useRef<HTMLDivElement>(null);
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
-  const isEarly = profile.track === 'early';
+  const isEarly = pathwayOf(profile) === 'early';
 
   const startRound = useCallback(() => {
     initAudio();
@@ -213,7 +214,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     // Kiyu celebrates too: the biggest thing that happened gets the words.
     const p = profileRef.current;
     const before = levelAtStart.current;
-    const now = levelStatus(p.track, p.topics);
+    const now = levelStatus(pathwayOf(p), p.topics);
     const levelUp = now.allCleared ? !before.allCleared : now.current > before.current;
     const ctx = { name: p.nickname };
     if (dailyBonus > 0) companion('daily-done', { ctx });
@@ -464,15 +465,15 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
           ? 'Topic cleared! Play again to score even higher.'
           : `Good try! Get ${PASS_MARK} or more right first time to clear this topic.`;
     const mood: MascotMood = sessionCorrect >= PASS_MARK ? 'cheer' : 'happy';
-    const upNext = upNextTopics(profile.track, profile.topics, topicId, 2).flatMap((id) => {
-      for (const subject of CURRICULUM[profile.track].subjects) {
+    const upNext = upNextTopics(pathwayOf(profile), profile.topics, topicId, 2).flatMap((id) => {
+      for (const subject of CURRICULUM[pathwayOf(profile)].subjects) {
         const found = subject.topics.find((x) => x.id === id);
-        if (found) return [{ id, name: found.name, emoji: subject.emoji, level: levelOf(profile.track, id) }];
+        if (found) return [{ id, name: found.name, emoji: subject.emoji, level: levelOf(pathwayOf(profile), id) }];
       }
       return [];
     });
     const before = levelAtStart.current;
-    const now = levelStatus(profile.track, profile.topics);
+    const now = levelStatus(pathwayOf(profile), profile.topics);
     const levelUp = now.allCleared
       ? !before.allCleared
         ? 'You cleared all 10 levels!'

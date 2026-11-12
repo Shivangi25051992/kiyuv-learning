@@ -1,14 +1,14 @@
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { coursesForTrack } from '@kiyuv/content';
+import { coursesForChild } from '@kiyuv/content';
 import type { KidProfile } from '@kiyuv/shared';
 import { CoursesView } from './CoursesView.js';
 
 afterEach(() => cleanup());
 
 const kid = (track: 'primary' | 'early' = 'primary'): KidProfile => ({
-  kidId: 'k1', name: '', nickname: 'Ari', age: 8, country: 'IN', state: '', favColor: 'blue',
+  kidId: 'k1', name: '', nickname: 'Ari', age: track === 'early' ? 4 : 8, country: 'IN', state: '', favColor: 'blue',
   avatar: '👦', ageBand: '8-10', track, stars: 0, streak: 0, bestStreak: 0,
   totalCorrect: 0, totalWrong: 0, badges: [], topics: {}, resetEpoch: 0,
 });
@@ -16,7 +16,7 @@ const kid = (track: 'primary' | 'early' = 'primary'): KidProfile => ({
 describe('bonus courses page', () => {
   it('lists every course for the child\'s track, grouped under headings', () => {
     render(<CoursesView profile={kid()} onBack={() => {}} onStart={() => {}} />);
-    const list = coursesForTrack('primary');
+    const list = coursesForChild(kid());
     for (const c of list) expect(screen.getByRole('button', { name: new RegExp(`^${c.name}[.]`) })).toBeTruthy();
     for (const g of new Set(list.map((c) => c.group))) expect(screen.getByRole('heading', { name: g })).toBeTruthy();
   });

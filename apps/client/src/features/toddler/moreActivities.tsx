@@ -8,7 +8,7 @@ import {
   BODY_ROUNDS,
   COLOURS,
   DAY_STEPS,
-  FRUITS,
+  FOODS,
   LAMB_BARS,
   LAMB_SONG,
   OPPOSITES,
@@ -19,7 +19,9 @@ import {
   type OppositeSide,
   type TapItem,
 } from './playData.js';
-import { ANIMALS, animalClip, type Animal } from './playTime.js';
+import { ANIMALS, animalCaption, type Animal } from './playTime.js';
+import { HOME_THINGS, SKY_THINGS, WEATHER } from './playMore.js';
+import { sayAnimal } from './sayAnimal.js';
 import { useTapPulse } from './useTapPulse.js';
 
 /**
@@ -88,11 +90,15 @@ const TapToHear: React.FC<{ items: readonly TapItem[]; prompt: string; labelled?
 };
 
 export const VehiclesPlay: React.FC = () => <TapToHear items={VEHICLES} prompt="Tap a vehicle!" />;
-export const FruitPlay: React.FC = () => <TapToHear items={FRUITS} prompt="Tap a fruit!" />;
+export const FruitPlay: React.FC = () => <TapToHear items={FOODS} prompt="Tap some food!" />;
+export const SpacePlay: React.FC = () => <TapToHear items={SKY_THINGS} prompt="Tap the sky!" />;
+export const WeatherPlay: React.FC = () => <TapToHear items={WEATHER} prompt="Tap the weather!" />;
+export const HomePlay: React.FC = () => <TapToHear items={HOME_THINGS} prompt="Tap a thing!" />;
 export const DayPlay: React.FC = () => <TapToHear items={DAY_STEPS} prompt="Tap to start your day!" labelled />;
 
 // ------------------------------------------------------------ Peekaboo presents
-const pickAnimals = (): Animal[] => shuffle([...ANIMALS]).slice(0, PEEKABOO_COUNT);
+const PRESENT_POOL = ANIMALS.filter((a) => a.group !== 'Bugs');
+const pickAnimals = (): Animal[] => shuffle([...PRESENT_POOL]).slice(0, PEEKABOO_COUNT);
 
 export const PeekabooPlay: React.FC = () => {
   const [animals, setAnimals] = useState<Animal[]>(pickAnimals);
@@ -106,7 +112,7 @@ export const PeekabooPlay: React.FC = () => {
     initAudio();
     const animal = animals[i]!;
     if (openedRef.current.has(i)) {
-      playClip(animalClip(animal), `${animal.name}!`, `${animal.name}! ${animal.sound}!`);
+      sayAnimal(animal);
       return;
     }
     sfx.tap();
@@ -114,7 +120,7 @@ export const PeekabooPlay: React.FC = () => {
     openedRef.current.add(i);
     setOpened(new Set(openedRef.current));
     setSaid(animal);
-    playClip(animalClip(animal), `Peekaboo! ${animal.name}!`, `Peekaboo! ${animal.name}! ${animal.sound}!`);
+    sayAnimal(animal, 'Peekaboo! ');
     if (openedRef.current.size === animals.length) {
       later(() => {
         confettiBlast();
@@ -134,7 +140,7 @@ export const PeekabooPlay: React.FC = () => {
   return (
     <>
       <p className="play-caption" role="status" aria-live="polite">
-        {allDone ? 'Hooray!' : said ? `Peekaboo! ${said.name} says ${said.sound}!` : 'Open a present!'}
+        {allDone ? 'Hooray!' : said ? `Peekaboo! ${animalCaption(said)}` : 'Open a present!'}
       </p>
       <ul className="toy-grid">
         {animals.map((a, i) => {

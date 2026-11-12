@@ -1,4 +1,4 @@
-import { COURSES, coursesForTrack, isTopicUnlocked, nextUnclearedTopic } from '@kiyuv/content';
+import { coursesForChild, isTopicUnlocked, nextUnclearedTopic, pathwayOf } from '@kiyuv/content';
 import type { KidProfile } from '@kiyuv/shared';
 import { dateKey, loadDaily, saveDaily, type DailyState } from './dailyState.js';
 import { topicInfoMap } from './learnPath.js';
@@ -22,9 +22,9 @@ function hash(text: string): number {
 }
 
 function describe(profile: KidProfile, id: string): DailyPick | null {
-  const topic = topicInfoMap(profile.track)[id];
+  const topic = topicInfoMap(pathwayOf(profile))[id];
   if (topic) return { id, name: topic.name, emoji: topic.emoji, subject: topic.subject };
-  const course = COURSES.find((c) => c.id === id && c.track === profile.track);
+  const course = coursesForChild(profile).find((c) => c.id === id);
   return course ? { id, name: course.name, emoji: course.emoji, subject: course.group } : null;
 }
 
@@ -33,9 +33,9 @@ function describe(profile: KidProfile, id: string): DailyPick | null {
  * courses, so the challenge changes subject from day to day.
  */
 export function dailyPool(profile: KidProfile): DailyPick[] {
-  const info = topicInfoMap(profile.track);
-  const topics = Object.keys(info).filter((id) => isTopicUnlocked(profile.track, profile.topics, id));
-  const courses = coursesForTrack(profile.track).filter((c) => c.free).map((c) => c.id);
+  const info = topicInfoMap(pathwayOf(profile));
+  const topics = Object.keys(info).filter((id) => isTopicUnlocked(pathwayOf(profile), profile.topics, id));
+  const courses = coursesForChild(profile).filter((c) => c.free).map((c) => c.id);
   return [...topics, ...courses].flatMap((id) => {
     const p = describe(profile, id);
     return p ? [p] : [];
@@ -43,7 +43,7 @@ export function dailyPool(profile: KidProfile): DailyPick[] {
 }
 
 /** The toddlers' Play time has no scores, so it has no daily challenge. */
-export const hasDailyChallenge = (profile: KidProfile): boolean => !(profile.track === 'early' && profile.age <= 3);
+export const hasDailyChallenge = (profile: KidProfile): boolean => pathwayOf(profile) !== 'tots';
 
 /**
  * Today's daily challenge. It is chosen from the date, once, and remembered, so it stays the
@@ -58,11 +58,11 @@ export function todaysDaily(key: string, profile: KidProfile, now: Date = new Da
     if (kept) return kept;
   }
   // Not the topic that is already "Up next", so the two cards never say the same thing.
-  const upNext = nextUnclearedTopic(profile.track, profile.topics);
+  const upNext = nextUnclearedTopic(pathwayOf(profile), profile.topics);
   const all = dailyPool(profile);
   const pool = all.length > 1 ? all.filter((p) => p.id !== upNext) : all;
   if (pool.length === 0) return null;
-  const chosen = pool[hash(`${today}:${profile.track}`) % pool.length]!;
+  const chosen = pool[hash(`${today}:${pathwayOf(profile)}`) % pool.length]!;
   const next: DailyState = { ...state, pick: { date: today, id: chosen.id } };
   saveDaily(key, next);
   return chosen;

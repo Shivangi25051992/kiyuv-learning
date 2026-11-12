@@ -1,4 +1,8 @@
-import type { TopicProgress, Track } from '@kiyuv/shared';
+import type { TopicProgress } from '@kiyuv/shared';
+import { SENIOR_CURRICULUM } from './curriculum-senior.js';
+import { YOUNG_CURRICULUM } from './curriculum-young.js';
+import type { SeniorMathKey, YoungMathKey } from './math-more.js';
+import type { Pathway } from './pathway.js';
 
 export type CurriculumSystem = 'cbse' | 'cc' | 'uk' | 'au' | 'olym';
 
@@ -20,7 +24,9 @@ export type MathGeneratorKey =
   | 'wp_hard'
   | 'place'
   | 'time'
-  | 'rounding';
+  | 'rounding'
+  | YoungMathKey
+  | SeniorMathKey;
 
 export interface CurriculumTopic {
   id: string;
@@ -38,7 +44,7 @@ export interface CurriculumSubject {
 }
 
 export interface TrackCurriculum {
-  track: Track;
+  pathway: Pathway;
   label: string;
   subtitle: string;
   subjects: readonly CurriculumSubject[];
@@ -58,7 +64,19 @@ export interface ExamPrepTrack {
   target: string;
 }
 
-export const EXAM_PREP_BY_TRACK: Record<Track, readonly ExamPrepTrack[]> = {
+export const EXAM_PREP_BY_TRACK: Record<Pathway, readonly ExamPrepTrack[]> = {
+  tots: [],
+  young: [
+    { name: '🏅 IMO — International Math Olympiad (Class 1-2)', org: 'SOF (India)', target: 'Counting, add and take away, shapes' },
+    { name: '📖 IEO — International English Olympiad (Class 1-2)', org: 'SOF (India)', target: 'Words, rhymes, simple sentences' },
+  ],
+  senior: [
+    { name: '🏅 IMO — International Math Olympiad (Class 6-8)', org: 'SOF (India)', target: 'Fractions, ratio, algebra, geometry' },
+    { name: '🔬 NSO — National Science Olympiad (Class 6-8)', org: 'SOF (India)', target: 'Life science, physics, earth science' },
+    { name: '📖 IEO — International English Olympiad (Class 6-8)', org: 'SOF (India)', target: 'Grammar, vocabulary, comprehension' },
+    { name: '💻 NCO — National Cyber Olympiad (Class 6-8)', org: 'SOF (India)', target: 'Logic, computing, digital safety' },
+    { name: '🇦🇺 NAPLAN (Australia, Year 7)', org: 'ACARA', target: 'Numeracy + Literacy' },
+  ],
   primary: [
     { name: '🏅 IMO — International Math Olympiad', org: 'SOF (India)', target: 'Math + Logical Reasoning' },
     { name: '🔬 NSO — National Science Olympiad', org: 'SOF (India)', target: 'Science + Achievers Section' },
@@ -73,10 +91,18 @@ export const EXAM_PREP_BY_TRACK: Record<Track, readonly ExamPrepTrack[]> = {
   ],
 };
 
-export const CURRICULUM: Record<Track, TrackCurriculum> = {
+export const CURRICULUM: Record<Pathway, TrackCurriculum> = {
+  tots: {
+    pathway: 'tots',
+    label: 'Play time · Ages 2 and 3',
+    subtitle: 'Tap, look and listen. Animals, colours, shapes, music and more',
+    subjects: [],
+  },
+  young: YOUNG_CURRICULUM,
+  senior: SENIOR_CURRICULUM,
   early: {
-    track: 'early',
-    label: 'Early Years Track · Pre-K → Kindergarten',
+    pathway: 'early',
+    label: 'Early Years · Ages 4 and 5',
     subtitle: 'Foundational numbers, phonics, colors, shapes, animals & Hindi letters',
     subjects: [
       {
@@ -132,6 +158,8 @@ export const CURRICULUM: Record<Track, TrackCurriculum> = {
           { id: 'k-animal6', name: 'Pet & Farm Animals', diff: 1 },
           { id: 'k-animal-sound', name: 'Animal Sounds', diff: 2 },
           { id: 'k-animal-wild', name: 'Wild Animals', diff: 3 },
+          { id: 'k-animal-bird', name: 'Birds and Bugs', diff: 2 },
+          { id: 'k-animal-water', name: 'Water Animals', diff: 2 },
         ],
       },
       {
@@ -139,7 +167,17 @@ export const CURRICULUM: Record<Track, TrackCurriculum> = {
         name: 'Food & Fruits',
         grade: 'Pre-K',
         systems: ['cbse', 'cc'],
-        topics: [{ id: 'k-fruit', name: 'Common Fruits', diff: 1 }],
+        topics: [
+          { id: 'k-fruit', name: 'Fruits', diff: 1 },
+          { id: 'k-veg', name: 'Vegetables', diff: 2 },
+        ],
+      },
+      {
+        emoji: '🌙',
+        name: 'Sky and Space',
+        grade: 'Pre-K',
+        systems: ['cbse', 'cc'],
+        topics: [{ id: 'k-sky', name: 'Sun, Moon, Stars and Planets', diff: 2 }],
       },
       {
         emoji: '🫁',
@@ -168,8 +206,8 @@ export const CURRICULUM: Record<Track, TrackCurriculum> = {
     ],
   },
   primary: {
-    track: 'primary',
-    label: 'Primary Track · Grades 1 → 5 & Olympiad Prep',
+    pathway: 'primary',
+    label: 'Grades 3 to 5 · Ages 8 to 10 & Olympiad Prep',
     subtitle: 'Core & advanced math, spelling bee, vocabulary, grammar, science, GK & logic',
     subjects: [
       {

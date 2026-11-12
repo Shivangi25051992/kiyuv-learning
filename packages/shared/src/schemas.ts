@@ -31,7 +31,7 @@ export function ageBandOk(age: number, band: AgeBand): boolean {
 }
 
 export function suggestTrack(age: number): Track {
-  return age <= 4 ? 'early' : 'primary';
+  return age <= 5 ? 'early' : 'primary';
 }
 
 export function starsPerCorrectForTrack(track: Track): number {

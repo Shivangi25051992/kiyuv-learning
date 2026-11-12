@@ -1,5 +1,5 @@
 import React from 'react';
-import { BADGES, evaluateEarnedBadgeIds } from '@kiyuv/content';
+import { BADGES, PATHWAY_LABEL, evaluateEarnedBadgeIds, pathwayOf } from '@kiyuv/content';
 import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
 
 interface LeaderboardViewProps {
@@ -51,7 +51,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 </div>
                 <div className="leader-band">
                   Ages {profile.ageBand} ·{' '}
-                  {profile.track === 'early' ? 'Early Years' : 'Primary'}
+                  {PATHWAY_LABEL[pathwayOf(profile)]}
                 </div>
 
                 <div className="leader-metrics">

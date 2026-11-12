@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import type { KidProfile } from '@kiyuv/shared';
 
 const spoken: string[] = [];
@@ -38,10 +38,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const open = (id: string) => {
+const open = (id: string, age = 2) => {
   const onOpen = vi.fn();
   const onClose = vi.fn();
-  render(<ToddlerScreen id={id} profile={kid()} onOpen={onOpen} onClose={onClose} />);
+  render(<ToddlerScreen id={id} profile={kid(age)} onOpen={onOpen} onClose={onClose} />);
   return { onOpen, onClose };
 };
 
@@ -54,11 +54,20 @@ describe('Play time screens', () => {
     expect(isPlayActivity(PLAY_TIME_ID)).toBe(false);
   });
 
-  it('the hub lists every activity and opens the one tapped', () => {
-    const { onOpen } = open(PLAY_TIME_ID);
+  it('the hub lists every activity for a 3-year-old and opens the one tapped', () => {
+    const { onOpen } = open(PLAY_TIME_ID, 3);
     for (const a of PLAY_ACTIVITIES) expect(screen.getByRole('button', { name: new RegExp(a.name) })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Pop the balloons/ }));
     expect(onOpen).toHaveBeenCalledWith('play-balloons');
+  });
+
+  it('the hub keeps the three trickier activities for age 3, so a 2-year-old sees only the simplest', () => {
+    open(PLAY_TIME_ID, 2);
+    for (const a of PLAY_ACTIVITIES) {
+      const shown = screen.queryByRole('button', { name: new RegExp(a.name) }) !== null;
+      expect(shown, a.name).toBe((a.minAge ?? 0) <= 2);
+    }
+    expect(screen.queryByRole('button', { name: /Sing along/ })).toBeNull();
   });
 
   it('Back leaves Play time from the hub, and returns to the hub from an activity', () => {
@@ -78,9 +87,33 @@ describe('Say hello', () => {
     expect(spoken).toEqual([]);
     fireEvent.click(screen.getByRole('button', { name: 'Cow' }));
     expect(screen.getByRole('status').textContent).toBe('Cow says Moo!');
-    expect(spoken).toEqual(['Cow! Moo!']);
+    // The real recording plays; the words are only a backup, and they are never a sound read as text.
+    expect(spoken).toEqual(['Cow! Cows give us milk.']);
     fireEvent.click(screen.getByRole('button', { name: 'Duck' }));
     expect(screen.getByRole('status').textContent).toBe('Duck says Quack!');
+  });
+
+  it('has many animals in six groups, and each group shows its own', () => {
+    open('play-animals');
+    const group = screen.getByRole('group', { name: 'Kinds of animals' });
+    expect(within(group).getAllByRole('button')).toHaveLength(6);
+    expect(screen.queryByRole('button', { name: 'Tiger' })).toBeNull();
+    fireEvent.click(within(group).getByRole('button', { name: /Wild/ }));
+    expect(within(group).getByRole('button', { name: /Wild/ }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Tiger' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Cow' })).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe('Tap an animal!');
+  });
+
+  it('an animal with no recording says its name and a fact, not a sound word', () => {
+    open('play-animals');
+    fireEvent.click(within(screen.getByRole('group', { name: 'Kinds of animals' })).getByRole('button', { name: /Wild/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tiger' }));
+    expect(screen.getByRole('status').textContent).toBe('Tiger! Tigers have stripes.');
+    expect(spoken.at(-1)).toBe('Tiger! Tigers have stripes.');
+    // An animal with a real recording shows its sound word, and the recording plays.
+    fireEvent.click(screen.getByRole('button', { name: 'Elephant' }));
+    expect(screen.getByRole('status').textContent).toBe('Elephant says Toot!');
   });
 });
 

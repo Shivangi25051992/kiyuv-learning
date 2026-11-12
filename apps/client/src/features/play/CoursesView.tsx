@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { coursesForTrack, freeCourseCount, type Course } from '@kiyuv/content';
+import { coursesForChild, freeCourseCount, type Course } from '@kiyuv/content';
 import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
 import { Pic } from '../../ui/Pic.js';
 import { useModalFocus } from '../../ui/useModalFocus.js';
@@ -56,8 +56,8 @@ interface CoursesViewProps {
 export const CoursesView: React.FC<CoursesViewProps> = ({ profile, onBack, onStart }) => {
   const [premiumCourse, setPremiumCourse] = useState<Course | null>(null);
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
-  const courses = coursesForTrack(profile.track);
-  const free = freeCourseCount(profile.track);
+  const courses = coursesForChild(profile);
+  const free = freeCourseCount(courses);
   const groups = [...new Set(courses.map((c) => c.group))];
 
   return (

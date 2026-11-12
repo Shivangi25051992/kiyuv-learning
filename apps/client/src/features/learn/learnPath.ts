@@ -4,13 +4,15 @@ import {
   LEVEL_COUNT,
   PASS_MARK,
   challengePool,
-  coursesForTrack,
+  coursesForChild,
   isCleared,
   isChallengeUnlocked,
   isTopicUnlocked,
   levelStatus,
   nextUnclearedTopic,
+  pathwayOf,
   topicsInLevel,
+  type Pathway,
 } from '@kiyuv/content';
 import type { KidProfile } from '@kiyuv/shared';
 
@@ -22,7 +24,7 @@ export interface TopicInfo {
 }
 
 /** Every topic of a track, by id, with the subject it belongs to. */
-export function topicInfoMap(track: KidProfile['track']): Record<string, TopicInfo> {
+export function topicInfoMap(track: Pathway): Record<string, TopicInfo> {
   const map: Record<string, TopicInfo> = {};
   for (const subject of CURRICULUM[track].subjects) {
     for (const t of subject.topics) map[t.id] = { id: t.id, name: t.name, subject: subject.name, emoji: subject.emoji };
@@ -55,17 +57,17 @@ export interface LevelStop {
  *  - locked: nothing in it is open yet
  */
 export function buildPath(profile: KidProfile): LevelStop[] {
-  const info = topicInfoMap(profile.track);
-  const { current, allCleared } = levelStatus(profile.track, profile.topics);
+  const info = topicInfoMap(pathwayOf(profile));
+  const { current, allCleared } = levelStatus(pathwayOf(profile), profile.topics);
   return Array.from({ length: LEVEL_COUNT }, (_, i) => {
     const level = i + 1;
-    const topics: TopicRowData[] = topicsInLevel(profile.track, level).flatMap((id) => {
+    const topics: TopicRowData[] = topicsInLevel(pathwayOf(profile), level).flatMap((id) => {
       const base = info[id];
       if (!base) return [];
       const progress = profile.topics[id];
       const state: TopicState = isCleared(progress)
         ? 'cleared'
-        : isTopicUnlocked(profile.track, profile.topics, id)
+        : isTopicUnlocked(pathwayOf(profile), profile.topics, id)
           ? 'open'
           : 'locked';
       return [{ ...base, state, best: progress?.b ?? 0 }];
@@ -85,7 +87,7 @@ export function buildPath(profile: KidProfile): LevelStop[] {
 
 /** The one thing to do next: the first topic on the path that is not cleared. */
 export function upNext(profile: KidProfile): TopicRowData | null {
-  const id = nextUnclearedTopic(profile.track, profile.topics);
+  const id = nextUnclearedTopic(pathwayOf(profile), profile.topics);
   if (!id) return null;
   const stop = buildPath(profile)
     .flatMap((l) => l.topics)
@@ -108,11 +110,11 @@ export interface Recommendation {
  */
 export function recommend(profile: KidProfile, skipId?: string): Recommendation[] {
   const out: Recommendation[] = [];
-  const info = topicInfoMap(profile.track);
-  const next = nextUnclearedTopic(profile.track, profile.topics);
+  const info = topicInfoMap(pathwayOf(profile));
+  const next = nextUnclearedTopic(pathwayOf(profile), profile.topics);
 
   const retry = Object.entries(profile.topics)
-    .filter(([id, p]) => p.p > 0 && !isCleared(p) && id !== next && id !== skipId && info[id] && isTopicUnlocked(profile.track, profile.topics, id))
+    .filter(([id, p]) => p.p > 0 && !isCleared(p) && id !== next && id !== skipId && info[id] && isTopicUnlocked(pathwayOf(profile), profile.topics, id))
     .sort((a, b) => a[1].b - b[1].b)[0];
   if (retry) {
     const [id, p] = retry;
@@ -124,7 +126,7 @@ export function recommend(profile: KidProfile, skipId?: string): Recommendation[
       emoji: '🔄',
     });
   }
-  const fresh = coursesForTrack(profile.track).find((c) => c.free && !profile.topics[c.id] && c.id !== skipId);
+  const fresh = coursesForChild(profile).find((c) => c.free && !profile.topics[c.id] && c.id !== skipId);
   if (fresh) {
     out.push({ kind: 'course', id: fresh.id, title: fresh.name, reason: 'A free bonus course to try.', emoji: fresh.emoji });
   }
@@ -138,6 +140,6 @@ export interface ChallengeProgress {
 }
 
 export function challengeProgress(profile: KidProfile): ChallengeProgress {
-  const have = challengePool(profile.track, profile.topics).length;
-  return { unlocked: isChallengeUnlocked(profile.track, profile.topics), have: Math.min(have, CHALLENGE_MIN_TOPICS), need: CHALLENGE_MIN_TOPICS };
+  const have = challengePool(pathwayOf(profile), profile.topics).length;
+  return { unlocked: isChallengeUnlocked(pathwayOf(profile), profile.topics), have: Math.min(have, CHALLENGE_MIN_TOPICS), need: CHALLENGE_MIN_TOPICS };
 }

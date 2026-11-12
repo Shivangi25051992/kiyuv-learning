@@ -1,3 +1,5 @@
+import { MORE_FOODS, MORE_VEHICLES } from './playMore.js';
+
 /**
  * The things the age 2 activities show and say. Every emoji here has a drawing in the
  * app's picture set, and every line is short enough for a very young child to follow.
@@ -17,7 +19,7 @@ export interface TapItem {
   clip?: string;
 }
 
-export const VEHICLES: readonly TapItem[] = [
+const BASE_VEHICLES: readonly TapItem[] = [
   { key: 'car', emoji: '🚗', label: 'Car', say: 'Car! Beep beep!', caption: 'Car says beep beep!', clip: 'car' },
   { key: 'bus', emoji: '🚌', label: 'Bus', say: 'Bus! Beep beep!', caption: 'Bus says beep beep!', clip: 'bus' },
   { key: 'train', emoji: '🚆', label: 'Train', say: 'Train! Choo choo!', caption: 'Train says choo choo!', clip: 'train' },
@@ -40,6 +42,11 @@ export const FRUITS: readonly TapItem[] = [
   { key: 'carrot', emoji: '🥕', label: 'Carrot', say: 'Carrot! Crunch!', caption: 'Carrot! Crunch!' },
   { key: 'broc', emoji: '🥦', label: 'Broccoli', say: 'Broccoli! Yum!', caption: 'Broccoli! Yum!' },
 ];
+
+export const VEHICLES: readonly TapItem[] = [...BASE_VEHICLES, ...MORE_VEHICLES];
+
+/** Fruits and vegetables together, for "Yummy food". */
+export const FOODS: readonly TapItem[] = [...FRUITS, ...MORE_FOODS];
 
 /** A simple day: each step is something a toddler does, with a friendly line to say. */
 export const DAY_STEPS: readonly TapItem[] = [
@@ -66,6 +73,10 @@ export const COLOURS: readonly ColourDef[] = [
   { name: 'Green', hex: '#43a047', thing: 'a frog', thingEmoji: '🐸' },
   { name: 'Orange', hex: '#fb8c00', thing: 'an orange', thingEmoji: '🍊' },
   { name: 'Pink', hex: '#ec407a', thing: 'a pig', thingEmoji: '🐷' },
+  { name: 'Purple', hex: '#8e24aa', thing: 'grapes', thingEmoji: '🍇' },
+  { name: 'Brown', hex: '#6d4c41', thing: 'a bear', thingEmoji: '🐻' },
+  { name: 'Grey', hex: '#757575', thing: 'an elephant', thingEmoji: '🐘' },
+  { name: 'White', hex: '#eeeeee', thing: 'a cloud', thingEmoji: '☁️' },
 ];
 
 export interface OppositeSide {
@@ -99,6 +110,10 @@ export const BODY_PARTS: readonly BodyPart[] = [
   { emoji: '👄', name: 'mouth' },
   { emoji: '👋', name: 'hand' },
   { emoji: '🦶', name: 'foot' },
+  { emoji: '👅', name: 'tongue' },
+  { emoji: '🦷', name: 'tooth' },
+  { emoji: '🦵', name: 'leg' },
+  { emoji: '💪', name: 'arm' },
 ];
 
 /** How many things to find in one go of "Where is my nose?". */

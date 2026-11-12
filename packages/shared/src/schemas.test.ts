@@ -21,6 +21,7 @@ describe('@kiyuv/shared onboarding & kid schema validation', () => {
     expect(computeAgeBand(13)).toBe('11-13');
 
     expect(suggestTrack(3)).toBe('early');
+    expect(suggestTrack(5)).toBe('early');
     expect(suggestTrack(6)).toBe('primary');
     expect(starsPerCorrectForTrack('early')).toBe(3);
     expect(starsPerCorrectForTrack('primary')).toBe(2);

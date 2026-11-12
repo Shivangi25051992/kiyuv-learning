@@ -3,3 +3,8 @@ export * from './curriculum.js';
 export * from './generators.js';
 export * from './levels.js';
 export * from './courses.js';
+export * from './pathway.js';
+export * from './math-more.js';
+export * from './banks-young.js';
+export * from './banks-senior.js';
+export * from './banks-early.js';

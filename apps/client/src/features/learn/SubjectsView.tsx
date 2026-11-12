@@ -6,6 +6,7 @@ import {
   PASS_MARK,
   isTopicUnlocked,
   levelOf,
+  pathwayOf,
   type CurriculumSystem,
 } from '@kiyuv/content';
 import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
@@ -33,8 +34,8 @@ interface SubjectsViewProps {
  * page is the guided path. The same rules apply: a topic opens when the one before it is cleared.
  */
 export const SubjectsView: React.FC<SubjectsViewProps> = ({ profile, roundKey, onBack, onStartTopic }) => {
-  const cur = CURRICULUM[profile.track];
-  const examTracks = EXAM_PREP_BY_TRACK[profile.track];
+  const cur = CURRICULUM[pathwayOf(profile)];
+  const examTracks = EXAM_PREP_BY_TRACK[pathwayOf(profile)];
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
   let topicIndex = 0;
 
@@ -91,8 +92,8 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ profile, roundKey, o
                   const best = stat?.b ?? 0;
                   const mastered = best >= 10 || Boolean(stat?.m);
                   const saved = roundKey ? loadRound(roundKey, topic.id) : null;
-                  const unlocked = isTopicUnlocked(profile.track, profile.topics, topic.id);
-                  const level = levelOf(profile.track, topic.id);
+                  const unlocked = isTopicUnlocked(pathwayOf(profile), profile.topics, topic.id);
+                  const level = levelOf(pathwayOf(profile), topic.id);
                   if (!unlocked) {
                     return (
                       <button

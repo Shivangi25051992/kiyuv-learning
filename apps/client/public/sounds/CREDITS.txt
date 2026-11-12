@@ -1,18 +1,30 @@
-Sound recordings used in Play time. Trimmed to about 2.5 seconds, levelled and converted to mp3.
+Sound recordings used in Play time. Each is trimmed to about 2.5 seconds, levelled and converted to mp3.
+Where a licence asks for credit, the author is named below. Shown to families in the app's Credits.
 
-Google Sound Library (https://developers.google.com/assistant/tools/sound-library), licence CC BY 4.0
+Google Sound Library (https://developers.google.com/assistant/tools/sound-library), licence CC BY 4.0, by Google
   dog (dog_barking), car (car_horn), bus (engine_bus), ship (ship_bell), heli (helicopter_by),
-  fire (emergency_siren_approaching), amb (ambulance_siren), tractor (tractor_background_noise)
+  fire (emergency_siren_approaching), amb (ambulance_siren), tractor (tractor_background_noise),
+  bee (bee_buzz), owl (owl_hooting), mouse (mouse_squeaking), cricket (afternoon_crickets_long),
+  bird (june_songbirds)
 
 Wikimedia Commons (https://commons.wikimedia.org)
-  cow   "Single Cow Moo.ogg"                              CC BY-SA 4.0
-  cat   "Meow of a pleading cat.oga"                      Public domain
-  duck  "Pekin duck & mallard.ogg"                        CC BY-SA 4.0
-  pig   "Mudchute pig 1.ogg"                              CC BY-SA 3.0
-  sheep "Sheep bleat.ogg"                                 CC0
-  horse "Wiehern.ogg"                                     Public domain
-  lion  "Lion raring-sound1TamilNadu178.ogg"              Public domain
-  frog  "Frogs croak calling chorus at night.ogg"         CC BY-SA 4.0
-  train "Parovoz sound.ogg"                               Public domain
+  cow      "Single Cow Moo.ogg"                                   CC BY-SA 4.0   MichaeltheFox8621
+  duck     "Pekin duck & mallard.ogg"                             CC BY-SA 4.0   WaderClub
+  pig      "Mudchute pig 1.ogg"                                   CC BY-SA 3.0   Secretlondon
+  frog     "Frogs croak calling chorus at night.ogg"              CC BY-SA 4.0   JogiAsad
+  rooster  "Rooster crowing.ogg"                                  CC BY-SA 4.0   Filo gen'
+  monkey   "Dusky-leaf-monkey-call-kaeng-krachan.ogg"             CC BY-SA 4.0   Rushenb
+  bear     "Bear growl.ogg"                                       CC BY 3.0      Shizhao
+  sheep    "Sheep bleat.ogg"                                      CC0            Eviatar Bach
+  elephant "Elephant voice - trumpeting.ogg"                      CC0
+  donkey   "157763 felix-blume a-donkey-is-braying-in-his-enclosure-in-south-of-france.wav"  CC0   felix-blume
+  cat      "Meow of a pleading cat.oga"                           Public domain  Heismark
+  horse    "Wiehern.ogg"                                          Public domain
+  lion     "Lion raring-sound1TamilNadu178.ogg"                   Public domain
+  train    "Parovoz sound.ogg"                                    Public domain  Alex Alex Lep
+  hen      "Hen announcing shes lain an egg.ogg"                  Public domain  alys
+  goat     "Herd of goats bleating.ogg"                           Public domain  stephan
+  wolf     "Wolf howls.ogg"                                       Public domain
 
-Please check the author names on each Commons file page before a public launch.
+The "ShareAlike" (CC BY-SA) clips stay under their own licence. They are separate sound files, not part of the app's code.
+Not every clip has been listened to on a phone yet. Replace any that sounds wrong.

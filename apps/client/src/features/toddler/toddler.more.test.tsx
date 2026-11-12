@@ -20,7 +20,7 @@ vi.mock('../../lib/effects.js', () => ({ confettiBlast: () => {}, starBurst: () 
 
 import { ToddlerScreen } from './ToddlerScreen.js';
 import { PLAY_ACTIVITIES, PLAY_GROUPS, PLAY_TIME_ID } from './playTime.js';
-import { LAMB_SONG } from './playData.js';
+import { BODY_PARTS, LAMB_SONG } from './playData.js';
 
 const kid = (): KidProfile => ({
   kidId: 'k1', name: '', nickname: 'Ari', age: 2, country: 'IN', state: '', favColor: 'blue',
@@ -38,9 +38,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const open = (id: string) => {
+const open = (id: string, age = 3) => {
   const onOpen = vi.fn();
-  render(<ToddlerScreen id={id} profile={kid()} onOpen={onOpen} onClose={() => {}} />);
+  render(<ToddlerScreen id={id} profile={{ ...kid(), age }} onOpen={onOpen} onClose={() => {}} />);
   return { onOpen };
 };
 
@@ -125,7 +125,7 @@ describe('Big and small', () => {
 });
 
 describe('Where is my nose?', () => {
-  const PARTS = ['nose', 'ear', 'eyes', 'mouth', 'hand', 'foot'];
+  const PARTS = BODY_PARTS.map((p) => p.name);
   const targetOf = () => /^Touch the (\w+)!$/.exec(spoken.at(-1) ?? '')![1]!;
   const options = () => screen.getAllByRole('button').filter((b) => PARTS.includes(b.getAttribute('aria-label') ?? ''));
 

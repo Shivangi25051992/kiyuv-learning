@@ -1,6 +1,6 @@
 import React from 'react';
 import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
-import { LEVEL_COUNT, levelStatus } from '@kiyuv/content';
+import { LEVEL_COUNT, levelStatus, pathwayOf } from '@kiyuv/content';
 import { Pic } from '../../ui/Pic.js';
 import { IconFlame, IconTrophy } from '../../ui/Icons.js';
 import { themeOfLevel } from './levelThemes.js';
@@ -19,11 +19,14 @@ interface ProfileBannerProps {
 export const ProfileBanner: React.FC<ProfileBannerProps> = ({ profile, days }) => {
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
   const rank = rankOf(profile.stars);
-  const status = levelStatus(profile.track, profile.topics);
+  const status = levelStatus(pathwayOf(profile), profile.topics);
   const mastered = Object.values(profile.topics).filter((t) => t.b >= 10 || t.m).length;
-  const where = status.allCleared
-    ? `All ${LEVEL_COUNT} levels cleared`
-    : `Level ${status.current} of ${LEVEL_COUNT} · ${themeOfLevel(status.current).name}`;
+  const where =
+    pathwayOf(profile) === 'tots'
+      ? 'Play time'
+      : status.allCleared
+        ? `All ${LEVEL_COUNT} levels cleared`
+        : `Level ${status.current} of ${LEVEL_COUNT} · ${themeOfLevel(status.current).name}`;
   const barText = rank.maxed
     ? `${profile.stars} stars. You reached the top rank`
     : `${rank.into} of ${rank.need} stars toward ${rank.next}`;
