@@ -78,13 +78,33 @@ export function levelStatus(track: Track, topics: Topics): LevelStatus {
   return { current: LEVEL_COUNT, allCleared: true, clearedInCurrent: last, totalInCurrent: last };
 }
 
+/** Topics in the order a child works through them: level by level. */
+function topicOrder(track: Track): string[] {
+  return Object.entries(TOPIC_LEVEL[track])
+    .sort((a, b) => a[1] - b[1])
+    .map(([id]) => id);
+}
+
 /**
- * A topic is open when its level has been reached. A topic the child has already played
- * stays open, so nobody who started before levels existed is locked out of their own work.
+ * The topic to work on now: the first one in order that is not cleared yet.
+ * Returns null once everything is cleared.
+ */
+export function nextUnclearedTopic(track: Track, topics: Topics): string | null {
+  return topicOrder(track).find((id) => !isCleared(topics[id])) ?? null;
+}
+
+/**
+ * A topic is open when it is the next one to clear, the one right after it, or any level
+ * already reached. So clearing a topic always opens the next one straight away.
+ * A topic the child has already played stays open, so nobody who started before levels
+ * existed is locked out of their own work.
  */
 export function isTopicUnlocked(track: Track, topics: Topics, topicId: string): boolean {
   if ((topics[topicId]?.p ?? 0) > 0 || (topics[topicId]?.b ?? 0) > 0) return true;
-  return levelOf(track, topicId) <= levelStatus(track, topics).current;
+  if (levelOf(track, topicId) <= levelStatus(track, topics).current) return true;
+  const order = topicOrder(track);
+  const frontier = order.findIndex((id) => !isCleared(topics[id]));
+  return frontier >= 0 && order.indexOf(topicId) <= frontier + 1;
 }
 
 /** Special topic id for a mixed challenge round (not a real topic, never stored in progress). */

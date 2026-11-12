@@ -151,7 +151,7 @@ export const LevelBanner: React.FC<{ profile: KidProfile }> = ({ profile }) => {
           <p>
             {status.allCleared
               ? 'Amazing! Play any topic again to beat your best score.'
-              : `Score ${PASS_MARK} or more out of 10 in ${left} more ${left === 1 ? 'topic' : 'topics'} to open Level ${status.current + 1}.`}
+              : `Score ${PASS_MARK} or more out of 10 to clear a topic and open the next one. ${left} more ${left === 1 ? 'topic' : 'topics'} to finish Level ${status.current}.`}
           </p>
         </div>
       </div>
@@ -255,7 +255,7 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
                     type="button"
                     className="game-card locked"
                     disabled
-                    aria-label={`${subject.name}. Locked. Reach Level ${firstLevel} to play.`}
+                    aria-label={`${subject.name}. Locked. Clear the topics before it to play.`}
                   >
                     <span className="game-emoji" aria-hidden="true">
                       {subject.emoji}
@@ -374,7 +374,7 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
                         className="topic-chip locked"
                         disabled
                         style={{ ['--i' as string]: topicIndex++ }}
-                        aria-label={`${topic.name}. Locked. Clear Level ${level - 1} to open it.`}
+                        aria-label={`${topic.name}. Locked. Clear the topic before it to open this one.`}
                       >
                         <span className="topic-name">{topic.name}</span>
                         <span className="topic-meta">
