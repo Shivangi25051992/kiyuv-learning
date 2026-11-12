@@ -9,6 +9,8 @@ import {
   type KidProfile,
 } from '@kiyuv/shared';
 import {
+  deleteMyAccount,
+  exportMyData,
   migrateLegacyNames,
   signOutParent,
   subscribeAuthState,
@@ -62,6 +64,7 @@ import {
   refreshPinConfigured,
 } from '../features/auth/PinModal.js';
 import { OnboardingForm } from '../features/onboarding/OnboardingForm.js';
+import { wipeDeviceData } from '../lib/wipeDeviceData.js';
 import { ParentAreaModal } from '../features/parent/ParentAreaModal.js';
 import { CurriculumView } from '../features/play/CurriculumView.js';
 import { TopicRunner } from '../features/play/TopicRunner.js';
@@ -808,6 +811,13 @@ export const App: React.FC = () => {
           onResetProgress={async (targetKidId) => {
             const updated = await resetFamilyProgress(authUser.uid, targetKidId);
             setProfiles(updated);
+          }}
+          onExportData={async () => JSON.stringify(await exportMyData(), null, 2)}
+          onDeleteAccount={async () => {
+            await deleteMyAccount();
+            clearDeviceUnlock(authUser.uid);
+            await wipeDeviceData();
+            window.location.reload();
           }}
           onChangeTries={async (kidId, maxTries) => {
             setProfiles(await setProfileMaxTries(authUser.uid, kidId, maxTries));

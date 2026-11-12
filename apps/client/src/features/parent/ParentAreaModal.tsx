@@ -11,6 +11,8 @@ import { loadChildNames, type AuthParentUser } from '../../lib/firebase/index.js
 import { VoiceSettings } from './VoiceSettings.js';
 import { CompanionSettings } from '../companion/CompanionSettings.js';
 import { useModalFocus } from '../../ui/useModalFocus.js';
+import { AccountDataSection } from './AccountDataSection.js';
+import { AboutLink } from '../about/AboutModal.js';
 
 interface ParentAreaModalProps {
   user: AuthParentUser;
@@ -20,6 +22,9 @@ interface ParentAreaModalProps {
   onResetProgress: (targetKidId?: KidId) => Promise<void>;
   /** Saves how many tries a child gets per question (0 = unlimited). */
   onChangeTries: (kidId: KidId, maxTries: number) => Promise<void>;
+  /** Returns the family's data as text for a file. */
+  onExportData: () => Promise<string>;
+  onDeleteAccount: () => Promise<void>;
   onClose: () => void;
 }
 
@@ -30,6 +35,8 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
   onEditProfile,
   onResetProgress,
   onChangeTries,
+  onExportData,
+  onDeleteAccount,
   onClose,
 }) => {
   const [confirmResetTarget, setConfirmResetTarget] = useState<'all' | KidId | null>(null);
@@ -219,6 +226,15 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
 
         <VoiceSettings />
         <CompanionSettings />
+
+        <AccountDataSection
+          childCount={profiles.length}
+          onExport={onExportData}
+          onDelete={onDeleteAccount}
+        />
+        <p style={{ margin: '14px 0 0' }}>
+          <AboutLink />
+        </p>
 
         <div
           style={{

@@ -2,10 +2,13 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig({
+// `vite build --mode native` is the build inside the phone apps. There the app files ship
+// inside the app, so no service worker is wanted: it could keep serving an old copy.
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     VitePWA({
+      disable: mode === 'native',
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: false, // Uses /manifest.webmanifest from public
@@ -17,7 +20,7 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: true,
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/__\/auth/, /^\/api\//],
+        navigateFallbackDenylist: [/^\/__\/auth/, /^\/api\//, /^\/(privacy|terms)\.html$/],
         // Task 2.11: Never cache authentication or Firestore API responses
         runtimeCaching: []
       }
@@ -36,4 +39,4 @@ export default defineConfig({
       }
     }
   }
-});
+}));

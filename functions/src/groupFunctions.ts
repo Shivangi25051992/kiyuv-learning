@@ -21,12 +21,12 @@ import { ServiceError, type GroupContext } from './groupService.js';
 import { DELETE_FIELD, type Doc, type Store, type Tx } from './groupStore.js';
 import { pinPepperSecret } from './secrets.js';
 
-const REGION = 'asia-south1';
+export const REGION = 'asia-south1';
 const JOIN_LINK = 'https://kiyuv-learning.web.app/join#';
 
 // ------------------------------------------------------------ Firestore store
 
-function createFirestoreStore(): Store {
+export function createFirestoreStore(): Store {
   const db = getFirestore();
   const mapPatch = (patch: Record<string, unknown>) =>
     Object.fromEntries(
@@ -50,6 +50,8 @@ function createFirestoreStore(): Store {
       (await db.collection(collectionPath).select().get()).docs.map((d) => d.id),
     where: async (collectionPath, field, op, value) =>
       (await db.collection(collectionPath).where(field, op, value).select().get()).docs.map((d) => d.id),
+    whereAnywhere: async (collectionId, field, value) =>
+      (await db.collectionGroup(collectionId).where(field, '==', value).select().get()).docs.map((d) => d.ref.path),
   };
 }
 
@@ -62,7 +64,7 @@ function inviteKey(): string {
   return createHmac('sha256', pepper).update('kiyuv-invite-v1').digest('hex');
 }
 
-function makeContext(): GroupContext {
+export function makeContext(): GroupContext {
   return {
     store: createFirestoreStore(),
     now: () => Date.now(),

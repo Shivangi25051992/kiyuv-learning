@@ -8,6 +8,8 @@ export default tseslint.config(
     ignores: [
       '**/.claude/**',
       '**/dist/**',
+      'apps/client/android/**',
+      'apps/client/ios/**',
       '**/lib/**',
       '**/node_modules/**',
       '**/coverage/**',

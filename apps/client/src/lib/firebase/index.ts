@@ -6,6 +6,7 @@ import {
 import {
   GoogleAuthProvider,
   OAuthProvider,
+  signInWithCredential,
   browserLocalPersistence,
   connectAuthEmulator,
   createUserWithEmailAndPassword,
@@ -53,6 +54,8 @@ import {
   type KidProfileData,
   type VerifyPinResponse,
 } from '@kiyuv/shared';
+
+import { isNativeApp } from '../native.js';
 
 export interface AuthParentUser {
   uid: string;
@@ -150,7 +153,29 @@ export function subscribeAuthState(cb: (user: AuthParentUser | null) => void): (
   return onAuthStateChanged(auth, (u) => cb(toAuthParentUser(u)));
 }
 
+/**
+ * Inside the phone apps a browser pop-up cannot open, so the phone's own Google or Apple
+ * sign-in runs and hands its token to Firebase. The plugin loads only in the apps.
+ */
+async function nativeCredentialSignIn(which: 'google' | 'apple'): Promise<AuthParentUser> {
+  const { auth } = ensureFirebase();
+  const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+  if (which === 'google') {
+    const r = await FirebaseAuthentication.signInWithGoogle({ skipNativeAuth: true });
+    const idToken = r.credential?.idToken;
+    if (!idToken) throw new Error('Google sign-in did not return a token.');
+    const cred = GoogleAuthProvider.credential(idToken, r.credential?.accessToken);
+    return toAuthParentUser((await signInWithCredential(auth, cred)).user)!;
+  }
+  const r = await FirebaseAuthentication.signInWithApple({ skipNativeAuth: true });
+  const idToken = r.credential?.idToken;
+  if (!idToken) throw new Error('Apple sign-in did not return a token.');
+  const cred = new OAuthProvider('apple.com').credential({ idToken, rawNonce: r.credential?.nonce });
+  return toAuthParentUser((await signInWithCredential(auth, cred)).user)!;
+}
+
 export async function signInWithGoogle(): Promise<AuthParentUser> {
+  if (isNativeApp()) return nativeCredentialSignIn('google');
   const { auth } = ensureFirebase();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -159,6 +184,7 @@ export async function signInWithGoogle(): Promise<AuthParentUser> {
 }
 
 export async function signInWithApple(): Promise<AuthParentUser> {
+  if (isNativeApp()) return nativeCredentialSignIn('apple');
   const { auth } = ensureFirebase();
   const provider = new OAuthProvider('apple.com');
   provider.addScope('email');
@@ -225,6 +251,38 @@ export async function signOutParent(): Promise<void> {
   clearNameCaches();
   const { auth } = ensureFirebase();
   await signOut(auth);
+}
+
+/** What is stored about the family, as returned by the `exportMyData` function. */
+export interface FamilyExport {
+  exportedAt: string;
+  email: string | null;
+  account: Record<string, unknown>;
+  children: Array<Record<string, unknown>>;
+  groups: Array<{ name: string; role: string }>;
+  consents: Array<Record<string, unknown>>;
+}
+
+/** Needs a PIN entered in the last 5 minutes. */
+export async function exportMyData(): Promise<FamilyExport> {
+  const { functions } = ensureFirebase();
+  const res = await httpsCallable<Record<string, never>, FamilyExport>(functions, 'exportMyData')({});
+  return res.data;
+}
+
+/**
+ * Deletes the family's account and all its data on the server, then signs out on this
+ * device. Needs a PIN entered in the last 5 minutes.
+ */
+export async function deleteMyAccount(): Promise<void> {
+  const { auth, functions } = ensureFirebase();
+  await httpsCallable<Record<string, never>, { ok: true }>(functions, 'deleteAccount')({});
+  clearNameCaches();
+  try {
+    await signOut(auth);
+  } catch {
+    // The account is already gone on the server; signing out locally is best effort.
+  }
 }
 
 function getBrowserLocale(): string {
