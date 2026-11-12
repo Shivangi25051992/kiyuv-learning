@@ -1,0 +1,81 @@
+/* Kiyu's wardrobe */
+.wardrobe {
+  display: grid;
+  gap: var(--s4);
+}
+.wardrobe-stage {
+  display: grid;
+  justify-items: center;
+  gap: var(--s1);
+  padding: var(--s4);
+  border: var(--edge) solid var(--run-color);
+  border-radius: var(--radius-lg);
+  background: radial-gradient(circle at 50% 35%, #fff, #eef1ff);
+  box-shadow: 0 6px 0 var(--run-color);
+}
+.wardrobe-wearing {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+}
+.wardrobe-rank {
+  margin: 0;
+  font-weight: 800;
+  color: var(--muted);
+}
+.look-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.look-card {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 150px;
+  padding: var(--s3) var(--s2);
+  border: 2px solid #e4e0f0;
+  border-radius: var(--radius);
+  background: #fff;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.look-card b {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.15;
+}
+.look-card small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+}
+.look-card.on {
+  border-color: var(--run-color);
+  background: #eef3ff;
+  box-shadow: 0 0 0 3px var(--run-color);
+}
+.look-card.locked {
+  background: #f3f1fa;
+  cursor: not-allowed;
+}
+.look-card.locked .mascot {
+  filter: grayscale(0.9);
+  opacity: 0.7;
+}
+.look-card.locked b {
+  color: #3a3358;
+}
+.look-card.locked small {
+  color: #4b4468;
+}

@@ -69,6 +69,9 @@ import { CoursesView } from '../features/play/CoursesView.js';
 import { ToddlerScreen } from '../features/toddler/ToddlerScreen.js';
 import { SubjectsView } from '../features/learn/SubjectsView.js';
 import { HabitsScreen } from '../features/habits/HabitsScreen.js';
+import { WardrobeScreen } from '../features/wardrobe/WardrobeScreen.js';
+import { WARDROBE_PAGE_ID, resolveLook } from '../features/wardrobe/looks.js';
+import { setActiveLook } from '../features/wardrobe/lookStore.js';
 import { HABITS_PAGE_ID, isHabitActivity, isHabitScreen } from '../features/habits/habits.js';
 import { dailyRunFor } from '../features/learn/dailyChallenge.js';
 import { markActiveToday, markDailyDone } from '../features/learn/dailyState.js';
@@ -319,6 +322,13 @@ export const App: React.FC = () => {
   const activeProfile =
     profiles.find((p) => p.kidId === activeKidId) ?? profiles[0] ?? null;
 
+  // Kiyu wears what the child earned and chose, everywhere in the app.
+  const lookUid = authUser?.uid;
+  const lookKid = activeProfile?.kidId;
+  const lookStars = activeProfile?.stars ?? 0;
+  useEffect(() => {
+    setActiveLook(lookUid && lookKid ? resolveLook(`${lookUid}:${lookKid}`, lookStars) : null);
+  }, [lookUid, lookKid, lookStars]);
   // Someone opened a join link: once they are in the app, take them to Groups.
   useEffect(() => {
     if (joinCode && unlocked && screenMode === 'app') {
@@ -616,7 +626,13 @@ export const App: React.FC = () => {
             key={`${activeTab}-${currentTopicId ?? 'map'}`}
             id="main"
           >
-            {currentTopicId && isHabitScreen(currentTopicId) ? (
+            {currentTopicId === WARDROBE_PAGE_ID ? (
+              <WardrobeScreen
+                profile={activeProfile}
+                storeKey={`${authUser.uid}:${activeProfile.kidId}`}
+                onClose={() => setCurrentTopicId(null)}
+              />
+            ) : currentTopicId && isHabitScreen(currentTopicId) ? (
               <HabitsScreen
                 id={currentTopicId}
                 profile={activeProfile}

@@ -15,6 +15,7 @@ import { ProfileBanner } from './ProfileBanner.js';
 import { todaysDaily } from './dailyChallenge.js';
 import { dayStreakOf, isDailyDone, loadDaily } from './dailyState.js';
 import { HABITS_PAGE_ID } from '../habits/habits.js';
+import { WARDROBE_PAGE_ID } from '../wardrobe/looks.js';
 import { SUBJECTS_PAGE_ID } from './pages.js';
 import { challengeProgress, recommend, upNext } from './learnPath.js';
 import { themeOfLevel } from './levelThemes.js';
@@ -248,6 +249,14 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
               onClick={() => onStartTopic(HABITS_PAGE_ID)}
             />
           )}
+          <ExtraCard
+            emoji="🌟"
+            title="Kiyu's wardrobe"
+            text="Earn stars to unlock a new look for Kiyu."
+            action="Dress up"
+            tone="#b45309"
+            onClick={() => onStartTopic(WARDROBE_PAGE_ID)}
+          />
           <ExtraCard
             emoji="🔢"
             title="Browse by subject"
