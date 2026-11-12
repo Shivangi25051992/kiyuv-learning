@@ -3437,3 +3437,77 @@ select.text-input {
 .ops.ops-three .kiki-obj-btn {
   font-size: clamp(44px, 14vw, 64px);
 }
+
+/* ==========================================================================
+   Bonus courses page
+   ========================================================================== */
+.courses-btn {
+  background: linear-gradient(135deg, #7c3aed, #4c1d95);
+}
+.courses-home {
+  display: grid;
+  gap: var(--s4);
+}
+.courses-top {
+  display: flex;
+}
+.courses-title {
+  margin: 0;
+  font-size: 32px;
+}
+.courses-sub {
+  margin: 0;
+  font-weight: 700;
+  color: var(--muted);
+}
+.course-group {
+  display: grid;
+  gap: var(--s3);
+}
+.course-group > .section-title {
+  margin: var(--s3) 0 0;
+}
+.course-ages {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+}
+.game-card.premium {
+  background: var(--card-soft, #fff);
+}
+.game-card.premium .game-go {
+  background: #4b4468;
+  color: #fff;
+}
+.premium-notice {
+  text-align: center;
+  display: grid;
+  gap: var(--s3);
+  justify-items: center;
+}
+.premium-notice h2 {
+  margin: 0;
+  font-size: 26px;
+}
+.premium-notice p {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.premium-emoji {
+  font-size: 64px;
+  line-height: 1;
+}
+.premium-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #4b4468;
+  color: #fff;
+  font-size: 14px;
+}
+.premium-sub {
+  color: var(--muted);
+}

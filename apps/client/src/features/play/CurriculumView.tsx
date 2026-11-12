@@ -4,8 +4,10 @@ import {
   CHALLENGE_ID,
   CHALLENGE_MIN_TOPICS,
   CHALLENGE_WIN,
+  COURSES_PAGE_ID,
   challengePool,
-  COURSES,
+  coursesForTrack,
+  freeCourseCount,
   CURRICULUM,
   isChallengeUnlocked,
   EXAM_PREP_BY_TRACK,
@@ -18,6 +20,7 @@ import {
 } from '@kiyuv/content';
 import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
 import { Pic } from '../../ui/Pic.js';
+import { SUBJECT_COLORS } from './subjectColors.js';
 import { loadRound } from './roundState.js';
 import { IconCheck, IconFlame, IconLock, IconPlay, IconStar, IconTrophy } from '../../ui/Icons.js';
 
@@ -37,16 +40,7 @@ const SYSTEM_CLASS_MAP: Record<CurriculumSystem, string> = {
   olym: 'b-olym',
 };
 
-/** A friendly rainbow, so every subject has its own colour. */
-const SUBJECT_COLORS = [
-  { main: '#ef5350', text: '#c62828', soft: '#ffeceb' },
-  { main: '#fb8c00', text: '#b45309', soft: '#fff1dd' },
-  { main: '#e0a800', text: '#8a6100', soft: '#fff8d6' },
-  { main: '#1faa72', text: '#047857', soft: '#e3f9ee' },
-  { main: '#3b7bff', text: '#1d4ed8', soft: '#e8f0ff' },
-  { main: '#8e5cf0', text: '#6d28d9', soft: '#f1eaff' },
-  { main: '#e0479b', text: '#be185d', soft: '#ffe8f4' },
-] as const;
+
 
 type SubjectList = (typeof CURRICULUM)[keyof typeof CURRICULUM]['subjects'];
 
@@ -97,42 +91,24 @@ const ChallengeButton: React.FC<{ profile: KidProfile; onStart: () => void }> = 
   );
 };
 
-/** Extra courses outside the levels. Always open; they never gate a level. */
-const BonusCourses: React.FC<{ profile: KidProfile; onStart: (id: string) => void }> = ({ profile, onStart }) => {
-  if (profile.track !== 'primary') return null;
+/** One button that opens the bonus courses page, so the long course list stays out of the way. */
+const CoursesButton: React.FC<{ profile: KidProfile; onOpen: () => void }> = ({ profile, onOpen }) => {
+  const total = coursesForTrack(profile.track).length;
+  if (total === 0) return null;
+  const free = freeCourseCount(profile.track);
   return (
-    <section className="bonus-courses" aria-label="Bonus courses">
-      <h2 className="section-title">Bonus courses</h2>
-      <ul className="game-grid">
-        {COURSES.map((c, i) => {
-          const colors = SUBJECT_COLORS[(i + 3) % SUBJECT_COLORS.length]!;
-          const best = profile.topics[c.id]?.b ?? 0;
-          return (
-            <li key={c.id} className="stagger-item" style={{ ['--i' as string]: i }}>
-              <button
-                type="button"
-                className="game-card"
-                data-silent
-                style={{
-                  ['--card-main' as string]: colors.main,
-                  ['--card-text' as string]: colors.text,
-                  ['--card-soft' as string]: colors.soft,
-                }}
-                onClick={() => onStart(c.id)}
-                aria-label={`${c.name}. ${c.blurb}. ${best > 0 ? `Best score ${best} out of 10` : 'Not played yet'}`}
-              >
-                <span className="game-emoji" aria-hidden="true">
-                  <Pic emoji={c.emoji} />
-                </span>
-                <span className="game-name">{c.name}</span>
-                <span className="bonus-blurb">{c.blurb}</span>
-                <span className="game-go">{best > 0 ? `Best ${best}/10` : 'New'}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <button type="button" className="next-btn courses-btn" data-silent onClick={onOpen}>
+      <span className="challenge-emoji" aria-hidden="true">
+        <Pic emoji="📚" />
+      </span>
+      <span>
+        <b>Bonus courses</b>
+        <small>
+          {total} courses · {free} free
+        </small>
+      </span>
+      <IconPlay size={28} />
+    </button>
   );
 };
 
@@ -321,7 +297,7 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
       )}
 
       <ChallengeButton profile={profile} onStart={() => onStartTopic(CHALLENGE_ID)} />
-      <BonusCourses profile={profile} onStart={onStartTopic} />
+      <CoursesButton profile={profile} onOpen={() => onStartTopic(COURSES_PAGE_ID)} />
 
       <h2 className="section-title">
         {cur.label}
