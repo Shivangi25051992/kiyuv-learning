@@ -6,10 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:native": "tsc --noEmit && vite build --mode native",
+    "cap:sync": "npm run build:native && cap sync",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@capacitor-firebase/authentication": "^7.5.0",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/browser": "^7.0.5",
+    "@capacitor/core": "^7.6.10",
+    "@capacitor/filesystem": "^7.1.9",
+    "@capacitor/share": "^7.0.4",
+    "@capacitor/splash-screen": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6",
     "@fontsource/fredoka": "^5.3.0",
     "@fontsource/nunito": "^5.3.0",
     "@kiyuv/content": "*",
@@ -18,5 +28,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^7.6.10",
+    "@capacitor/ios": "^7.6.10"
   }
 }

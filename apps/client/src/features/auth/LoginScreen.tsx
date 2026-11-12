@@ -13,11 +13,15 @@ import {
   saveParentPin,
 } from './PinModal.js';
 import { Mascot } from '../../ui/Mascot.js';
+import { nativePlatform } from '../../lib/native.js';
+import { AboutLink } from '../about/AboutModal.js';
 
 // Sign-in options shown to parents. Only Google is turned on for now. Switch the
 // others on here once they are enabled in the Firebase console and tested.
 const ENABLE_APPLE_SIGN_IN = false;
 const ENABLE_EMAIL_SIGN_IN = false;
+// The App Store requires Sign in with Apple in any iPhone or iPad app that offers Google sign-in.
+const appleRequired = nativePlatform() === 'ios';
 
 interface LoginScreenProps {
   user: AuthParentUser | null;
@@ -222,7 +226,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
               Continue with Google
             </button>
 
-            {ENABLE_APPLE_SIGN_IN && (
+            {(ENABLE_APPLE_SIGN_IN || appleRequired) && (
               <button
                 type="button"
                 className="google-btn apple-btn"
@@ -298,6 +302,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ user, onUnlocked }) =>
             )}
             <p className="login-note">
               Grown-ups sign in once and add the children. Kids never need an account.
+            </p>
+            <p className="login-note">
+              <AboutLink />
             </p>
           </div>
         )}

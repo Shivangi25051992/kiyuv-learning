@@ -1,0 +1,60 @@
+name: Android build
+
+# Builds a test (debug) Android app on every change to the app, so a broken phone build is
+# caught in the pull request. Nothing is signed or uploaded to a store here.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/client/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  debug-apk:
+    name: Debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the web app for the phone and copy it into the Android project
+        working-directory: apps/client
+        run: npm run cap:sync
+
+      - name: Build the debug APK
+        working-directory: apps/client/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Keep the APK for testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: kiyuv-debug-apk
+          path: apps/client/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14

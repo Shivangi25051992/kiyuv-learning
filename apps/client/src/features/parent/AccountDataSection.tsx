@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { isNativeApp } from '../../lib/native.js';
+import { shareTextFile } from '../../lib/nativeInit.js';
 
 /** Word the parent types to confirm. Typing it makes a slip-up on a phone unlikely. */
 export const DELETE_WORD = 'DELETE';
@@ -10,7 +12,7 @@ interface AccountDataSectionProps {
   /** Deletes everything on the server and on this device. */
   onDelete: () => Promise<void>;
   /** Saves text as a file. Replaced on phones, where a browser download does not work. */
-  onSaveFile?: (fileName: string, text: string) => void;
+  onSaveFile?: (fileName: string, text: string) => void | Promise<void>;
 }
 
 function friendly(err: unknown, what: string): string {
@@ -21,7 +23,8 @@ function friendly(err: unknown, what: string): string {
   return `Could not ${what}. Check your connection and try again.`;
 }
 
-export function saveTextFile(fileName: string, text: string): void {
+export function saveTextFile(fileName: string, text: string): void | Promise<void> {
+  if (isNativeApp()) return shareTextFile(fileName, text);
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
   const a = document.createElement('a');
   a.href = url;
@@ -50,7 +53,7 @@ export const AccountDataSection: React.FC<AccountDataSectionProps> = ({
     setMessage('');
     try {
       const text = await onExport();
-      onSaveFile('kiyuv-my-data.json', text);
+      await onSaveFile('kiyuv-my-data.json', text);
       setMessage('Your data file is ready.');
     } catch (err) {
       setError(friendly(err, 'prepare your data'));

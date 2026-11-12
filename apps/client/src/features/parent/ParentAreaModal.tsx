@@ -12,6 +12,7 @@ import { VoiceSettings } from './VoiceSettings.js';
 import { CompanionSettings } from '../companion/CompanionSettings.js';
 import { useModalFocus } from '../../ui/useModalFocus.js';
 import { AccountDataSection } from './AccountDataSection.js';
+import { AboutLink } from '../about/AboutModal.js';
 
 interface ParentAreaModalProps {
   user: AuthParentUser;
@@ -231,6 +232,9 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
           onExport={onExportData}
           onDelete={onDeleteAccount}
         />
+        <p style={{ margin: '14px 0 0' }}>
+          <AboutLink />
+        </p>
 
         <div
           style={{
