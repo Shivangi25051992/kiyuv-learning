@@ -227,6 +227,38 @@ export async function signOutParent(): Promise<void> {
   await signOut(auth);
 }
 
+/** What is stored about the family, as returned by the `exportMyData` function. */
+export interface FamilyExport {
+  exportedAt: string;
+  email: string | null;
+  account: Record<string, unknown>;
+  children: Array<Record<string, unknown>>;
+  groups: Array<{ name: string; role: string }>;
+  consents: Array<Record<string, unknown>>;
+}
+
+/** Needs a PIN entered in the last 5 minutes. */
+export async function exportMyData(): Promise<FamilyExport> {
+  const { functions } = ensureFirebase();
+  const res = await httpsCallable<Record<string, never>, FamilyExport>(functions, 'exportMyData')({});
+  return res.data;
+}
+
+/**
+ * Deletes the family's account and all its data on the server, then signs out on this
+ * device. Needs a PIN entered in the last 5 minutes.
+ */
+export async function deleteMyAccount(): Promise<void> {
+  const { auth, functions } = ensureFirebase();
+  await httpsCallable<Record<string, never>, { ok: true }>(functions, 'deleteAccount')({});
+  clearNameCaches();
+  try {
+    await signOut(auth);
+  } catch {
+    // The account is already gone on the server; signing out locally is best effort.
+  }
+}
+
 function getBrowserLocale(): string {
   const raw = (typeof navigator !== 'undefined' ? navigator.language : 'en').slice(0, 16);
   return raw.length >= 2 ? raw : 'en';

@@ -1,6 +1,11 @@
 {
   "indexes": [],
   "fieldOverrides": [
-    { "collectionGroup": "kids", "fieldPath": "topics", "indexes": [] }
+    { "collectionGroup": "kids", "fieldPath": "topics", "indexes": [] },
+    {
+      "collectionGroup": "requests",
+      "fieldPath": "uid",
+      "indexes": [{ "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }]
+    }
   ]
 }
