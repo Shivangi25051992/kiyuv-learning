@@ -60,6 +60,18 @@ const PRIMARY_PRAISES = [
 
 const EARLY_PRAISES = ['Yay!', 'Clever!', 'Woohoo!', 'Amazing!', 'Super!', 'Hooray!'] as const;
 
+/**
+ * How big an answer's text may be, by its length, so long words and phrases always fit
+ * inside the button instead of spilling out of it.
+ */
+export function answerSize(label: string): string {
+  const n = label.length;
+  if (n > 24) return 'op-xl';
+  if (n > 14) return 'op-long';
+  if (n > 8) return 'op-md';
+  return '';
+}
+
 /** The sentence read out loud for a question (kept short for little listeners). */
 function speechFor(q: GeneratedQuestion): string {
   if (q.highlightText && q.highlightColor) return `Tap ${q.highlightText}!`;
@@ -371,6 +383,15 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
 
   const answerLabel =
     question.options.find((o) => o.value === question.correctValue)?.label ?? question.correctValue;
+  // Words and phrases need wider buttons than numbers, so they get fewer, wider columns.
+  // Every answer in a set uses the same text size, so a short one never looks shouting-large
+  // beside a long one.
+  const setSize = answerSize(
+    question.options.reduce((longest, o) => (o.label.length > longest.length ? o.label : longest), ''),
+  );
+  const wideAnswers = question.options.some(
+    (o) => !o.colorHex && !o.isLargeEmoji && o.label.length > 8,
+  );
 
   const showParentHelp = () => {
     setHelpStage('parent');
@@ -583,7 +604,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         {question.hint && <div className="hint">Hint: {question.hint}</div>}
       </div>
 
-      <div className="ops">
+      <div className={`ops${wideAnswers ? ' ops-wide' : question.options.length === 3 ? ' ops-three' : ''}`}>
         {question.options.map((opt, optIndex) => {
           const isSelected = selectedOption === opt.value;
           const stateCls =
@@ -629,7 +650,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
               key={opt.value}
               type="button"
               data-silent
-              className={`op ${stateCls}`}
+              className={`op ${setSize} ${stateCls}`}
               style={{ ['--i' as string]: optIndex }}
               onClick={(e) => handleOptionClick(e, opt.value)}
             >

@@ -279,3 +279,15 @@ describe('finish screen "Next up" tiles', () => {
     expect(played).toEqual(['y-sub-e']);
   });
 });
+
+describe('answer sizing', () => {
+  it('shrinks long answers so they fit their button', async () => {
+    const { answerSize } = await import('./TopicRunner.js');
+    expect(answerSize('12')).toBe('');
+    expect(answerSize('Mangalyaan')).toBe('op-md');
+    expect(answerSize('Chandrayaan-3')).toBe('op-md');
+    expect(answerSize('Wash our hands')).toBe('op-md');
+    expect(answerSize('Brushing twice a day')).toBe('op-long');
+    expect(answerSize('A mountain that can erupt hot lava')).toBe('op-xl');
+  });
+});

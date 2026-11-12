@@ -151,7 +151,7 @@ export const LevelBanner: React.FC<{ profile: KidProfile }> = ({ profile }) => {
           <p>
             {status.allCleared
               ? 'Amazing! Play any topic again to beat your best score.'
-              : `Score ${PASS_MARK} or more out of 10 to clear a topic and open the next one. ${left} more ${left === 1 ? 'topic' : 'topics'} to finish Level ${status.current}.`}
+              : `Score ${PASS_MARK}+ out of 10 to clear a topic. ${left} to go in Level ${status.current}.`}
           </p>
         </div>
       </div>
