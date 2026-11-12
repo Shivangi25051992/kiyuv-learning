@@ -9,6 +9,7 @@ import {
 } from '@kiyuv/shared';
 import { loadChildNames, type AuthParentUser } from '../../lib/firebase/index.js';
 import { VoiceSettings } from './VoiceSettings.js';
+import { CompanionSettings } from '../companion/CompanionSettings.js';
 import { useModalFocus } from '../../ui/useModalFocus.js';
 
 interface ParentAreaModalProps {
@@ -217,6 +218,7 @@ export const ParentAreaModal: React.FC<ParentAreaModalProps> = ({
         )}
 
         <VoiceSettings />
+        <CompanionSettings />
 
         <div
           style={{

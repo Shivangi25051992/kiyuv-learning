@@ -1,0 +1,149 @@
+/* ==========================================================================
+   Kiyu, the companion. Floats above everything and lets every tap through.
+   ========================================================================== */
+.companion {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  overflow: hidden;
+}
+.companion-actor {
+  position: absolute;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.companion-actor.leaving {
+  opacity: 0;
+}
+.companion-bubble {
+  position: relative;
+  margin: 0;
+  max-width: min(260px, 70vw);
+  padding: 8px 14px;
+  border: 3px solid #fff;
+  border-radius: 18px;
+  background: #1e2a5e;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+}
+.companion-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 14px;
+  height: 14px;
+  margin: -9px 0 0 -7px;
+  background: #1e2a5e;
+  border-right: 3px solid #fff;
+  border-bottom: 3px solid #fff;
+  transform: rotate(45deg);
+}
+.companion-body {
+  display: block;
+  filter: drop-shadow(0 6px 8px rgba(36, 48, 94, 0.25));
+}
+
+/* A short hello in the bottom-left corner */
+.companion-actor.move-home {
+  left: 12px;
+  bottom: calc(12px + var(--safe-bottom, 0px));
+  justify-items: start;
+  animation: companion-pop 0.45s var(--ease-bounce) both;
+}
+.companion-actor.move-home.above-tabbar {
+  bottom: calc(104px + var(--safe-bottom, 0px));
+}
+.companion-actor.move-home .companion-bubble::after {
+  left: 42px;
+}
+
+/* Running across the whole screen, bubble and all */
+.companion-actor.move-across {
+  left: 0;
+  bottom: calc(28px + var(--safe-bottom, 0px));
+  animation: companion-across var(--hold, 3s) linear both;
+}
+.companion-actor.move-across .companion-body {
+  animation: companion-hop 0.34s ease-in-out infinite alternate;
+}
+@keyframes companion-across {
+  from {
+    transform: translateX(-140px);
+  }
+  to {
+    transform: translateX(calc(100vw + 40px));
+  }
+}
+@keyframes companion-hop {
+  from {
+    transform: translateY(0) rotate(-4deg);
+  }
+  to {
+    transform: translateY(-16px) rotate(4deg);
+  }
+}
+
+/* Running to the thing that was tapped */
+.companion-actor.move-to {
+  left: calc(var(--tx, 0) * 1px);
+  top: calc(var(--ty, 0) * 1px);
+  transform: translate(-50%, -100%);
+  animation: companion-to 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes companion-to {
+  from {
+    translate: var(--dx, 0) var(--dy, 0);
+    opacity: 0.2;
+  }
+  to {
+    translate: 0 0;
+    opacity: 1;
+  }
+}
+@keyframes companion-pop {
+  from {
+    transform: scale(0.4) translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* The parent switch */
+.companion-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 44px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.companion-toggle input {
+  flex: none;
+  width: 26px;
+  height: 26px;
+}
+.companion-note {
+  margin: var(--s2) 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* A little smaller when it runs to a tapped thing, so it hides as little as possible */
+.companion-actor.move-to .mascot {
+  width: 60px;
+  height: 60px;
+}

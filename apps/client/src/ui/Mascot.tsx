@@ -1,6 +1,18 @@
 import React, { useId } from 'react';
 
-export type MascotMood = 'happy' | 'cheer' | 'oops' | 'think' | 'sleepy';
+export type MascotMood =
+  | 'happy'
+  | 'cheer'
+  | 'oops'
+  | 'think'
+  | 'sleepy'
+  | 'excited'
+  | 'proud'
+  | 'wave'
+  | 'surprised'
+  | 'love'
+  | 'wink'
+  | 'laugh';
 
 interface MascotProps {
   mood?: MascotMood;
@@ -17,9 +29,14 @@ interface MascotProps {
 export const Mascot: React.FC<MascotProps> = ({ mood = 'happy', size = 120, className = '' }) => {
   // Each mascot needs its own gradient id. A shared id breaks when one copy is hidden.
   const gradientId = `mascot-body-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-  const eyesClosed = mood === 'cheer' || mood === 'sleepy';
+  const eyesClosed = mood === 'cheer' || mood === 'sleepy' || mood === 'proud' || mood === 'laugh';
   const lookUp = mood === 'think';
-  const wide = mood === 'oops';
+  const wide = mood === 'oops' || mood === 'surprised';
+  const heartEyes = mood === 'love';
+  const winking = mood === 'wink';
+  // Both arms up for big happy moods; one arm up and waving for "wave".
+  const armsUp = mood === 'cheer' || mood === 'excited' || mood === 'laugh';
+  const waving = mood === 'wave';
 
   return (
     <svg
@@ -50,8 +67,16 @@ export const Mascot: React.FC<MascotProps> = ({ mood = 'happy', size = 120, clas
 
         {/* Arms (raised when cheering) */}
         <g className="mascot-arms">
-          <ellipse cx="20" cy={mood === 'cheer' ? 54 : 72} rx="9" ry="12" fill={`url(#${gradientId})`} transform={mood === 'cheer' ? 'rotate(-28 20 54)' : 'rotate(18 20 72)'} />
-          <ellipse cx="100" cy={mood === 'cheer' ? 54 : 72} rx="9" ry="12" fill={`url(#${gradientId})`} transform={mood === 'cheer' ? 'rotate(28 100 54)' : 'rotate(-18 100 72)'} />
+          <ellipse cx="20" cy={armsUp ? 54 : 72} rx="9" ry="12" fill={`url(#${gradientId})`} transform={armsUp ? 'rotate(-28 20 54)' : 'rotate(18 20 72)'} />
+          <ellipse
+            className={waving ? 'mascot-wave-arm' : undefined}
+            cx="100"
+            cy={armsUp || waving ? 54 : 72}
+            rx="9"
+            ry="12"
+            fill={`url(#${gradientId})`}
+            transform={armsUp || waving ? 'rotate(28 100 54)' : 'rotate(-18 100 72)'}
+          />
         </g>
 
         {/* Ears */}
@@ -65,7 +90,12 @@ export const Mascot: React.FC<MascotProps> = ({ mood = 'happy', size = 120, clas
         <ellipse cx="60" cy="78" rx="26" ry="24" fill="#ffffff" opacity="0.92" />
 
         {/* Eyes */}
-        {eyesClosed ? (
+        {heartEyes ? (
+          <g fill="#ff4f8b">
+            <path d="M44 62 C34 55 34 46 41 46 C44 46 44 49 44 49 C44 49 44 46 47 46 C54 46 54 55 44 62Z" />
+            <path d="M76 62 C66 55 66 46 73 46 C76 46 76 49 76 49 C76 49 76 46 79 46 C86 46 86 55 76 62Z" />
+          </g>
+        ) : eyesClosed ? (
           <g stroke="#27305e" strokeWidth="4" strokeLinecap="round" fill="none">
             <path d="M38 56 Q44 48 50 56" />
             <path d="M70 56 Q76 48 82 56" />
@@ -73,11 +103,17 @@ export const Mascot: React.FC<MascotProps> = ({ mood = 'happy', size = 120, clas
         ) : (
           <g className="mascot-eyes">
             <ellipse cx="44" cy="56" rx={wide ? 9 : 7.5} ry={wide ? 11 : 9} fill="#ffffff" />
-            <ellipse cx="76" cy="56" rx={wide ? 9 : 7.5} ry={wide ? 11 : 9} fill="#ffffff" />
+            {winking ? (
+              <path d="M70 56 Q76 48 82 56" stroke="#27305e" strokeWidth="4" strokeLinecap="round" fill="none" />
+            ) : (
+              <>
+                <ellipse cx="76" cy="56" rx={wide ? 9 : 7.5} ry={wide ? 11 : 9} fill="#ffffff" />
+                <circle cx={lookUp ? 78 : 77} cy={lookUp ? 53 : 57} r="4.6" fill="#27305e" />
+              </>
+            )}
             <circle cx={lookUp ? 46 : 45} cy={lookUp ? 53 : 57} r="4.6" fill="#27305e" />
-            <circle cx={lookUp ? 78 : 77} cy={lookUp ? 53 : 57} r="4.6" fill="#27305e" />
             <circle cx="46.8" cy={lookUp ? 51 : 55} r="1.6" fill="#ffffff" />
-            <circle cx="78.8" cy={lookUp ? 51 : 55} r="1.6" fill="#ffffff" />
+            {!winking && <circle cx="78.8" cy={lookUp ? 51 : 55} r="1.6" fill="#ffffff" />}
           </g>
         )}
 
@@ -86,10 +122,14 @@ export const Mascot: React.FC<MascotProps> = ({ mood = 'happy', size = 120, clas
         <ellipse cx="88" cy="72" rx="6.5" ry="4.5" fill="#ff9fc6" opacity="0.75" />
 
         {/* Mouth */}
-        {mood === 'cheer' && (
+        {(mood === 'cheer' || mood === 'excited' || mood === 'laugh') && (
           <path d="M46 70 Q60 92 74 70 Q60 76 46 70Z" fill="#27305e" stroke="#27305e" strokeWidth="2" strokeLinejoin="round" />
         )}
-        {mood === 'happy' && (
+        {mood === 'surprised' && <ellipse cx="60" cy="78" rx="6.5" ry="8" fill="#27305e" />}
+        {mood === 'proud' && (
+          <path d="M46 72 Q60 90 74 72" stroke="#27305e" strokeWidth="4" strokeLinecap="round" fill="none" />
+        )}
+        {(mood === 'happy' || mood === 'wave' || mood === 'love' || mood === 'wink') && (
           <path d="M48 72 Q60 84 72 72" stroke="#27305e" strokeWidth="4" strokeLinecap="round" fill="none" />
         )}
         {mood === 'oops' && (

@@ -24,6 +24,7 @@ import { CountUp } from '../../ui/CountUp.js';
 import { balloonRise, confettiBlast, floatEmoji, showTrophy, starBurst } from '../../lib/effects.js';
 import { canSpeak, initAudio, setMusicScene, sfx, speak, stopSpeaking } from '../../lib/sound.js';
 import { Mascot, type MascotMood } from '../../ui/Mascot.js';
+import { useCompanion } from '../companion/CompanionProvider.js';
 import { questionKey } from './questionKey.js';
 import { clearRound, loadRound, saveRound } from './roundState.js';
 import { IconBack, IconFlame, IconPlay, IconRefresh, IconSpeaker, IconStar, IconBook } from '../../ui/Icons.js';
@@ -92,6 +93,10 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
 }) => {
   // Set once the daily challenge has been passed in this round, so the end screen can say so.
   const [dailyBonus, setDailyBonus] = useState(0);
+  // Kiyu, the companion, cheers on streaks and at the end of a round.
+  const { react: companion } = useCompanion();
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
   // A round saved before a page refresh. The parent step is asked again, not skipped.
   const [restored] = useState(() => (storageKey ? loadRound(storageKey, topicId) : null));
   const [questionIndex, setQuestionIndex] = useState(restored?.questionIndex ?? 1);
@@ -199,7 +204,16 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       if (sessionCorrect >= 6) confettiBlast();
       balloonRise(sessionCorrect >= 6 ? 8 : 4);
     }
-  }, [finished, sessionCorrect]);
+    // Kiyu celebrates too: the biggest thing that happened gets the words.
+    const p = profileRef.current;
+    const before = levelAtStart.current;
+    const now = levelStatus(p.track, p.topics);
+    const levelUp = now.allCleared ? !before.allCleared : now.current > before.current;
+    const ctx = { name: p.nickname };
+    if (dailyBonus > 0) companion('daily-done', { ctx });
+    else if (levelUp && !isChallenge) companion('level-up', { ctx });
+    else companion(sessionCorrect >= 9 ? 'finish-great' : 'finish-ok', { ctx });
+  }, [finished, sessionCorrect, dailyBonus, isChallenge, companion]);
 
   // The background music gets quieter during a round, so it never competes with thinking.
   useEffect(() => {
@@ -317,6 +331,10 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       if (nextStreak >= 5) sfx.streak();
       else if (nextStreak >= 3) sfx.mega();
       else sfx.correct();
+      // A long run of right answers gets Kiyu running across the screen.
+      if (nextStreak === 3) companion('streak3', { ctx: { name: profile.nickname } });
+      else if (nextStreak === 5) companion('streak5', { ctx: { name: profile.nickname } });
+      else if (nextStreak === 10) companion('streak10', { ctx: { name: profile.nickname } });
       setTimeout(() => sfx.star(), 320);
 
       if (nextStars % 25 === 0) {
@@ -508,7 +526,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
 
   // -------------------------------------------------------------- Game screen
   const mascotMood: MascotMood =
-    optionState === 'correct' ? 'cheer' : optionState === 'wrong' ? 'oops' : 'think';
+    optionState === 'correct' ? (profile.streak >= 3 ? 'excited' : 'cheer') : optionState === 'wrong' ? 'oops' : 'think';
 
   return (
     <div
