@@ -1,0 +1,216 @@
+/* ==========================================================================
+   More Play time activities (age 2): sections, presents, paint, opposites, song
+   ========================================================================== */
+.play-intro {
+  margin: 0;
+  font-weight: 800;
+  color: var(--muted);
+}
+.play-group {
+  display: grid;
+  gap: var(--s3);
+}
+.play-group-title {
+  margin: var(--s2) 0 0;
+  font-size: 22px;
+}
+.play-shell {
+  gap: var(--s5);
+}
+.play-shell > .play-title {
+  margin-bottom: calc(-1 * var(--s3));
+}
+
+/* Tiles with a name under the picture (My day) */
+.toy.labelled {
+  aspect-ratio: auto;
+  min-height: 128px;
+  grid-template-rows: 1fr auto;
+  padding: var(--s3) var(--s2);
+  gap: var(--s2);
+}
+.toy-label {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  color: var(--text);
+}
+
+/* Peekaboo presents */
+.toy.gift {
+  background: #fff7e6;
+}
+.toy.gift.revealed {
+  background: #fff;
+  animation: gift-pop 0.55s ease;
+}
+@keyframes gift-pop {
+  0% { transform: scale(0.6) rotate(-10deg); }
+  60% { transform: scale(1.18) rotate(6deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* Colour splash */
+.colour-stage {
+  display: grid;
+  gap: var(--s4);
+  padding: var(--s3);
+  border-radius: var(--radius-lg);
+  background: radial-gradient(circle at 50% 30%, var(--tint, transparent), transparent 75%);
+  transition: background 0.4s ease;
+}
+.colour-thing {
+  min-height: 96px;
+  display: grid;
+  place-items: center;
+  font-size: 84px;
+  line-height: 1;
+}
+.paint-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s4) var(--s3);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  justify-items: center;
+}
+.paint {
+  width: clamp(80px, 25vw, 112px);
+  aspect-ratio: 1;
+  border: 5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--border), 0 6px 0 rgba(0, 0, 0, 0.22);
+}
+.paint:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 3px var(--border), 0 2px 0 rgba(0, 0, 0, 0.22);
+}
+.paint.pulse-a {
+  animation: paint-splash-a 0.6s ease;
+}
+.paint.pulse-b {
+  animation: paint-splash-b 0.6s ease;
+}
+@keyframes paint-splash-a {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+@keyframes paint-splash-b {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+/* Big and small */
+.opp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+}
+.opp-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+}
+.opp-tile {
+  --opp: 72px;
+  display: grid;
+  grid-template-rows: 88px auto;
+  place-items: center;
+  gap: var(--s1);
+  min-height: 140px;
+  padding: var(--s3) var(--s2);
+  border: var(--edge) solid var(--border);
+  border-radius: var(--radius-lg);
+  background: #fff;
+  box-shadow: 0 6px 0 var(--border);
+}
+.opp-tile:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 var(--border);
+}
+.opp-pic {
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--opp) * var(--k, 1));
+  line-height: 1;
+}
+.opp-word {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+}
+.opp-tile.pulse-a {
+  animation: toy-pop-a 0.65s ease;
+}
+.opp-tile.pulse-b {
+  animation: toy-pop-b 0.65s ease;
+}
+
+/* Sing along, and the "things found" bar */
+.song-lamb {
+  display: grid;
+  place-items: center;
+  font-size: 72px;
+  line-height: 1;
+}
+.song-lamb .pulse-a {
+  animation: toy-pop-a 0.65s ease infinite;
+}
+.song-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--s3);
+  align-items: end;
+  height: min(40vh, 300px);
+}
+.song-bars > li {
+  height: 100%;
+}
+.song-bar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 80px;
+  border: 4px solid rgba(255, 255, 255, 0.8);
+  border-radius: 18px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.22);
+  opacity: 0.55;
+}
+.song-bar.glow {
+  opacity: 1;
+  animation: song-glow 0.9s ease-in-out infinite;
+  box-shadow: 0 0 0 5px #fff, 0 0 22px 8px rgba(255, 213, 79, 0.95), 0 6px 0 rgba(0, 0, 0, 0.22);
+}
+.song-bar.pulse-a {
+  animation: bar-hit-a 0.3s ease;
+}
+.song-bar.pulse-b {
+  animation: bar-hit-b 0.3s ease;
+}
+@keyframes song-glow {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+.song-progress {
+  height: 14px;
+  border-radius: 999px;
+  background: #e4e0f0;
+  overflow: hidden;
+}
+.song-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--run-color, #2563eb);
+  transition: width 0.3s ease;
+}
