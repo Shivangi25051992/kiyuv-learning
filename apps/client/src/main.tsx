@@ -9,6 +9,7 @@ import '@fontsource/nunito/700.css';
 import '@fontsource/nunito/800.css';
 import { App } from './app/App.js';
 import { ErrorBoundary } from './app/ErrorBoundary.js';
+import { CompanionProvider } from './features/companion/CompanionProvider.js';
 import './app/styles.css';
 
 const container = document.getElementById('root');
@@ -19,7 +20,9 @@ if (!container) {
 createRoot(container).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <CompanionProvider>
+        <App />
+      </CompanionProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 );

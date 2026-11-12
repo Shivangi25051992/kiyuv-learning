@@ -68,6 +68,8 @@ import { TopicRunner } from '../features/play/TopicRunner.js';
 import { CoursesView } from '../features/play/CoursesView.js';
 import { ToddlerScreen } from '../features/toddler/ToddlerScreen.js';
 import { SubjectsView } from '../features/learn/SubjectsView.js';
+import { HabitsScreen } from '../features/habits/HabitsScreen.js';
+import { HABITS_PAGE_ID, isHabitActivity, isHabitScreen } from '../features/habits/habits.js';
 import { dailyRunFor } from '../features/learn/dailyChallenge.js';
 import { markActiveToday, markDailyDone } from '../features/learn/dailyState.js';
 import { SUBJECTS_PAGE_ID } from '../features/learn/pages.js';
@@ -84,6 +86,7 @@ type ScreenMode = 'picker' | 'onboarding' | 'app';
 const backTarget = (current: string | null): string | null => {
   if (current && isCourseId(current)) return COURSES_PAGE_ID;
   if (current && isPlayActivity(current)) return PLAY_TIME_ID;
+  if (current && isHabitActivity(current)) return HABITS_PAGE_ID;
   return null;
 };
 
@@ -613,7 +616,17 @@ export const App: React.FC = () => {
             key={`${activeTab}-${currentTopicId ?? 'map'}`}
             id="main"
           >
-            {currentTopicId && isPlayScreen(currentTopicId) ? (
+            {currentTopicId && isHabitScreen(currentTopicId) ? (
+              <HabitsScreen
+                id={currentTopicId}
+                profile={activeProfile}
+                onOpen={(id) => {
+                  sfx.select();
+                  setCurrentTopicId(id);
+                }}
+                onClose={() => setCurrentTopicId(null)}
+              />
+            ) : currentTopicId && isPlayScreen(currentTopicId) ? (
               <ToddlerScreen
                 id={currentTopicId}
                 profile={activeProfile}

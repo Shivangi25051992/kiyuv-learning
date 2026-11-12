@@ -13,6 +13,7 @@ import {
   SongPlay,
   VehiclesPlay,
 } from './moreActivities.js';
+import { useCompanion } from '../companion/CompanionProvider.js';
 import { PLAY_ACTIVITIES, PLAY_GROUPS, PLAY_TIME_ID } from './playTime.js';
 import './toddler.css';
 import './toddler2.css';
@@ -49,6 +50,15 @@ export const ToddlerScreen: React.FC<ToddlerScreenProps> = ({ id, profile, onOpe
   const isHub = id === PLAY_TIME_ID;
   const activity = PLAY_ACTIVITIES.find((a) => a.id === id);
   const View = ACTIVITY_VIEWS[id];
+  const { react: companion } = useCompanion();
+
+  // Kiyu runs over to whatever the child taps, and cheers.
+  const runToTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    const button = (e.target as HTMLElement).closest('button');
+    if (!button) return;
+    const r = button.getBoundingClientRect();
+    companion('play-tap', { at: { x: r.left + r.width / 2, y: r.top + 10 } });
+  };
 
   return (
     <div className="play-shell" style={{ ['--run-color' as string]: theme.hex }}>
@@ -88,7 +98,7 @@ export const ToddlerScreen: React.FC<ToddlerScreenProps> = ({ id, profile, onOpe
           ))}
         </>
       ) : View ? (
-        <div className="play-stage">
+        <div className="play-stage" onClickCapture={runToTap}>
           <View />
         </div>
       ) : null}

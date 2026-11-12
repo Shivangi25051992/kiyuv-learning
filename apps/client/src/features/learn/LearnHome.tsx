@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CHALLENGE_ID, CHALLENGE_WIN, COURSES_PAGE_ID, PASS_MARK, coursesForTrack, freeCourseCount, levelStatus } from '@kiyuv/content';
 import type { KidProfile } from '@kiyuv/shared';
 import { Pic } from '../../ui/Pic.js';
@@ -6,11 +6,13 @@ import { Mascot } from '../../ui/Mascot.js';
 import { IconLock, IconPlay } from '../../ui/Icons.js';
 import { loadRound } from '../play/roundState.js';
 import { PLAY_TIME_ID } from '../toddler/playTime.js';
+import { useCompanion } from '../companion/CompanionProvider.js';
 import { AdventureMap } from './AdventureMap.js';
 import { DailyCard } from './DailyCard.js';
 import { ProfileBanner } from './ProfileBanner.js';
 import { todaysDaily } from './dailyChallenge.js';
 import { dayStreakOf, isDailyDone, loadDaily } from './dailyState.js';
+import { HABITS_PAGE_ID } from '../habits/habits.js';
 import { SUBJECTS_PAGE_ID } from './pages.js';
 import { challengeProgress, recommend, upNext } from './learnPath.js';
 import { themeOfLevel } from './levelThemes.js';
@@ -54,6 +56,13 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
   const dayKey = roundKey ?? `kid:${profile.kidId}`;
   const [daily] = useState(() => todaysDaily(dayKey, profile, now));
   const dayState = loadDaily(dayKey);
+  const days = dayStreakOf(dayState, now);
+  // Kiyu says hello, once each time the app is opened.
+  const { react: companion } = useCompanion();
+  const nickname = profile.nickname;
+  useEffect(() => {
+    companion('greet', { once: true, aboveTabbar: true, ctx: { name: nickname, hour: now.getHours(), days } });
+  }, [companion, nickname, now, days]);
   const status = levelStatus(profile.track, profile.topics);
   const theme = themeOfLevel(status.current);
   const next = upNext(profile);
@@ -88,7 +97,7 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
         </button>
       )}
 
-      <ProfileBanner profile={profile} days={dayStreakOf(dayState, now)} />
+      <ProfileBanner profile={profile} days={days} />
 
       {next ? (
         <section className="upnext" aria-labelledby="upnext-title" style={{ ['--lvl' as string]: theme.color }}>
@@ -219,6 +228,16 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
             />
           )}
           {profile.track === 'early' && !isToddler && playTimeCard}
+          {!isToddler && (
+            <ExtraCard
+              emoji="🧼"
+              title="Good habits"
+              text="Wash hands, eat well, cross safely, recycle and grow a plant."
+              action="Try"
+              tone="#0f7a4f"
+              onClick={() => onStartTopic(HABITS_PAGE_ID)}
+            />
+          )}
           <ExtraCard
             emoji="🔢"
             title="Browse by subject"
