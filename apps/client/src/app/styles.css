@@ -314,11 +314,13 @@ svg {
   padding: 0 var(--s6);
 }
 
+@media (hover: hover) and (pointer: fine) {
 .primary-btn:hover:not(:disabled),
 .login-btn:hover:not(:disabled),
 .secondary-btn:hover:not(:disabled),
 .google-btn:hover:not(:disabled) {
   filter: brightness(1.05);
+}
 }
 
 .primary-btn:active:not(:disabled),
@@ -758,9 +760,11 @@ select.text-input {
     transform var(--t-med) var(--ease-bounce),
     box-shadow var(--t-med) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .picker-tile:hover {
   transform: translateY(-6px) rotate(-1deg);
   box-shadow: var(--shadow-2), var(--inner-light);
+}
 }
 .picker-tile:active {
   transform: translateY(2px) scale(0.97);
@@ -989,8 +993,10 @@ select.text-input {
   border: var(--edge) solid var(--border);
   transition: transform var(--t-fast) var(--ease-bounce);
 }
+@media (hover: hover) and (pointer: fine) {
 .avatar-choice:hover {
   transform: scale(1.08);
+}
 }
 .avatar-choice.selected {
   background: var(--wizard-bg, #eff6ff);
@@ -1036,8 +1042,10 @@ select.text-input {
   box-shadow: 0 0 0 3px #7f8bb5, 0 4px 0 rgba(0, 0, 0, 0.18);
   transition: transform var(--t-fast) var(--ease-bounce);
 }
+@media (hover: hover) and (pointer: fine) {
 .color-choice:hover {
   transform: scale(1.1);
+}
 }
 .color-choice.selected {
   box-shadow: 0 0 0 4px var(--text), 0 4px 0 rgba(0, 0, 0, 0.18);
@@ -1345,9 +1353,11 @@ select.text-input {
   overflow: hidden;
   transition: transform var(--t-fast) var(--ease-bounce);
 }
+@media (hover: hover) and (pointer: fine) {
 .topic-chip:hover {
   transform: translateY(-3px);
   border-color: var(--card-main);
+}
 }
 .topic-chip:active {
   transform: translateY(3px);
@@ -1467,8 +1477,10 @@ select.text-input {
   box-shadow: var(--shadow-1), var(--inner-light);
   transition: transform var(--t-med) var(--ease-bounce);
 }
+@media (hover: hover) and (pointer: fine) {
 .game-card:hover {
   transform: translateY(-6px) rotate(1deg);
+}
 }
 .game-card:active {
   transform: translateY(2px) scale(0.97);
@@ -1657,8 +1669,10 @@ select.text-input {
   animation-delay: calc(var(--i, 0) * 70ms);
   transition: transform var(--t-fast) var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .op:hover:not(:disabled) {
   transform: translateY(-3px);
+}
 }
 .op:active:not(:disabled) {
   transform: translateY(5px);
@@ -2894,9 +2908,11 @@ select.text-input {
     transform 0.18s var(--ease-bounce),
     box-shadow 0.18s var(--ease-out);
 }
+@media (hover: hover) and (pointer: fine) {
 .op:hover:not(:disabled),
 .kiki-obj-btn:hover:not(:disabled) {
   transform: translateY(-4px) rotate(-1deg) scale(1.03);
+}
 }
 .op.correct,
 .kiki-obj-btn.correct,
@@ -3042,9 +3058,11 @@ select.text-input {
   animation: card-float 5s ease-in-out infinite;
   animation-delay: calc(var(--i, 0) * -0.35s);
 }
+@media (hover: hover) and (pointer: fine) {
 .topic-chip:hover,
 .topic-chip:active {
   animation-play-state: paused;
+}
 }
 @keyframes card-float {
   0%,
@@ -3121,4 +3139,105 @@ select.text-input {
 .back-topics:active {
   transform: translateY(3px);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* Touch: a pressed card pauses its float so the press is visible; no sticky hover */
+.topic-chip:active {
+  animation-play-state: paused;
+}
+
+/* ==========================================================================
+   Levels 1 to 10
+   ========================================================================== */
+.level-banner {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s4);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #fff8d6, #ffe9b0);
+  border: var(--edge) solid #f0b400;
+  box-shadow: 0 4px 0 #e0a800;
+}
+.level-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.level-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+.level-head p {
+  margin: 2px 0 0;
+  font-weight: 700;
+  color: #6b4e00;
+}
+.level-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #e0a800;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 26px;
+  box-shadow: 0 3px 0 #a87a00;
+}
+.level-path {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+}
+.level-step {
+  display: grid;
+  place-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.6);
+  color: #8a6100;
+}
+.level-step.done {
+  background: #1faa72;
+  color: #fff;
+}
+.level-step.now {
+  background: #e0a800;
+  color: #fff;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px #e0a800;
+}
+.topic-chip.locked,
+.game-card.locked {
+  opacity: 0.6;
+  filter: grayscale(0.7);
+  cursor: not-allowed;
+  animation: none;
+}
+.topic-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.finish-level {
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  border-radius: 999px;
+  background: #1faa72;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  box-shadow: 0 4px 0 #0f7a50;
 }
