@@ -5,6 +5,7 @@ import {
   CHALLENGE_MIN_TOPICS,
   CHALLENGE_WIN,
   challengePool,
+  COURSES,
   CURRICULUM,
   isChallengeUnlocked,
   EXAM_PREP_BY_TRACK,
@@ -90,6 +91,31 @@ const ChallengeButton: React.FC<{ profile: KidProfile; onStart: () => void }> = 
       </span>
       <IconPlay size={26} />
     </button>
+  );
+};
+
+/** Extra courses outside the levels. Always open; they never gate a level. */
+const BonusCourses: React.FC<{ profile: KidProfile; onStart: (id: string) => void }> = ({ profile, onStart }) => {
+  if (profile.track !== 'primary') return null;
+  return (
+    <section className="bonus-courses" aria-label="Bonus courses">
+      <h2 className="section-title">Bonus courses</h2>
+      <ul className="bonus-grid">
+        {COURSES.map((c) => {
+          const best = profile.topics[c.id]?.b ?? 0;
+          return (
+            <li key={c.id}>
+              <button type="button" className="bonus-card" data-silent onClick={() => onStart(c.id)}>
+                <span className="bonus-emoji" aria-hidden="true">{c.emoji}</span>
+                <span className="bonus-name">{c.name}</span>
+                <small>{c.blurb}</small>
+                <span className="bonus-best">{best > 0 ? `Best: ${best}/10` : 'New'}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 };
 
@@ -278,6 +304,7 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
       )}
 
       <ChallengeButton profile={profile} onStart={() => onStartTopic(CHALLENGE_ID)} />
+      <BonusCourses profile={profile} onStart={onStartTopic} />
 
       <h2 className="section-title">
         {cur.label}

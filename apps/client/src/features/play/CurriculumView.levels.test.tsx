@@ -72,3 +72,12 @@ describe('levels on the topic list', () => {
     expect(screen.getByRole('heading', { name: 'All levels cleared!' })).toBeTruthy();
   });
 });
+
+describe('bonus courses', () => {
+  it('shows bonus courses for the primary track and starts one', () => {
+    const onStart = vi.fn();
+    render(<CurriculumView profile={kid()} onStartTopic={onStart} />);
+    fireEvent.click(screen.getByRole('button', { name: /Space Explorers/ }));
+    expect(onStart).toHaveBeenCalledWith('c-space');
+  });
+});

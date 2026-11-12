@@ -20,6 +20,7 @@ import {
   PRIMARY_VOCAB_SYNONYMS,
 } from './banks.js';
 import { CURRICULUM, type MathGeneratorKey } from './curriculum.js';
+import { COURSE_BANKS } from './courses.js';
 
 export const rand = (a: number, b: number): number =>
   Math.floor(Math.random() * (b - a + 1)) + a;
@@ -412,6 +413,7 @@ export function generateQuestionForTopic(topicId: string): GeneratedQuestion {
     'y-gk-world': PRIMARY_GK_WORLD,
     'y-grammar': PRIMARY_GRAMMAR,
     'y-logic': PRIMARY_OLYMPIAD_LOGIC,
+    ...COURSE_BANKS,
   };
   const bank = lookup[topicId];
   if (bank) {
