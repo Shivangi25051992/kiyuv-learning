@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pic } from '../../ui/Pic.js';
 import { confettiBlast, starBurst } from '../../lib/effects.js';
-import { initAudio, playNote, sfx, speak } from '../../lib/sound.js';
+import { initAudio, playClip, playNote, sfx, speak } from '../../lib/sound.js';
 import {
   ANIMALS,
+  animalClip,
   BALLOON_COLOURS,
   MAX_APPLES,
   SHAPES,
@@ -36,7 +37,7 @@ export const AnimalsPlay: React.FC = () => {
     sfx.tap();
     trigger(animal.name);
     setSaid(animal);
-    speak(`${animal.name}! ${animal.sound}!`);
+    playClip(animalClip(animal), `${animal.name}!`, `${animal.name}! ${animal.sound}!`);
   };
 
   return (

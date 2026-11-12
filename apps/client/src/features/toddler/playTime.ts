@@ -53,6 +53,9 @@ export const ANIMALS: readonly Animal[] = [
   { emoji: '🐸', name: 'Frog', sound: 'Ribbit' },
 ];
 
+/** The recording of this animal, in /sounds. */
+export const animalClip = (animal: Animal): string => animal.name.toLowerCase();
+
 export interface BalloonColour {
   name: string;
   hex: string;

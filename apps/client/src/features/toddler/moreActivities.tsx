@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { shuffle } from '@kiyuv/content';
 import { Pic } from '../../ui/Pic.js';
 import { confettiBlast, starBurst } from '../../lib/effects.js';
-import { initAudio, playNote, sfx, speak } from '../../lib/sound.js';
+import { initAudio, playClip, playNote, sfx, speak } from '../../lib/sound.js';
 import {
   BODY_PARTS,
   BODY_ROUNDS,
@@ -19,7 +19,7 @@ import {
   type OppositeSide,
   type TapItem,
 } from './playData.js';
-import { ANIMALS, type Animal } from './playTime.js';
+import { ANIMALS, animalClip, type Animal } from './playTime.js';
 import { useTapPulse } from './useTapPulse.js';
 
 /**
@@ -58,7 +58,8 @@ const TapToHear: React.FC<{ items: readonly TapItem[]; prompt: string; labelled?
     sfx.tap();
     trigger(item.key);
     setSaid(item);
-    speak(item.say);
+    if (item.clip) playClip(item.clip, `${item.label}!`, item.say);
+    else speak(item.say);
   };
 
   return (
@@ -105,7 +106,7 @@ export const PeekabooPlay: React.FC = () => {
     initAudio();
     const animal = animals[i]!;
     if (openedRef.current.has(i)) {
-      speak(`${animal.name}! ${animal.sound}!`);
+      playClip(animalClip(animal), `${animal.name}!`, `${animal.name}! ${animal.sound}!`);
       return;
     }
     sfx.tap();
@@ -113,7 +114,7 @@ export const PeekabooPlay: React.FC = () => {
     openedRef.current.add(i);
     setOpened(new Set(openedRef.current));
     setSaid(animal);
-    speak(`Peekaboo! ${animal.name}! ${animal.sound}!`);
+    playClip(animalClip(animal), `Peekaboo! ${animal.name}!`, `Peekaboo! ${animal.name}! ${animal.sound}!`);
     if (openedRef.current.size === animals.length) {
       later(() => {
         confettiBlast();
