@@ -3,6 +3,8 @@ import {
   BADGES,
   evaluateEarnedBadgeIds,
   generateQuestionForTopic,
+  levelStatus,
+  PASS_MARK,
   pick,
   type GeneratedQuestion,
 } from '@kiyuv/content';
@@ -71,6 +73,8 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   const [finished, setFinished] = useState(false);
   // Questions already asked in this round, so the same one never comes twice.
   const askedRef = useRef<string[]>(restored?.asked ?? []);
+  // Where the child stood when this round began, so the end screen can say "Level cleared!"
+  const levelAtStart = useRef(levelStatus(profile.track, profile.topics));
   const freshQuestion = useCallback((): GeneratedQuestion => {
     let q = generateQuestionForTopic(topicId);
     for (let i = 0; i < MAX_REDRAWS && askedRef.current.includes(questionKey(q)); i++) {
@@ -368,11 +372,20 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       sessionCorrect >= 9 ? '🏆' : sessionCorrect >= 7 ? '🥇' : sessionCorrect >= 5 ? '🥈' : '🥉';
     const message =
       sessionCorrect >= 9
-        ? 'Mastered! You are ready for the next level.'
-        : sessionCorrect >= 7
-          ? 'Great work! One more round to master it.'
-          : 'Good try! Practice makes perfect.';
-    const mood: MascotMood = sessionCorrect >= 7 ? 'cheer' : 'happy';
+        ? 'Mastered! Brilliant work.'
+        : sessionCorrect >= PASS_MARK
+          ? 'Topic cleared! Play again to score even higher.'
+          : `Good try! Get ${PASS_MARK} or more right to clear this topic.`;
+    const mood: MascotMood = sessionCorrect >= PASS_MARK ? 'cheer' : 'happy';
+    const before = levelAtStart.current;
+    const now = levelStatus(profile.track, profile.topics);
+    const levelUp = now.allCleared
+      ? !before.allCleared
+        ? 'You cleared all 10 levels!'
+        : null
+      : now.current > before.current
+        ? `Level ${before.current} cleared! Level ${now.current} is open.`
+        : null;
 
     return (
       <div className="finish pop-in" style={{ ['--run-color' as string]: theme.hex }}>
@@ -386,6 +399,11 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
           <span className="finish-of">/ {QUESTIONS_PER_SESSION}</span>
         </div>
         <p className="finish-msg">{message}</p>
+        {levelUp && (
+          <p className="finish-level pop-in" role="status">
+            <span aria-hidden="true">🎉</span> {levelUp}
+          </p>
+        )}
         <div className="finish-actions">
           <button type="button" className="primary-btn big" onClick={startRound} data-silent>
             <IconRefresh size={22} /> Play again

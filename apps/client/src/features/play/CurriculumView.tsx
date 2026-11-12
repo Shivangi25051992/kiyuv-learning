@@ -3,11 +3,16 @@ import {
   ALIGNMENT_LABELS,
   CURRICULUM,
   EXAM_PREP_BY_TRACK,
+  isTopicUnlocked,
+  LEVEL_COUNT,
+  levelOf,
+  levelStatus,
+  PASS_MARK,
   type CurriculumSystem,
 } from '@kiyuv/content';
 import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
 import { loadRound } from './roundState.js';
-import { IconCheck, IconFlame, IconPlay, IconStar, IconTrophy } from '../../ui/Icons.js';
+import { IconCheck, IconFlame, IconLock, IconPlay, IconStar, IconTrophy } from '../../ui/Icons.js';
 
 interface CurriculumViewProps {
   profile: KidProfile;
@@ -38,9 +43,12 @@ const SUBJECT_COLORS = [
 
 type SubjectList = (typeof CURRICULUM)[keyof typeof CURRICULUM]['subjects'];
 
+const openTopics = (profile: KidProfile, subjects: SubjectList) =>
+  subjects.flatMap((s) => s.topics).filter((t) => isTopicUnlocked(profile.track, profile.topics, t.id));
+
 /** The next topic a child should try: never played first, then the lowest best score. */
 function pickNextTopicId(profile: KidProfile, subjects: SubjectList): string | null {
-  const all = subjects.flatMap((s) => s.topics);
+  const all = openTopics(profile, subjects);
   if (all.length === 0) return null;
   const unplayed = all.find((t) => (profile.topics[t.id]?.b ?? 0) === 0);
   if (unplayed) return unplayed.id;
@@ -51,12 +59,48 @@ function pickNextTopicId(profile: KidProfile, subjects: SubjectList): string | n
 }
 
 function pickRandomTopicId(profile: KidProfile, subjects: SubjectList): string | null {
-  const all = subjects.flatMap((s) => s.topics);
+  const all = openTopics(profile, subjects);
   if (all.length === 0) return null;
   const notMastered = all.filter((t) => (profile.topics[t.id]?.b ?? 0) < 10);
   const pool = notMastered.length > 0 ? notMastered : all;
   return pool[Math.floor(Math.random() * pool.length)]?.id ?? null;
 }
+
+/** Level 1 to 10: where the child is, and what opens the next level. */
+export const LevelBanner: React.FC<{ profile: KidProfile }> = ({ profile }) => {
+  const status = levelStatus(profile.track, profile.topics);
+  const left = status.totalInCurrent - status.clearedInCurrent;
+  return (
+    <section className="level-banner" aria-label="Your level">
+      <div className="level-head">
+        <span className="level-badge" aria-hidden="true">
+          {status.allCleared ? '★' : status.current}
+        </span>
+        <div>
+          <h2>{status.allCleared ? 'All levels cleared!' : `Level ${status.current}`}</h2>
+          <p>
+            {status.allCleared
+              ? 'Amazing! Play any topic again to beat your best score.'
+              : `Score ${PASS_MARK} or more out of 10 in ${left} more ${left === 1 ? 'topic' : 'topics'} to open Level ${status.current + 1}.`}
+          </p>
+        </div>
+      </div>
+      <ol className="level-path" aria-label={`Level ${status.current} of ${LEVEL_COUNT}`}>
+        {Array.from({ length: LEVEL_COUNT }, (_, i) => {
+          const n = i + 1;
+          const state = status.allCleared || n < status.current ? 'done' : n === status.current ? 'now' : 'ahead';
+          const word = state === 'done' ? 'cleared' : state === 'now' ? 'now' : 'locked';
+          return (
+            <li key={n} className={`level-step ${state}`}>
+              <span className="sr-only">{`Level ${n} ${word}`}</span>
+              <span aria-hidden="true">{state === 'ahead' ? <IconLock size={12} /> : n}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+};
 
 export const StatsBar: React.FC<{ profile: KidProfile }> = ({ profile }) => {
   const totalQ = profile.totalCorrect + profile.totalWrong;
@@ -129,9 +173,29 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
         <ul className="game-grid">
           {cur.subjects.map((subject, i) => {
             const colors = SUBJECT_COLORS[i % SUBJECT_COLORS.length]!;
-            const topic =
-              subject.topics.find((t) => (profile.topics[t.id]?.b ?? 0) < 10) ?? subject.topics[0];
-            if (!topic) return null;
+            const open = subject.topics.filter((t) => isTopicUnlocked(profile.track, profile.topics, t.id));
+            const topic = open.find((t) => (profile.topics[t.id]?.b ?? 0) < 10) ?? open[0];
+            const firstLevel = Math.min(...subject.topics.map((t) => levelOf(profile.track, t.id)));
+            if (!topic) {
+              return (
+                <li key={subject.name} className="stagger-item" style={{ ['--i' as string]: i }}>
+                  <button
+                    type="button"
+                    className="game-card locked"
+                    disabled
+                    aria-label={`${subject.name}. Locked. Reach Level ${firstLevel} to play.`}
+                  >
+                    <span className="game-emoji" aria-hidden="true">
+                      {subject.emoji}
+                    </span>
+                    <span className="game-name">{subject.name}</span>
+                    <span className="game-go">
+                      <IconLock size={16} /> Level {firstLevel}
+                    </span>
+                  </button>
+                </li>
+              );
+            }
             return (
               <li key={subject.name} className="stagger-item" style={{ ['--i' as string]: i }}>
                 <button
@@ -166,6 +230,7 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
   return (
     <div className="learn-home">
       <StatsBar profile={profile} />
+      <LevelBanner profile={profile} />
 
       {nextId && (
         <button
@@ -224,6 +289,30 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
                   const best = stat?.b ?? 0;
                   const mastered = best >= 10 || Boolean(stat?.m);
                   const saved = roundKey ? loadRound(roundKey, topic.id) : null;
+                  const unlocked = isTopicUnlocked(profile.track, profile.topics, topic.id);
+                  const level = levelOf(profile.track, topic.id);
+                  if (!unlocked) {
+                    return (
+                      <button
+                        key={topic.id}
+                        type="button"
+                        className="topic-chip locked"
+                        disabled
+                        style={{ ['--i' as string]: topicIndex++ }}
+                        aria-label={`${topic.name}. Locked. Clear Level ${level - 1} to open it.`}
+                      >
+                        <span className="topic-name">{topic.name}</span>
+                        <span className="topic-meta">
+                          <span className="topic-lock">
+                            <IconLock size={14} /> Level {level}
+                          </span>
+                        </span>
+                        <span className="topic-bar" aria-hidden="true">
+                          <span style={{ width: '0%' }} />
+                        </span>
+                      </button>
+                    );
+                  }
                   return (
                     <button
                       key={topic.id}
@@ -285,7 +374,8 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
       )}
 
       <p className="how-it-works">
-        Tap a topic to play 10 questions. More stars <b>★</b> means harder. A topic turns{' '}
+        Tap a topic to play 10 questions. Get {PASS_MARK} or more right to clear it, and clear every topic
+        in a level to open the next level. More stars <b>★</b> means harder. A topic turns{' '}
         <span className="gold-pill">gold</span> when you get 10 out of 10.
       </p>
     </div>
