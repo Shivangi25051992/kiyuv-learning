@@ -67,6 +67,8 @@ import { CurriculumView } from '../features/play/CurriculumView.js';
 import { TopicRunner } from '../features/play/TopicRunner.js';
 import { CoursesView } from '../features/play/CoursesView.js';
 import { ToddlerScreen } from '../features/toddler/ToddlerScreen.js';
+import { SubjectsView } from '../features/learn/SubjectsView.js';
+import { SUBJECTS_PAGE_ID } from '../features/learn/pages.js';
 import { PLAY_TIME_ID, isPlayActivity, isPlayScreen } from '../features/toddler/playTime.js';
 import { COURSES_PAGE_ID, isCourseId } from '@kiyuv/content';
 import { ProfilePicker } from '../features/profiles/ProfilePicker.js';
@@ -616,6 +618,16 @@ export const App: React.FC = () => {
                   setCurrentTopicId(id);
                 }}
                 onClose={() => setCurrentTopicId(null)}
+              />
+            ) : currentTopicId === SUBJECTS_PAGE_ID ? (
+              <SubjectsView
+                profile={activeProfile}
+                roundKey={`${authUser.uid}:${activeProfile.kidId}`}
+                onBack={() => setCurrentTopicId(null)}
+                onStartTopic={(id) => {
+                  sfx.select();
+                  setCurrentTopicId(id);
+                }}
               />
             ) : currentTopicId === COURSES_PAGE_ID ? (
               <CoursesView

@@ -60,7 +60,8 @@ export interface LevelStatus {
   totalInCurrent: number;
 }
 
-function topicsInLevel(track: Track, level: number): string[] {
+/** The topics of one level, in the order a child works through them. */
+export function topicsInLevel(track: Track, level: number): string[] {
   return Object.entries(TOPIC_LEVEL[track])
     .filter(([, l]) => l === level)
     .map(([id]) => id);

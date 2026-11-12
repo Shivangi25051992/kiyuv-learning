@@ -172,7 +172,7 @@ describe('the Play time button', () => {
   it('is the first thing a 2 year old sees on the Learn page', () => {
     const onStart = vi.fn();
     const { container } = render(<CurriculumView profile={kid(2)} onStartTopic={onStart} />);
-    const first = container.querySelector('.learn-home > :first-child') as HTMLElement;
+    const first = container.querySelector('.learn2 > :first-child') as HTMLElement;
     expect(first.textContent).toMatch(/Play time/);
     fireEvent.click(screen.getByRole('button', { name: /Play time/ }));
     expect(onStart).toHaveBeenCalledWith(PLAY_TIME_ID);
