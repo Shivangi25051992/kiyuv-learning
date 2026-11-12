@@ -3511,3 +3511,42 @@ select.text-input {
 .premium-sub {
   color: var(--muted);
 }
+
+/* ==========================================================================
+   One strong outline per card.
+   A card or window gets the thick outline. The rows and tiles inside it are flat:
+   a soft shadow, a tint or a hairline, never a second thick outline.
+   ========================================================================== */
+.subject-card .topic-chip {
+  border: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(36, 48, 94, 0.18);
+}
+.subject-card .topic-chip:active {
+  box-shadow: none;
+}
+.subject-card .topic-chip.mastered {
+  border: 0;
+  box-shadow: 0 1px 3px rgba(168, 122, 0, 0.5);
+}
+.subject-card .topic-chip.locked {
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: none;
+}
+.finish .next-tile {
+  border: 0;
+  background: #f1f5ff;
+  box-shadow: none;
+}
+.finish .next-tile:active {
+  background: #e3ebff;
+  transform: none;
+}
+.parent-section {
+  border: 0;
+  background: #f4f5fb;
+}
+.parent-section .parent-profile-row {
+  border: 0;
+  box-shadow: 0 1px 3px rgba(36, 48, 94, 0.16);
+}
