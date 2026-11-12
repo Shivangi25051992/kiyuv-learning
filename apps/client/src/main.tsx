@@ -9,8 +9,12 @@ import '@fontsource/nunito/700.css';
 import '@fontsource/nunito/800.css';
 import { App } from './app/App.js';
 import { ErrorBoundary } from './app/ErrorBoundary.js';
+import { refreshOnEarlyUpdate } from './app/swUpdate.js';
 import { CompanionProvider } from './features/companion/CompanionProvider.js';
 import './app/styles.css';
+
+// After a new version is published, show it on the first visit instead of the second.
+if ('serviceWorker' in navigator) refreshOnEarlyUpdate(navigator.serviceWorker);
 
 const container = document.getElementById('root');
 if (!container) {
