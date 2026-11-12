@@ -8,6 +8,7 @@ import {
   isChallengeUnlocked,
   isTopicUnlocked,
   levelOf,
+  pathwayOf,
 } from '@kiyuv/content';
 import type { KidProfile } from '@kiyuv/shared';
 import { Pic } from '../../ui/Pic.js';
@@ -27,7 +28,7 @@ interface CurriculumViewProps {
 type SubjectList = (typeof CURRICULUM)[keyof typeof CURRICULUM]['subjects'];
 
 const openTopics = (profile: KidProfile, subjects: SubjectList) =>
-  subjects.flatMap((s) => s.topics).filter((t) => isTopicUnlocked(profile.track, profile.topics, t.id));
+  subjects.flatMap((s) => s.topics).filter((t) => isTopicUnlocked(pathwayOf(profile), profile.topics, t.id));
 
 function pickRandomTopicId(profile: KidProfile, subjects: SubjectList): string | null {
   const all = openTopics(profile, subjects);
@@ -39,8 +40,8 @@ function pickRandomTopicId(profile: KidProfile, subjects: SubjectList): string |
 
 /** A harder replay: 10 mixed questions from topics already cleared. Opens after a few clears. */
 const ChallengeButton: React.FC<{ profile: KidProfile; onStart: () => void }> = ({ profile, onStart }) => {
-  const have = challengePool(profile.track, profile.topics).length;
-  if (!isChallengeUnlocked(profile.track, profile.topics)) {
+  const have = challengePool(pathwayOf(profile), profile.topics).length;
+  if (!isChallengeUnlocked(pathwayOf(profile), profile.topics)) {
     return (
       <p className="challenge-hint">
         <IconLock size={18} /> Clear {CHALLENGE_MIN_TOPICS} topics to unlock the Mixed Challenge ({have}/{CHALLENGE_MIN_TOPICS}).
@@ -81,13 +82,13 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
   roundKey,
   onStartTopic,
 }) => {
-  const cur = CURRICULUM[profile.track];
+  const cur = CURRICULUM[pathwayOf(profile)];
 
   // ---------------------------------------------------------------- Play mode
   if (mode === 'play') {
     return (
       <div className="play-home">
-        {profile.track === 'early' && <PlayTimeButton onOpen={() => onStartTopic(PLAY_TIME_ID)} />}
+        {pathwayOf(profile) === 'early' && <PlayTimeButton onOpen={() => onStartTopic(PLAY_TIME_ID)} />}
         <button
           type="button"
           className="surprise-btn"
@@ -113,9 +114,9 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
         <ul className="game-grid">
           {cur.subjects.map((subject, i) => {
             const colors = SUBJECT_COLORS[i % SUBJECT_COLORS.length]!;
-            const open = subject.topics.filter((t) => isTopicUnlocked(profile.track, profile.topics, t.id));
+            const open = subject.topics.filter((t) => isTopicUnlocked(pathwayOf(profile), profile.topics, t.id));
             const topic = open.find((t) => (profile.topics[t.id]?.b ?? 0) < 10) ?? open[0];
-            const firstLevel = Math.min(...subject.topics.map((t) => levelOf(profile.track, t.id)));
+            const firstLevel = Math.min(...subject.topics.map((t) => levelOf(pathwayOf(profile), t.id)));
             if (!topic) {
               return (
                 <li key={subject.name} className="stagger-item" style={{ ['--i' as string]: i }}>

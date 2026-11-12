@@ -6,7 +6,7 @@ import { LEVEL_THEMES, themeOfLevel } from './levelThemes.js';
 
 const tp = (b: number, p = 1): TopicProgress => ({ p, c: b, b, m: b >= 10 });
 const kid = (topics: KidProfile['topics'] = {}, track: 'primary' | 'early' = 'primary'): KidProfile => ({
-  kidId: 'k1', name: '', nickname: 'Ari', age: 8, country: 'IN', state: '', favColor: 'blue',
+  kidId: 'k1', name: '', nickname: 'Ari', age: track === 'early' ? 4 : 8, country: 'IN', state: '', favColor: 'blue',
   avatar: '👦', ageBand: '8-10', track, stars: 0, streak: 0, bestStreak: 0,
   totalCorrect: 0, totalWrong: 0, badges: [], topics, resetEpoch: 0,
 });

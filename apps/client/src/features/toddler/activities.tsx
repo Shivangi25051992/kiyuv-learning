@@ -1,16 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pic } from '../../ui/Pic.js';
 import { confettiBlast, starBurst } from '../../lib/effects.js';
-import { initAudio, playClip, playNote, sfx, speak } from '../../lib/sound.js';
+import { initAudio, playNote, sfx, speak } from '../../lib/sound.js';
 import {
-  ANIMALS,
-  animalClip,
+  ANIMAL_GROUPS,
+  animalCaption,
+  animalsInGroup,
   BALLOON_COLOURS,
   MAX_APPLES,
   SHAPES,
   XYLOPHONE_COLOURS,
   type Animal,
+  type AnimalGroup,
 } from './playTime.js';
+import { sayAnimal } from './sayAnimal.js';
 import { useTapPulse } from './useTapPulse.js';
 
 /**
@@ -28,7 +31,17 @@ function centreOf(el: HTMLElement): { x: number; y: number } {
 }
 
 // ---------------------------------------------------------------- Say hello
+const GROUP_PICTURE: Record<AnimalGroup, string> = {
+  Farm: '🐄',
+  Pets: '🐶',
+  Wild: '🦁',
+  Birds: '🦜',
+  Bugs: '🐝',
+  Water: '🐟',
+};
+
 export const AnimalsPlay: React.FC = () => {
+  const [group, setGroup] = useState<AnimalGroup>('Farm');
   const [said, setSaid] = useState<Animal | null>(null);
   const { pulseClass, trigger } = useTapPulse();
 
@@ -37,16 +50,38 @@ export const AnimalsPlay: React.FC = () => {
     sfx.tap();
     trigger(animal.name);
     setSaid(animal);
-    playClip(animalClip(animal), `${animal.name}!`, `${animal.name}! ${animal.sound}!`);
+    sayAnimal(animal);
+  };
+
+  const choose = (next: AnimalGroup) => {
+    initAudio();
+    sfx.select();
+    setGroup(next);
+    setSaid(null);
   };
 
   return (
     <>
+      <div className="group-chips" role="group" aria-label="Kinds of animals">
+        {ANIMAL_GROUPS.map((g) => (
+          <button
+            key={g}
+            type="button"
+            className="group-chip"
+            data-silent
+            aria-pressed={g === group}
+            onClick={() => choose(g)}
+          >
+            <Pic emoji={GROUP_PICTURE[g]} />
+            <span>{g}</span>
+          </button>
+        ))}
+      </div>
       <p className="play-caption" role="status" aria-live="polite">
-        {said ? `${said.name} says ${said.sound}!` : 'Tap an animal!'}
+        {said ? animalCaption(said) : 'Tap an animal!'}
       </p>
       <ul className="toy-grid">
-        {ANIMALS.map((a) => (
+        {animalsInGroup(group).map((a) => (
           <li key={a.name}>
             <button type="button" className={`toy ${pulseClass(a.name)}`} data-silent aria-label={a.name} onClick={() => tap(a)}>
               <Pic emoji={a.emoji} />

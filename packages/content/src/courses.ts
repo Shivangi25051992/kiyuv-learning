@@ -1,6 +1,7 @@
 import type { MultipleChoiceItem } from './banks.js';
 import type { Course } from './course-types.js';
 import { EARLY_COURSES } from './courses-early.js';
+import { pathwayOf } from './pathway.js';
 import { SCIENCE_COURSES } from './courses-science.js';
 import { SKILLS_COURSES } from './courses-skills.js';
 import { WORLD_COURSES } from './courses-world.js';
@@ -101,9 +102,30 @@ export const COURSES_PAGE_ID = 'courses';
 
 export const isCourseId = (id: string): boolean => id in COURSE_BANKS;
 
-/** The courses a child on this track can see. */
+/** The courses on a track, whatever the age. */
 export const coursesForTrack = (track: Course['track']): Course[] => COURSES.filter((c) => c.track === track);
 
-/** How many courses are free on a track. The rest are premium. */
-export const freeCourseCount = (track: Course['track']): number =>
-  coursesForTrack(track).filter((c) => c.free).length;
+/** The ages a course is for, read from its "Ages 6 to 10" label. */
+export function courseAgeRange(course: Course): readonly [number, number] {
+  const m = /(\d+) to (\d+)/.exec(course.ages);
+  return m ? [Number(m[1]), Number(m[2])] : [0, 99];
+}
+
+/**
+ * The courses that suit a child: the right track for their path, and their age within the
+ * course's range (a year either side, so nobody is left with an empty page). Ages 2 and 3
+ * start with Play time, so toddlers see picture courses from age 3 only.
+ */
+export function coursesForChild(input: { age: number }): Course[] {
+  const pathway = pathwayOf(input);
+  if (pathway === 'tots') return input.age >= 3 ? coursesForTrack('early').filter((c) => courseAgeRange(c)[0] <= input.age) : [];
+  // The early path shows every picture course, whatever the exact age.
+  if (pathway === 'early') return coursesForTrack('early');
+  return coursesForTrack('primary').filter((c) => {
+    const [from, to] = courseAgeRange(c);
+    return input.age >= from - 1 && input.age <= to + 1;
+  });
+}
+
+/** How many of these courses are free. The rest are premium. */
+export const freeCourseCount = (courses: readonly Course[]): number => courses.filter((c) => c.free).length;

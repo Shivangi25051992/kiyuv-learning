@@ -8,6 +8,8 @@ import {
   EARLY_HINDI_LETTERS,
   EARLY_OPPOSITES,
   EARLY_SHAPES,
+  type AnimalItem,
+  type EmojiNamedItem,
   type MultipleChoiceItem,
   PRIMARY_GK_INDIA,
   PRIMARY_GK_WORLD,
@@ -19,38 +21,27 @@ import {
   PRIMARY_VOCAB_ANTONYMS,
   PRIMARY_VOCAB_SYNONYMS,
 } from './banks.js';
+import { SENIOR_SPELLING, SENIOR_AFFIXES, SENIOR_COMPUTING, SENIOR_EARTH, SENIOR_GRAMMAR, SENIOR_IDIOMS, SENIOR_LIFE, SENIOR_PHYSICS, SENIOR_WORLD } from './banks-senior.js';
+import {
+  YOUNG_ANIMALS, YOUNG_BODY, YOUNG_DAYS, YOUNG_HABITS, YOUNG_INDIA, YOUNG_OPPOSITES, YOUNG_PLANTS,
+  YOUNG_RHYMES, YOUNG_SHAPES, YOUNG_SPELLING, YOUNG_WEATHER, YOUNG_WORDS,
+} from './banks-young.js';
+import {
+  EARLY_BIRDS_BUGS, EARLY_HOME_ANIMALS, EARLY_MORE_FRUITS, EARLY_SKY, EARLY_VEGETABLES, EARLY_WATER_ANIMALS, EARLY_WILD_ANIMALS,
+} from './banks-early.js';
 import { CURRICULUM, type MathGeneratorKey } from './curriculum.js';
+import { type MoreMathOutput, type SeniorMathKey, type YoungMathKey, defaultChoices, seniorMath, showInt, youngMath } from './math-more.js';
+import { pick, rand, shuffle, uniqOpts } from './random.js';
 import { COURSE_BANKS } from './courses.js';
 
-export const rand = (a: number, b: number): number =>
-  Math.floor(Math.random() * (b - a + 1)) + a;
-
-export const pick = <T>(arr: readonly T[]): T => {
-  if (arr.length === 0) {
-    throw new Error('Cannot pick from an empty array');
-  }
-  return arr[Math.floor(Math.random() * arr.length)] as T;
-};
-
-export const shuffle = <T>(arr: readonly T[]): T[] =>
-  arr.slice().sort(() => Math.random() - 0.5);
-
-export const uniqOpts = <T>(correct: T, generator: () => T, n = 3): T[] => {
-  const set = new Set<T>([correct]);
-  let tries = 0;
-  while (set.size < n + 1 && tries < 50) {
-    set.add(generator());
-    tries++;
-  }
-  return shuffle([...set]);
-};
+export { pick, rand, shuffle, uniqOpts } from './random.js';
 
 export interface MathQuestionOutput {
   q: string;
   a: number | string;
 }
 
-export const mathGen: Record<MathGeneratorKey, () => MathQuestionOutput> = {
+export const mathGen: Record<Exclude<MathGeneratorKey, YoungMathKey | SeniorMathKey>, () => MathQuestionOutput> = {
   add_easy: () => {
     const a = rand(1, 20);
     const b = rand(1, 20);
@@ -172,6 +163,8 @@ const PICTURE_ONLY = /^(?:\p{Extended_Pictographic}|‍|️)+$/u;
 /** True for an answer that is nothing but one or more emoji. */
 export const isPictureOnly = (text: string): boolean => PICTURE_ONLY.test(text);
 
+const MORE_MATH = { ...youngMath, ...seniorMath } satisfies Record<string, () => MoreMathOutput>;
+
 export function generateQuestionForTopic(topicId: string): GeneratedQuestion {
   // 1. Counting
   if (topicId === 'k-count5' || topicId === 'k-count10' || topicId === 'k-count20') {
@@ -253,15 +246,20 @@ export function generateQuestionForTopic(topicId: string): GeneratedQuestion {
     };
   }
 
-  // 6. Animals
-  if (topicId === 'k-animal6' || topicId === 'k-animal-sound' || topicId === 'k-animal-wild') {
-    const target = pick(EARLY_ANIMALS);
-    const opts = shuffle([
-      target,
-      ...shuffle(EARLY_ANIMALS.filter((a) => a.name !== target.name)).slice(0, 2),
-    ]);
+  // 6. Animals: each topic has its own animals
+  const animalPools: Record<string, readonly EmojiNamedItem[]> = {
+    'k-animal6': EARLY_HOME_ANIMALS,
+    'k-animal-wild': EARLY_WILD_ANIMALS,
+    'k-animal-bird': EARLY_BIRDS_BUGS,
+    'k-animal-water': EARLY_WATER_ANIMALS,
+  };
+  const animalPool = animalPools[topicId];
+  if (animalPool || topicId === 'k-animal-sound') {
+    const pool: readonly EmojiNamedItem[] = animalPool ?? EARLY_ANIMALS;
+    const target = pick(pool);
+    const opts = shuffle([target, ...shuffle(pool.filter((a) => a.name !== target.name)).slice(0, 2)]);
     const prompt =
-      topicId === 'k-animal-sound' ? `Who says "${target.sound}"?` : `Tap the ${target.name}!`;
+      topicId === 'k-animal-sound' ? `Who says "${(target as AnimalItem).sound}"?` : `Tap the ${target.name}!`;
     return {
       topicId,
       prompt,
@@ -270,13 +268,16 @@ export function generateQuestionForTopic(topicId: string): GeneratedQuestion {
     };
   }
 
-  // 7. Fruits
-  if (topicId === 'k-fruit') {
-    const target = pick(EARLY_FRUITS);
-    const opts = shuffle([
-      target,
-      ...shuffle(EARLY_FRUITS.filter((f) => f.name !== target.name)).slice(0, 2),
-    ]);
+  // 7. Fruits, vegetables, and the sky: tap the picture with this name
+  const thingPools: Record<string, readonly EmojiNamedItem[]> = {
+    'k-fruit': [...EARLY_FRUITS, ...EARLY_MORE_FRUITS],
+    'k-veg': EARLY_VEGETABLES,
+    'k-sky': EARLY_SKY,
+  };
+  const thingPool = thingPools[topicId];
+  if (thingPool) {
+    const target = pick(thingPool);
+    const opts = shuffle([target, ...shuffle(thingPool.filter((f) => f.name !== target.name)).slice(0, 2)]);
     return {
       topicId,
       prompt: `Where is the ${target.name}?`,
@@ -336,11 +337,22 @@ export function generateQuestionForTopic(topicId: string): GeneratedQuestion {
   }
 
   // 11. Math generators
-  const mathTopic = CURRICULUM.primary.subjects
+  const mathTopic = Object.values(CURRICULUM)
+    .flatMap((c) => c.subjects)
     .flatMap((s) => s.topics)
     .find((t) => t.id === topicId);
+  if (mathTopic?.gen && mathTopic.gen in MORE_MATH) {
+    const g = MORE_MATH[mathTopic.gen as keyof typeof MORE_MATH]();
+    const choices = g.opts ?? (typeof g.a === 'number' ? defaultChoices(g.a) : [g.a]);
+    return {
+      topicId,
+      prompt: g.plain ? g.q : `${g.q} = ?`,
+      options: shuffle(choices).map((o) => ({ label: typeof o === 'number' ? showInt(o) : o, value: String(o) })),
+      correctValue: String(g.a),
+    };
+  }
   if (mathTopic?.gen) {
-    const g = mathGen[mathTopic.gen]();
+    const g = mathGen[mathTopic.gen as keyof typeof mathGen]();
     const correct = g.a;
     let opts: (number | string)[];
     if (typeof correct === 'number') {
@@ -371,8 +383,14 @@ export function generateQuestionForTopic(topicId: string): GeneratedQuestion {
   }
 
   // 12. Spelling
-  if (topicId === 'y-spell-g3' || topicId === 'y-spell-bee') {
-    const bank = topicId === 'y-spell-g3' ? PRIMARY_SPELLING_G3 : PRIMARY_SPELLING_BEE;
+  const spellingBanks: Record<string, readonly string[]> = {
+    'y-spell-g3': PRIMARY_SPELLING_G3,
+    'y-spell-bee': PRIMARY_SPELLING_BEE,
+    'g-cvc': YOUNG_SPELLING,
+    's-spell': SENIOR_SPELLING,
+  };
+  if (spellingBanks[topicId]) {
+    const bank = spellingBanks[topicId]!;
     const word = pick(bank);
     const missingIdx = rand(0, word.length - 1);
     const missingChar = word[missingIdx] ?? 'A';
@@ -395,17 +413,19 @@ export function generateQuestionForTopic(topicId: string): GeneratedQuestion {
   }
 
   // 13. Vocabulary Synonyms & Antonyms
-  if (topicId === 'y-syn' || topicId === 'y-ant') {
-    const bank = topicId === 'y-syn' ? PRIMARY_VOCAB_SYNONYMS : PRIMARY_VOCAB_ANTONYMS;
+  if (topicId === 'y-syn' || topicId === 'y-ant' || topicId === 'g-opp') {
+    const bank = topicId === 'y-syn' ? PRIMARY_VOCAB_SYNONYMS : topicId === 'g-opp' ? YOUNG_OPPOSITES : PRIMARY_VOCAB_ANTONYMS;
     const [p0, p1] = pick(bank);
     const askFirst = Math.random() < 0.5;
     const q = askFirst ? p0 : p1;
     const ans = askFirst ? p1 : p0;
-    const distractors = shuffle(bank.flat().filter((w) => w !== q && w !== ans)).slice(0, 3);
+    // Never offer a word twice, or a word that is also a right answer to this question.
+    const related = new Set(bank.filter((pair) => pair.includes(q) || pair.includes(ans)).flat());
+    const distractors = shuffle([...new Set(bank.flat())].filter((w) => !related.has(w))).slice(0, 3);
     const opts = shuffle([ans, ...distractors]);
     return {
       topicId,
-      prompt: `${topicId === 'y-syn' ? 'Synonym' : 'Opposite'} of "${q}"?`,
+      prompt: `${topicId === 'y-syn' ? 'Another word for' : 'Opposite of'} "${q}"?`,
       options: opts.map((o) => ({ label: o, value: o })),
       correctValue: ans,
     };
@@ -418,6 +438,24 @@ export function generateQuestionForTopic(topicId: string): GeneratedQuestion {
     'y-gk-world': PRIMARY_GK_WORLD,
     'y-grammar': PRIMARY_GRAMMAR,
     'y-logic': PRIMARY_OLYMPIAD_LOGIC,
+    'g-animals': YOUNG_ANIMALS,
+    'g-plants': YOUNG_PLANTS,
+    'g-rhyme': YOUNG_RHYMES,
+    'g-nouns': YOUNG_WORDS,
+    'g-shapes': YOUNG_SHAPES,
+    'g-weather': YOUNG_WEATHER,
+    'g-body': YOUNG_BODY,
+    'g-days': YOUNG_DAYS,
+    'g-india': YOUNG_INDIA,
+    'g-habits': YOUNG_HABITS,
+    's-grammar': SENIOR_GRAMMAR,
+    's-idioms': SENIOR_IDIOMS,
+    's-affix': SENIOR_AFFIXES,
+    's-life': SENIOR_LIFE,
+    's-earth': SENIOR_EARTH,
+    's-physics': SENIOR_PHYSICS,
+    's-computing': SENIOR_COMPUTING,
+    's-world': SENIOR_WORLD,
     ...COURSE_BANKS,
   };
   const bank = lookup[topicId];

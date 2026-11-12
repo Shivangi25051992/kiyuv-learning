@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CHALLENGE_ID, CHALLENGE_WIN, COURSES_PAGE_ID, PASS_MARK, coursesForTrack, freeCourseCount, levelStatus } from '@kiyuv/content';
+import { CHALLENGE_ID, CHALLENGE_WIN, COURSES_PAGE_ID, PASS_MARK, coursesForChild, freeCourseCount, levelStatus, pathwayOf } from '@kiyuv/content';
 import type { KidProfile } from '@kiyuv/shared';
 import { Pic } from '../../ui/Pic.js';
 import { Mascot } from '../../ui/Mascot.js';
@@ -70,14 +70,16 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
       ctx: { name: nickname, hour: now.getHours(), days, feeling: feelingToday(dayKey, now) ?? undefined },
     });
   }, [companion, nickname, now, days, dayKey]);
-  const status = levelStatus(profile.track, profile.topics);
+  const pathway = pathwayOf(profile);
+  const status = levelStatus(pathway, profile.topics);
   const theme = themeOfLevel(status.current);
   const next = upNext(profile);
   const recs = recommend(profile, daily?.id);
   const challenge = challengeProgress(profile);
   const saved = next && roundKey ? loadRound(roundKey, next.id) : null;
-  const courseCount = coursesForTrack(profile.track).length;
-  const isToddler = profile.track === 'early' && profile.age <= 3;
+  const courses = coursesForChild(profile);
+  const courseCount = courses.length;
+  const isToddler = pathway === 'tots';
   const playTimeCard = (
     <ExtraCard
       emoji="🎈"
@@ -89,21 +91,56 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
     />
   );
 
+  const playTimeButton = (
+    <button type="button" className="next-btn playtime-btn" data-silent onClick={() => onStartTopic(PLAY_TIME_ID)}>
+      <span className="challenge-emoji" aria-hidden="true">
+        <Pic emoji="🎈" />
+      </span>
+      <span>
+        <b>Play time</b>
+        <small>Tap, pop and play</small>
+      </span>
+      <IconPlay size={28} />
+    </button>
+  );
+
+  // Ages 2 and 3 play. There are no levels, scores or questions to read.
+  if (isToddler) {
+    return (
+      <div className="learn2">
+        {playTimeButton}
+        <ProfileBanner profile={profile} days={days} />
+        <section aria-labelledby="extras-title" className="learn-section">
+          <h2 id="extras-title" className="learn-h2">
+            More to do
+          </h2>
+          <ul className="extra-list">
+            {courseCount > 0 && (
+              <ExtraCard
+                emoji="🖼️"
+                title="Look and pick"
+                text="Little picture games. Listen, then tap the right picture."
+                action="Open"
+                tone="#4c1d95"
+                onClick={() => onStartTopic(COURSES_PAGE_ID)}
+              />
+            )}
+            <ExtraCard
+              emoji="🌟"
+              title="Kiyu's wardrobe"
+              text="Earn stars to unlock a new look for Kiyu."
+              action="Dress up"
+              tone="#b45309"
+              onClick={() => onStartTopic(WARDROBE_PAGE_ID)}
+            />
+          </ul>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="learn2">
-      {isToddler && (
-        <button type="button" className="next-btn playtime-btn" data-silent onClick={() => onStartTopic(PLAY_TIME_ID)}>
-          <span className="challenge-emoji" aria-hidden="true">
-            <Pic emoji="🎈" />
-          </span>
-          <span>
-            <b>Play time</b>
-            <small>Tap, pop and play</small>
-          </span>
-          <IconPlay size={28} />
-        </button>
-      )}
-
       <ProfileBanner profile={profile} days={days} />
 
       {next ? (
@@ -232,13 +269,13 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
             <ExtraCard
               emoji="📚"
               title="Bonus courses"
-              text={`${courseCount} extra courses, ${freeCourseCount(profile.track)} free. Space, animals and more.`}
+              text={`${courseCount} extra courses, ${freeCourseCount(courses)} free. Space, animals and more.`}
               action="See all"
               tone="#4c1d95"
               onClick={() => onStartTopic(COURSES_PAGE_ID)}
             />
           )}
-          {profile.track === 'early' && !isToddler && playTimeCard}
+          {pathway === 'early' && playTimeCard}
           {!isToddler && (
             <ExtraCard
               emoji="🧼"

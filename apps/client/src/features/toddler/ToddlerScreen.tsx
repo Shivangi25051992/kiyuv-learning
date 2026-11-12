@@ -9,9 +9,12 @@ import {
   DayPlay,
   FruitPlay,
   OppositesPlay,
+  HomePlay,
   PeekabooPlay,
   SongPlay,
+  SpacePlay,
   VehiclesPlay,
+  WeatherPlay,
 } from './moreActivities.js';
 import { useCompanion } from '../companion/CompanionProvider.js';
 import { PLAY_ACTIVITIES, PLAY_GROUPS, PLAY_TIME_ID } from './playTime.js';
@@ -30,6 +33,9 @@ const ACTIVITY_VIEWS: Record<string, React.FC> = {
   'play-body': BodyPlay,
   'play-day': DayPlay,
   'play-fruit': FruitPlay,
+  'play-home': HomePlay,
+  'play-space': SpacePlay,
+  'play-weather': WeatherPlay,
   'play-music': MusicPlay,
   'play-song': SongPlay,
 };
@@ -51,6 +57,8 @@ export const ToddlerScreen: React.FC<ToddlerScreenProps> = ({ id, profile, onOpe
   const activity = PLAY_ACTIVITIES.find((a) => a.id === id);
   const View = ACTIVITY_VIEWS[id];
   const { react: companion } = useCompanion();
+  // Some activities need a little more age: a 2-year-old sees the simplest ones first.
+  const visible = PLAY_ACTIVITIES.filter((a) => profile.age >= (a.minAge ?? 0));
 
   // Kiyu runs over to whatever the child taps, and cheers.
   const runToTap = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -78,11 +86,11 @@ export const ToddlerScreen: React.FC<ToddlerScreenProps> = ({ id, profile, onOpe
       {isHub ? (
         <>
           <p className="play-intro">Tap, look and listen. There are no wrong answers!</p>
-          {PLAY_GROUPS.map((group) => (
+          {PLAY_GROUPS.filter((g) => visible.some((a) => a.group === g)).map((group) => (
             <section key={group} className="play-group" aria-label={group}>
               <h2 className="play-group-title">{group}</h2>
               <ul className="play-hub">
-                {PLAY_ACTIVITIES.filter((a) => a.group === group).map((a) => (
+                {visible.filter((a) => a.group === group).map((a) => (
                   <li key={a.id}>
                     <button type="button" className="play-tile" data-silent onClick={() => onOpen(a.id)}>
                       <span className="play-tile-emoji" aria-hidden="true">

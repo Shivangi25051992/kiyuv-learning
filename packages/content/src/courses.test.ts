@@ -19,7 +19,7 @@ describe('bonus courses', () => {
 
   it('keeps a free taste on each track and the rest premium', () => {
     for (const track of ['early', 'primary'] as const) {
-      const free = freeCourseCount(track);
+      const free = freeCourseCount(coursesForTrack(track));
       expect(free).toBeGreaterThanOrEqual(3);
       expect(free).toBeLessThan(coursesForTrack(track).length);
     }

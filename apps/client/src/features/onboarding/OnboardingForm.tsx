@@ -10,8 +10,8 @@ import {
   type FavColor,
   type KidOnboardingInput,
   type KidProfile,
-  type Track,
 } from '@kiyuv/shared';
+import { PATHWAY_LABEL, pathwayOf } from '@kiyuv/content';
 import { getCurrentAuthUser, loadChildNames } from '../../lib/firebase/index.js';
 import type { LegacyImportCandidate } from '../../lib/sync/index.js';
 import { Mascot, type MascotMood } from '../../ui/Mascot.js';
@@ -86,9 +86,6 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
   const [state, setState] = useState<string>(existingProfile?.state ?? '');
   const [favColor, setFavColor] = useState<FavColor>(existingProfile?.favColor ?? 'blue');
   const [avatar, setAvatar] = useState<string>(existingProfile?.avatar ?? '🧒');
-  const [track, setTrack] = useState<Track>(
-    existingProfile?.track ?? suggestTrack(existingProfile?.age ?? 6),
-  );
   const [selectedLegacyIdx, setSelectedLegacyIdx] = useState<number>(-1);
   const [error, setError] = useState<string>('');
   const [saving, setSaving] = useState(false);
@@ -100,6 +97,9 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
   );
 
   const computedBand = computeAgeBand(age);
+  // The learning level always follows the age, so changing the age changes the content.
+  const track = suggestTrack(age);
+  const stageLabel = PATHWAY_LABEL[pathwayOf({ age })];
 
   // Move the reader to the new step's title when the step changes.
   useEffect(() => {
@@ -109,12 +109,7 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
   const stepInfo = STEP_TITLES[step] ?? STEP_TITLES[0]!;
   const isLastStep = step === STEP_COUNT - 1;
 
-  const handleAgeChange = (nextAge: number) => {
-    setAge(nextAge);
-    if (!existingProfile) {
-      setTrack(suggestTrack(nextAge));
-    }
-  };
+  const handleAgeChange = (nextAge: number) => setAge(nextAge);
 
   const handleCountryChange = (nextCountry: string) => {
     setCountry(nextCountry);
@@ -321,24 +316,9 @@ export const OnboardingForm: React.FC<OnboardingFormProps> = ({
                 </div>
               </fieldset>
 
-              <details className="more-options">
-                <summary>Change the learning level</summary>
-                <div className="field">
-                  <label htmlFor="ob-track">Level</label>
-                  <select
-                    id="ob-track"
-                    value={track}
-                    onChange={(e) => setTrack(e.target.value as Track)}
-                    className="text-input"
-                  >
-                    <option value="early">Early years (ages 2 to 4)</option>
-                    <option value="primary">Primary and Olympiad (grades 1 to 5)</option>
-                  </select>
-                  <span className="field-hint">
-                    We chose {track === 'early' ? 'Early years' : 'Primary'} from the age.
-                  </span>
-                </div>
-              </details>
+              <p className="field-hint" id="ob-stage" role="status">
+                Learning stage: <b>{stageLabel}</b>. It changes with the age.
+              </p>
             </div>
           )}
 
