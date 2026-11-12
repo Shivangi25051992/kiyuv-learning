@@ -254,3 +254,28 @@ describe('mixed challenge', () => {
     expect(Object.keys(last.topics)).not.toContain('challenge');
   });
 });
+
+describe('finish screen "Next up" tiles', () => {
+  it('after a cleared round shows what to play next and starts it', () => {
+    const played: string[] = [];
+    let profile = kid();
+    const { container } = render(
+      <TopicRunner
+        profile={profile}
+        topicId="y-add-e"
+        onUpdateProfile={(p) => (profile = p)}
+        onExitToMap={() => {}}
+        onPlayTopic={(id) => played.push(id)}
+      />,
+    );
+    for (let i = 0; i < 10; i++) {
+      fireEvent.click(choice('A'));
+      act(() => void vi.advanceTimersByTime(1300));
+    }
+    expect(container.querySelector('.finish')).not.toBeNull();
+    const tiles = container.querySelectorAll('.next-tile');
+    expect(tiles.length).toBeGreaterThan(0);
+    fireEvent.click(tiles[0]!);
+    expect(played).toEqual(['y-sub-e']);
+  });
+});

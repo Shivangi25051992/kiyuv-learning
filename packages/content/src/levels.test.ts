@@ -12,6 +12,7 @@ import {
   levelStatus,
   PASS_MARK,
   TOPIC_LEVEL,
+  upNextTopics,
 } from './levels.js';
 
 const tp = (b: number, over: Partial<TopicProgress> = {}): TopicProgress => ({ p: 1, c: b, b, m: false, ...over });
@@ -114,5 +115,21 @@ describe('challenge', () => {
     const three = { ...two, 'y-mul-e': tp(9), 'y-syn': tp(5) };
     expect(isChallengeUnlocked('primary', three)).toBe(true);
     expect(challengePool('primary', three).sort()).toEqual(['y-add-e', 'y-mul-e', 'y-sub-e']);
+  });
+});
+
+describe('up next suggestions', () => {
+  it('suggests open, uncleared topics in order and skips the one just played', () => {
+    expect(upNextTopics('primary', {}, 'y-add-e')).toEqual(['y-sub-e']);
+    const one = { 'y-add-e': tp(8) };
+    expect(upNextTopics('primary', one, 'y-add-e')).toEqual(['y-sub-e', 'y-mul-e']);
+    const two = { 'y-add-e': tp(8), 'y-sub-e': tp(8) };
+    expect(upNextTopics('primary', two, 'y-sub-e')).toEqual(['y-mul-e', 'y-syn']);
+    expect(upNextTopics('primary', two, 'y-sub-e', 1)).toEqual(['y-mul-e']);
+  });
+
+  it('suggests nothing once every topic is cleared', () => {
+    const all = Object.fromEntries(Object.keys(TOPIC_LEVEL.early).map((id) => [id, tp(10)]));
+    expect(upNextTopics('early', all, 'k-count5')).toEqual([]);
   });
 });

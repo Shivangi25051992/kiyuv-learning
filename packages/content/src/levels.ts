@@ -94,6 +94,16 @@ export function nextUnclearedTopic(track: Track, topics: Topics): string | null 
 }
 
 /**
+ * The topics to suggest after a round: open and not cleared yet, in the order a child
+ * works through them. The topic just played is left out.
+ */
+export function upNextTopics(track: Track, topics: Topics, justPlayed: string, limit = 2): string[] {
+  return topicOrder(track)
+    .filter((id) => id !== justPlayed && !isCleared(topics[id]) && isTopicUnlocked(track, topics, id))
+    .slice(0, limit);
+}
+
+/**
  * A topic is open when it is the next one to clear, the one right after it, or any level
  * already reached. So clearing a topic always opens the next one straight away.
  * A topic the child has already played stays open, so nobody who started before levels

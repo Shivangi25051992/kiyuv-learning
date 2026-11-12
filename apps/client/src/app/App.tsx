@@ -600,6 +600,10 @@ export const App: React.FC = () => {
                 topicId={currentTopicId}
                 onUpdateProfile={handleUpdateActiveProfileProgress}
                 onExitToMap={() => setCurrentTopicId(null)}
+                onPlayTopic={(tid) => {
+                  sfx.select();
+                  setCurrentTopicId(tid);
+                }}
                 requireParentPin={requireRecentParentPin}
                 storageKey={`${authUser.uid}:${activeProfile.kidId}`}
               />
