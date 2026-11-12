@@ -7,6 +7,7 @@ import { LearnHome } from './LearnHome.js';
 import { SubjectsView } from './SubjectsView.js';
 import { SUBJECTS_PAGE_ID } from './pages.js';
 import { saveRound } from '../play/roundState.js';
+import { markActiveToday, markDailyDone } from './dailyState.js';
 
 beforeEach(() => localStorage.clear());
 afterEach(() => cleanup());
@@ -113,7 +114,7 @@ describe('the adventure path', () => {
     const path = screen.getByRole('list', { name: /Adventure path/ });
     expect(within(path).getByRole('button', { name: /^Level 1,/ }).textContent).toMatch(/All done/);
     expect(within(path).getByRole('button', { name: /^Level 2,/ }).getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByText(/You are in Level 2/)).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Your profile' }).textContent).toMatch(/Level 2 of 10 · Busy Farm/);
   });
 
   it('keeps a topic open that was already played, and starts it when tapped', () => {
@@ -142,7 +143,7 @@ describe('challenges and extras', () => {
     const onStart = vi.fn();
     const topics = { 'y-add-e': tp(8), 'y-sub-e': tp(8), 'y-mul-e': tp(8) };
     render(<LearnHome profile={kid(topics)} onStartTopic={onStart} />);
-    expect(screen.queryByRole('progressbar')).toBeNull();
+    expect(screen.queryByRole('progressbar', { name: /Mixed Challenge/ })).toBeNull();
     const extras = screen.getByRole('region', { name: 'Challenges and extras' });
     fireEvent.click(within(extras).getByRole('button', { name: /Mixed Challenge/ }));
     expect(onStart).toHaveBeenCalledWith(CHALLENGE_ID);
@@ -161,7 +162,8 @@ describe('challenges and extras', () => {
   it('recommends a topic to retry and starts it', () => {
     const onStart = vi.fn();
     const topics = { 'y-add-e': tp(8), 'y-sub-e': tp(8), 'y-mul-e': tp(8), 'y-add-m': tp(3) };
-    render(<LearnHome profile={kid(topics)} onStartTopic={onStart} />);
+    // a fixed day, so the day's challenge cannot be the same topic as the one being retried
+    render(<LearnHome profile={kid(topics)} now={new Date(2026, 10, 15, 10)} onStartTopic={onStart} />);
     const rec = screen.getByRole('region', { name: 'Recommended for you' });
     expect(within(rec).getAllByRole('button').length).toBeLessThanOrEqual(2);
     fireEvent.click(within(rec).getByRole('button', { name: /3 out of 10/ }));
@@ -169,16 +171,88 @@ describe('challenges and extras', () => {
   });
 });
 
-describe('who sees what', () => {
-  it('shows stars and a streak only when there is one', () => {
-    const { unmount } = render(<LearnHome profile={kid({}, { stars: 108, streak: 0 })} onStartTopic={() => {}} />);
-    expect(screen.getByText('108')).toBeTruthy();
-    expect(screen.queryByText(/in a row/)).toBeNull();
-    unmount();
-    render(<LearnHome profile={kid({}, { stars: 1, streak: 4 })} onStartTopic={() => {}} />);
-    expect(screen.getByText(/in a row/)).toBeTruthy();
+describe('profile banner', () => {
+  it('shows the child, where they are, their rank and a bar toward the next rank', () => {
+    render(<LearnHome profile={kid({ 'y-add-e': tp(10) }, { stars: 108, age: 6 })} onStartTopic={() => {}} />);
+    const banner = screen.getByRole('region', { name: 'Your profile' });
+    expect(within(banner).getByRole('heading', { name: 'Ari' })).toBeTruthy();
+    expect(banner.textContent).toMatch(/Age 6 · Level 1 of 10 · Sunny Meadow/);
+    expect(within(banner).getByText('Shining Star')).toBeTruthy();
+    expect(banner.textContent).toMatch(/1\s*mastered/);
+    const bar = within(banner).getByRole('progressbar', { name: 'Stars toward the next rank' });
+    expect(bar.getAttribute('aria-valuenow')).toBe('8');
+    expect(bar.getAttribute('aria-valuemax')).toBe('50');
+    expect(bar.getAttribute('aria-valuetext')).toBe('8 of 50 stars toward Medalist');
   });
 
+  it('counts the days in a row, and shows 0 days for a child who has not started', () => {
+    const now = new Date(2026, 10, 12, 10);
+    const { unmount } = render(<LearnHome profile={kid()} roundKey="u1:k1" now={now} onStartTopic={() => {}} />);
+    expect(within(screen.getByRole('region', { name: 'Your profile' })).getByText('days', { exact: false }).textContent).toMatch(/0/);
+    unmount();
+    markActiveToday('u1:k1', new Date(2026, 10, 11, 10));
+    markActiveToday('u1:k1', now);
+    render(<LearnHome profile={kid()} roundKey="u1:k1" now={now} onStartTopic={() => {}} />);
+    expect(screen.getByRole('region', { name: 'Your profile' }).textContent).toMatch(/2\s*days/);
+  });
+
+  it('says "1 day" for a single day', () => {
+    const now = new Date(2026, 10, 12, 10);
+    markActiveToday('u1:k1', now);
+    render(<LearnHome profile={kid()} roundKey="u1:k1" now={now} onStartTopic={() => {}} />);
+    expect(screen.getByRole('region', { name: 'Your profile' }).textContent).toMatch(/1\s*day(?!s)/);
+  });
+
+  it('shows a full bar at the top rank', () => {
+    render(<LearnHome profile={kid({}, { stars: 999 })} onStartTopic={() => {}} />);
+    const bar = screen.getByRole('progressbar', { name: 'Stars toward the next rank' });
+    expect(bar.getAttribute('aria-valuetext')).toMatch(/top rank/);
+  });
+});
+
+describe('daily challenge', () => {
+  const now = new Date(2026, 10, 12, 10);
+
+  it('is one card with the challenge of the day, between the next step and the recommendations', () => {
+    const onStart = vi.fn();
+    const { container } = render(<LearnHome profile={kid()} roundKey="u1:k1" now={now} onStartTopic={onStart} />);
+    const card = screen.getByRole('button', { name: /^Daily challenge for Thursday:/ });
+    expect(card.textContent).toMatch(/Daily challenge · Thu/);
+    expect(card.textContent).toMatch(/5 bonus stars/);
+    const order = [...container.querySelectorAll('.upnext, .daily-card, .rec-list')].map((n) => n.className.split(' ')[0]);
+    expect(order.slice(0, 2)).toEqual(['upnext', 'daily-card']);
+    fireEvent.click(card);
+    const pickId = JSON.parse(localStorage.getItem('kiyuv.daily.u1:k1')!).pick.id as string;
+    expect(onStart).toHaveBeenCalledWith(pickId);
+  });
+
+  it('is the same challenge all day, and shows "done" once it is completed', () => {
+    const first = render(<LearnHome profile={kid()} roundKey="u1:k1" now={now} onStartTopic={() => {}} />);
+    const name = first.container.querySelector('.daily-body b')!.textContent;
+    first.unmount();
+    markDailyDone('u1:k1', now);
+    const second = render(<LearnHome profile={kid({ 'y-add-e': tp(9) })} roundKey="u1:k1" now={now} onStartTopic={() => {}} />);
+    expect(second.container.querySelector('.daily-card.done')).not.toBeNull();
+    expect(screen.getByText('Done for today!')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Daily challenge for/ })).toBeNull();
+    expect(name!.length).toBeGreaterThan(0);
+  });
+
+  it('is a new challenge the next day', () => {
+    markDailyDone('u1:k1', now);
+    const tomorrow = new Date(2026, 10, 13, 10);
+    render(<LearnHome profile={kid()} roundKey="u1:k1" now={tomorrow} onStartTopic={() => {}} />);
+    expect(screen.getByRole('button', { name: /^Daily challenge for Friday:/ })).toBeTruthy();
+  });
+
+  it('is not shown to a 2 year old, who has Play time instead', () => {
+    render(<LearnHome profile={kid({}, { track: 'early', age: 2, ageBand: '2-4' })} now={now} onStartTopic={() => {}} />);
+    expect(screen.queryByText(/Daily challenge/)).toBeNull();
+    expect(screen.getAllByText(/Play time/).length).toBeGreaterThan(0);
+  });
+});
+
+describe('who sees what', () => {
   it('the little ones get Play time first; older children do not', () => {
     const onStart = vi.fn();
     const { container, unmount } = render(

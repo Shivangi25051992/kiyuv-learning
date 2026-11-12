@@ -35,6 +35,8 @@ interface TopicRunnerProps {
   onExitToMap: () => void;
   /** Starts another topic straight from the finish screen ("Next up" tiles). */
   onPlayTopic?: (topicId: string) => void;
+  /** Set when this topic is today's daily challenge and it is not done yet. */
+  daily?: { bonus: number; onComplete: () => void };
   /** Runs the action once the parent's PIN is fresh (asks for it if not). */
   requireParentPin?: (action: () => void) => void;
   /**
@@ -84,9 +86,12 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   onUpdateProfile,
   onExitToMap,
   onPlayTopic,
+  daily,
   requireParentPin,
   storageKey,
 }) => {
+  // Set once the daily challenge has been passed in this round, so the end screen can say so.
+  const [dailyBonus, setDailyBonus] = useState(0);
   // A round saved before a page refresh. The parent step is asked again, not skipped.
   const [restored] = useState(() => (storageKey ? loadRound(storageKey, topicId) : null));
   const [questionIndex, setQuestionIndex] = useState(restored?.questionIndex ?? 1);
@@ -215,8 +220,15 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
 
   const advanceOrFinish = (latestProfile: KidProfile, nextSessionCorrect: number) => {
     if (questionIndex >= QUESTIONS_PER_SESSION) {
+      let finalProfile = latestProfile;
+      // Passing today's daily challenge earns bonus stars, once a day.
+      if (daily && nextSessionCorrect >= PASS_MARK) {
+        finalProfile = { ...latestProfile, stars: latestProfile.stars + daily.bonus };
+        setDailyBonus(daily.bonus);
+        daily.onComplete();
+      }
       setFinished(true);
-      onUpdateProfile(latestProfile, true); // Immediate cloud sync when a round finishes
+      onUpdateProfile(finalProfile, true); // Immediate cloud sync when a round finishes
       return;
     }
     setQuestionIndex((q) => q + 1);
@@ -454,6 +466,11 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         {levelUp && (
           <p className="finish-level pop-in" role="status">
             <span aria-hidden="true">🎉</span> {levelUp}
+          </p>
+        )}
+        {dailyBonus > 0 && (
+          <p className="finish-daily pop-in" role="status">
+            <span aria-hidden="true">🎁</span> Daily challenge done! +{dailyBonus} bonus stars
           </p>
         )}
         {onPlayTopic && upNext.length > 0 && (

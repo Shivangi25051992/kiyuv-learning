@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHALLENGE_ID, LEVEL_COUNT, TOPIC_LEVEL } from '@kiyuv/content';
+import { LEVEL_COUNT, TOPIC_LEVEL } from '@kiyuv/content';
 import type { KidProfile, TopicProgress } from '@kiyuv/shared';
 import { buildPath, challengeProgress, recommend, topicInfoMap, upNext } from './learnPath.js';
 import { LEVEL_THEMES, themeOfLevel } from './levelThemes.js';
@@ -79,26 +79,32 @@ describe('up next', () => {
 
 describe('recommendations', () => {
   it('suggests nothing special for a brand new child except a free course', () => {
-    const r = recommend(kid(), CHALLENGE_ID);
+    const r = recommend(kid());
     expect(r.map((x) => x.kind)).toEqual(['course']);
   });
 
   it('suggests retrying a topic that was played but not cleared, lowest score first', () => {
-    const r = recommend(kid({ 'y-add-e': tp(8), 'y-sub-e': tp(4), 'y-mul-e': tp(6) }), CHALLENGE_ID);
+    const r = recommend(kid({ 'y-add-e': tp(8), 'y-sub-e': tp(4), 'y-mul-e': tp(6) }));
     expect(r[0]).toMatchObject({ kind: 'retry', id: 'y-mul-e' });
     expect(r[0]!.reason).toMatch(/6 out of 10/);
   });
 
   it('never suggests the same topic that is already "Up next"', () => {
-    const r = recommend(kid({ 'y-add-e': tp(4) }), CHALLENGE_ID);
+    const r = recommend(kid({ 'y-add-e': tp(4) }));
     expect(r.find((x) => x.kind === 'retry')).toBeUndefined();
   });
 
-  it('offers the Mixed Challenge once it is open, and never more than two suggestions', () => {
+  it('never repeats the Mixed Challenge, which has its own card, and never gives more than two', () => {
     const topics = { 'y-add-e': tp(8), 'y-sub-e': tp(8), 'y-mul-e': tp(8), 'y-add-m': tp(3) };
-    const r = recommend(kid(topics), CHALLENGE_ID);
+    const r = recommend(kid(topics));
     expect(r.length).toBeLessThanOrEqual(2);
-    expect(r.map((x) => x.kind)).toEqual(['retry', 'challenge']);
+    expect(r.map((x) => x.kind)).toEqual(['retry', 'course']);
+  });
+
+  it('leaves out the topic or course that is the daily challenge', () => {
+    const topics = { 'y-add-e': tp(8), 'y-sub-e': tp(8), 'y-mul-e': tp(8), 'y-add-m': tp(3) };
+    expect(recommend(kid(topics), 'y-add-m').find((x) => x.id === 'y-add-m')).toBeUndefined();
+    expect(recommend(kid(), 'c-space').find((x) => x.id === 'c-space')).toBeUndefined();
   });
 });
 

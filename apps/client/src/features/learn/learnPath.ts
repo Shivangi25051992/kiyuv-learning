@@ -94,7 +94,7 @@ export function upNext(profile: KidProfile): TopicRowData | null {
 }
 
 export interface Recommendation {
-  kind: 'retry' | 'challenge' | 'course';
+  kind: 'retry' | 'course';
   id: string;
   title: string;
   reason: string;
@@ -104,16 +104,15 @@ export interface Recommendation {
 /**
  * Up to two gentle suggestions, besides "Up next":
  *  - a topic that was played but not cleared yet (the lowest score first)
- *  - the Mixed Challenge, once it is open
  *  - a free bonus course that has never been played
  */
-export function recommend(profile: KidProfile, challengeId: string): Recommendation[] {
+export function recommend(profile: KidProfile, skipId?: string): Recommendation[] {
   const out: Recommendation[] = [];
   const info = topicInfoMap(profile.track);
   const next = nextUnclearedTopic(profile.track, profile.topics);
 
   const retry = Object.entries(profile.topics)
-    .filter(([id, p]) => p.p > 0 && !isCleared(p) && id !== next && info[id] && isTopicUnlocked(profile.track, profile.topics, id))
+    .filter(([id, p]) => p.p > 0 && !isCleared(p) && id !== next && id !== skipId && info[id] && isTopicUnlocked(profile.track, profile.topics, id))
     .sort((a, b) => a[1].b - b[1].b)[0];
   if (retry) {
     const [id, p] = retry;
@@ -125,16 +124,7 @@ export function recommend(profile: KidProfile, challengeId: string): Recommendat
       emoji: '🔄',
     });
   }
-  if (isChallengeUnlocked(profile.track, profile.topics)) {
-    out.push({
-      kind: 'challenge',
-      id: challengeId,
-      title: 'Mixed Challenge',
-      reason: 'Mixed questions from topics you cleared.',
-      emoji: '🏅',
-    });
-  }
-  const fresh = coursesForTrack(profile.track).find((c) => c.free && !profile.topics[c.id]);
+  const fresh = coursesForTrack(profile.track).find((c) => c.free && !profile.topics[c.id] && c.id !== skipId);
   if (fresh) {
     out.push({ kind: 'course', id: fresh.id, title: fresh.name, reason: 'A free bonus course to try.', emoji: fresh.emoji });
   }
