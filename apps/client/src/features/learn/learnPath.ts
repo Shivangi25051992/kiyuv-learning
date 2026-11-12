@@ -120,7 +120,7 @@ export function recommend(profile: KidProfile, skipId?: string): Recommendation[
       kind: 'retry',
       id,
       title: info[id]!.name,
-      reason: `Your best is ${p.b} out of 10. Score ${PASS_MARK} to clear it.`,
+      reason: `Your best is ${p.b} out of 10 first time. Get ${PASS_MARK} to clear it.`,
       emoji: '🔄',
     });
   }

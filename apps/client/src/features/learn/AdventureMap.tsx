@@ -52,7 +52,7 @@ const TopicRow: React.FC<{ topic: TopicRowData; savedQuestion: number | null; on
     : topic.state === 'cleared'
       ? `Cleared. Best ${topic.best} out of 10`
       : topic.best > 0
-        ? `Best ${topic.best} out of 10. Score ${PASS_MARK} to clear it`
+        ? `Best ${topic.best} out of 10 first time. Get ${PASS_MARK} to clear it`
         : 'New';
   const action = savedQuestion
     ? `Continue · Q${savedQuestion}`

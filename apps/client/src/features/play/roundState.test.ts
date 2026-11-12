@@ -23,9 +23,22 @@ const round = (over: Partial<RoundState> = {}): RoundState => ({
 describe('saved round', () => {
   it('round-trips, and only for the same topic', () => {
     saveRound('u1:k1', round());
-    expect(loadRound('u1:k1', 'y-add-e')).toEqual(round());
+    // the default test round already has a wrong try, so its question counts as missed
+    expect(loadRound('u1:k1', 'y-add-e')).toEqual({ ...round(), missed: true });
     expect(loadRound('u1:k1', 'y-sub-e')).toBeNull();
     expect(loadRound('u1:k2', 'y-add-e')).toBeNull();
+  });
+
+  it('remembers that the current question already had a wrong answer', () => {
+    saveRound('u1:k1', round({ wrongTries: 0 }));
+    expect(loadRound('u1:k1', 'y-add-e')?.missed).toBe(false);
+    saveRound('u1:k1', round({ wrongTries: 0, missed: true }));
+    expect(loadRound('u1:k1', 'y-add-e')?.missed).toBe(true);
+    // an older saved round with a wrong try or a parent step counts as missed too
+    saveRound('u1:k1', round({ wrongTries: 1 }));
+    expect(loadRound('u1:k1', 'y-add-e')?.missed).toBe(true);
+    saveRound('u1:k1', round({ helpStage: 'blocked' }));
+    expect(loadRound('u1:k1', 'y-add-e')?.missed).toBe(true);
   });
 
   it('can say "make a new question"', () => {

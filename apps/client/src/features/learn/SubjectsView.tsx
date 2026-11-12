@@ -51,7 +51,7 @@ export const SubjectsView: React.FC<SubjectsViewProps> = ({ profile, roundKey, o
         {cur.label}. {cur.subtitle}
       </p>
       <p className="subjects-help">
-        Pick any open topic. Score {PASS_MARK} or more out of 10 to clear it and open the next one. A topic turns{' '}
+        Pick any open topic. Get {PASS_MARK} or more right first time to clear it and open the next one. A topic turns{' '}
         <span className="gold-pill">gold</span> at 10 out of 10.
       </p>
 

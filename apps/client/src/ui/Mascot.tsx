@@ -1,4 +1,5 @@
 import React, { useId } from 'react';
+import { useActiveLook, type AccessoryKey } from '../features/wardrobe/lookStore.js';
 
 export type MascotMood =
   | 'happy'
@@ -19,6 +20,8 @@ interface MascotProps {
   /** Pixel size (width and height). */
   size?: number;
   className?: string;
+  /** What Kiyu wears. Leave out to wear what the child chose. Pass null to wear nothing. */
+  accessory?: AccessoryKey | null;
 }
 
 /**
@@ -26,7 +29,9 @@ interface MascotProps {
  * screen, themes with the child's colour, and costs almost nothing to load.
  * It is decoration only, so it is hidden from screen readers.
  */
-export const Mascot: React.FC<MascotProps> = ({ mood = 'happy', size = 120, className = '' }) => {
+export const Mascot: React.FC<MascotProps> = ({ mood = 'happy', size = 120, className = '', accessory }) => {
+  const activeLook = useActiveLook();
+  const look = accessory === undefined ? activeLook : accessory;
   // Each mascot needs its own gradient id. A shared id breaks when one copy is hidden.
   const gradientId = `mascot-body-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const eyesClosed = mood === 'cheer' || mood === 'sleepy' || mood === 'proud' || mood === 'laugh';
@@ -57,7 +62,18 @@ export const Mascot: React.FC<MascotProps> = ({ mood = 'happy', size = 120, clas
       {/* Ground shadow */}
       <ellipse className="mascot-shadow" cx="60" cy="112" rx="30" ry="5" fill="rgba(40,50,100,0.16)" />
 
-      <g className="mascot-bob">
+      <g className="mascot-bob" data-accessory={look ?? undefined}>
+        {look === 'cape' && (
+          <path className="mascot-cape" d="M30 52 Q6 92 24 114 L96 114 Q114 92 90 52 Z" fill="#e53935" stroke="#b3201f" strokeWidth="2" />
+        )}
+        {look === 'jetpack' && (
+          <g className="mascot-jetpack">
+            <rect x="10" y="60" width="16" height="38" rx="8" fill="#9aa5c8" stroke="#6b77a0" strokeWidth="2" />
+            <rect x="94" y="60" width="16" height="38" rx="8" fill="#9aa5c8" stroke="#6b77a0" strokeWidth="2" />
+            <ellipse className="mascot-flame" cx="18" cy="104" rx="5" ry="8" fill="#ffb02e" />
+            <ellipse className="mascot-flame" cx="102" cy="104" rx="5" ry="8" fill="#ffb02e" />
+          </g>
+        )}
         {/* Learning sprout */}
         <g className="mascot-sprout">
           <path d="M60 22 C60 14 60 10 60 6" stroke="#2f9e6e" strokeWidth="3.5" strokeLinecap="round" fill="none" />
@@ -138,6 +154,33 @@ export const Mascot: React.FC<MascotProps> = ({ mood = 'happy', size = 120, clas
         {mood === 'think' && <ellipse cx="60" cy="77" rx="5" ry="6" fill="#27305e" />}
         {mood === 'sleepy' && (
           <path d="M52 76 Q60 80 68 76" stroke="#27305e" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+        )}
+        {look === 'butterfly' && (
+          <g className="mascot-butterfly" transform="translate(100 16)">
+            <ellipse cx="-7" cy="-3" rx="8" ry="6" fill="#ff8fc7" stroke="#d9559d" strokeWidth="1.5" transform="rotate(-25 -7 -3)" />
+            <ellipse cx="7" cy="-3" rx="8" ry="6" fill="#b28cff" stroke="#7d58d6" strokeWidth="1.5" transform="rotate(25 7 -3)" />
+            <ellipse cx="-5" cy="5" rx="6" ry="4.5" fill="#ffb3da" stroke="#d9559d" strokeWidth="1.5" transform="rotate(20 -5 5)" />
+            <ellipse cx="5" cy="5" rx="6" ry="4.5" fill="#cdb4ff" stroke="#7d58d6" strokeWidth="1.5" transform="rotate(-20 5 5)" />
+            <rect x="-1.2" y="-6" width="2.4" height="15" rx="1.2" fill="#27305e" />
+          </g>
+        )}
+        {look === 'star' && (
+          <path d="M26 6 L29.5 14.5 L38.5 15.2 L31.6 21 L33.8 29.8 L26 25 L18.2 29.8 L20.4 21 L13.5 15.2 L22.5 14.5 Z" fill="#ffc83d" stroke="#d99a00" strokeWidth="2" strokeLinejoin="round" />
+        )}
+        {look === 'medal' && (
+          <g>
+            <path d="M48 82 L60 104 L72 82" stroke="#e53935" strokeWidth="6" strokeLinejoin="round" strokeLinecap="round" fill="none" />
+            <circle cx="60" cy="106" r="8.5" fill="#ffc83d" stroke="#d99a00" strokeWidth="2.5" />
+            <path d="M60 101 L61.8 105 L66 105.4 L62.9 108.2 L63.8 112.3 L60 110 L56.2 112.3 L57.1 108.2 L54 105.4 L58.2 105 Z" fill="#fff4c2" />
+          </g>
+        )}
+        {look === 'crown' && (
+          <g>
+            <path d="M40 30 L45 11 L54 23 L60 6 L66 23 L75 11 L80 30 Z" fill="#ffc83d" stroke="#d99a00" strokeWidth="2.5" strokeLinejoin="round" />
+            <circle cx="60" cy="24" r="3" fill="#e53935" />
+            <circle cx="47" cy="26" r="2.2" fill="#3b7bff" />
+            <circle cx="73" cy="26" r="2.2" fill="#1faa72" />
+          </g>
         )}
       </g>
     </svg>

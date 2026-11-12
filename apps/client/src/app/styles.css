@@ -3589,3 +3589,71 @@ select.text-input {
     transform: scale(1);
   }
 }
+
+/* "Right first time" score pill in a round */
+.first-pill svg {
+  color: #1faa72;
+}
+
+/* What Kiyu wears */
+.mascot-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: mascot-flame 0.3s ease-in-out infinite alternate;
+}
+@keyframes mascot-flame {
+  from {
+    transform: scaleY(0.8);
+  }
+  to {
+    transform: scaleY(1.25);
+  }
+}
+.mascot-butterfly {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: mascot-flutter 1.2s ease-in-out infinite alternate;
+}
+@keyframes mascot-flutter {
+  from {
+    transform: translate(100px, 16px) rotate(-8deg);
+  }
+  to {
+    transform: translate(100px, 16px) rotate(8deg);
+  }
+}
+
+/* Three pills fit beside the Topics button on a narrow phone */
+@media (max-width: 440px) {
+  .game-top {
+    gap: var(--s2);
+  }
+  .game-pills {
+    gap: 6px;
+  }
+  .game-pills .pill {
+    min-height: 40px;
+    padding: 0 10px;
+    gap: 4px;
+    font-size: 18px;
+  }
+  .game-top .back-topics {
+    padding: 0 var(--s3) 0 var(--s2);
+  }
+}
+@media (max-width: 345px) {
+  .game-top {
+    gap: 4px;
+  }
+  .game-pills {
+    gap: 4px;
+  }
+  .game-pills .pill {
+    padding: 0 7px;
+    font-size: 16px;
+  }
+  .game-top .back-topics {
+    gap: 2px;
+    padding: 0 10px 0 6px;
+  }
+}

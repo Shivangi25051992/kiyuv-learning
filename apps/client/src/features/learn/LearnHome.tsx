@@ -7,12 +7,15 @@ import { IconLock, IconPlay } from '../../ui/Icons.js';
 import { loadRound } from '../play/roundState.js';
 import { PLAY_TIME_ID } from '../toddler/playTime.js';
 import { useCompanion } from '../companion/CompanionProvider.js';
+import { FeelingsCard } from '../feelings/FeelingsCard.js';
+import { feelingToday } from '../feelings/feelingsState.js';
 import { AdventureMap } from './AdventureMap.js';
 import { DailyCard } from './DailyCard.js';
 import { ProfileBanner } from './ProfileBanner.js';
 import { todaysDaily } from './dailyChallenge.js';
 import { dayStreakOf, isDailyDone, loadDaily } from './dailyState.js';
 import { HABITS_PAGE_ID } from '../habits/habits.js';
+import { WARDROBE_PAGE_ID } from '../wardrobe/looks.js';
 import { SUBJECTS_PAGE_ID } from './pages.js';
 import { challengeProgress, recommend, upNext } from './learnPath.js';
 import { themeOfLevel } from './levelThemes.js';
@@ -61,8 +64,12 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
   const { react: companion } = useCompanion();
   const nickname = profile.nickname;
   useEffect(() => {
-    companion('greet', { once: true, aboveTabbar: true, ctx: { name: nickname, hour: now.getHours(), days } });
-  }, [companion, nickname, now, days]);
+    companion('greet', {
+      once: true,
+      aboveTabbar: true,
+      ctx: { name: nickname, hour: now.getHours(), days, feeling: feelingToday(dayKey, now) ?? undefined },
+    });
+  }, [companion, nickname, now, days, dayKey]);
   const status = levelStatus(profile.track, profile.topics);
   const theme = themeOfLevel(status.current);
   const next = upNext(profile);
@@ -105,7 +112,7 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
             <p className="eyebrow">Up next</p>
             <h2 id="upnext-title">{next.name}</h2>
             <p className="upnext-why">
-              {next.subject}. Score {PASS_MARK} or more out of 10 to clear it and open the next topic.
+              {next.subject}. Get {PASS_MARK} or more right first time to clear it and open the next topic.
             </p>
           </div>
           <Mascot mood="cheer" size={88} className="upnext-mascot" />
@@ -123,6 +130,10 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
           </div>
           <Mascot mood="cheer" size={88} className="upnext-mascot" />
         </section>
+      )}
+
+      {!isToddler && (
+        <FeelingsCard name={profile.nickname} storeKey={dayKey} now={now} onBreathe={() => onStartTopic('habit-breathe')} />
       )}
 
       {daily && (
@@ -182,7 +193,7 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
                 </span>
                 <span className="extra-text">
                   <b>Mixed Challenge</b>
-                  <small>10 mixed questions from topics you cleared. Get {CHALLENGE_WIN} or more to win!</small>
+                  <small>10 mixed questions from topics you cleared. Get {CHALLENGE_WIN} or more right first time to win!</small>
                 </span>
                 <span className="extra-go">Play</span>
               </button>
@@ -238,6 +249,14 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
               onClick={() => onStartTopic(HABITS_PAGE_ID)}
             />
           )}
+          <ExtraCard
+            emoji="🌟"
+            title="Kiyu's wardrobe"
+            text="Earn stars to unlock a new look for Kiyu."
+            action="Dress up"
+            tone="#b45309"
+            onClick={() => onStartTopic(WARDROBE_PAGE_ID)}
+          />
           <ExtraCard
             emoji="🔢"
             title="Browse by subject"

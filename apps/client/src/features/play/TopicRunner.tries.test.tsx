@@ -345,3 +345,116 @@ describe('daily challenge bonus', () => {
     expect(updates.at(-1)!.stars).toBe(18);
   });
 });
+
+
+describe('scoring: only answers right on the first try count', () => {
+  const Live: React.FC<{ updates: KidProfile[]; start?: Partial<KidProfile>; daily?: { bonus: number; onComplete: () => void } }> = ({ updates, start, daily }) => {
+    const [profile, setProfile] = React.useState(kid(start));
+    return (
+      <TopicRunner
+        profile={profile}
+        topicId="y-add-e"
+        onUpdateProfile={(p) => {
+          updates.push(p);
+          setProfile(p);
+        }}
+        onExitToMap={() => {}}
+        daily={daily}
+      />
+    );
+  };
+  /** Plays a full round. A question in `missAt` gets a wrong answer before the right one. */
+  const play = (missAt: number[]) => {
+    for (let q = 1; q <= 10; q++) {
+      if (missAt.includes(q)) {
+        fireEvent.click(choice('B'));
+        act(() => void vi.advanceTimersByTime(1000));
+      }
+      fireEvent.click(choice('A'));
+      act(() => void vi.advanceTimersByTime(1300));
+    }
+  };
+  const best = (updates: KidProfile[]) => updates.at(-1)!.topics['y-add-e']!.b;
+
+  it('a perfect round scores 10, and counts as mastered', () => {
+    const updates: KidProfile[] = [];
+    const { container } = render(<Live updates={updates} />);
+    play([]);
+    expect(container.querySelector('.finish-num')!.textContent).toBe('10');
+    expect(best(updates)).toBe(10);
+    expect(updates.at(-1)!.topics['y-add-e']!.m).toBe(true);
+  });
+
+  it('a question that needed a second try does not score, but the round still finishes', () => {
+    const updates: KidProfile[] = [];
+    const { container } = render(<Live updates={updates} />);
+    play([2, 5, 9]);
+    expect(container.querySelector('.finish')).not.toBeNull();
+    expect(container.querySelector('.finish-num')!.textContent).toBe('7');
+    expect(best(updates)).toBe(7);
+    expect(container.querySelector('.finish-score')!.getAttribute('aria-label')).toBe('7 out of 10 right first time');
+  });
+
+  it('with 4 questions missed the topic is NOT cleared, and the message says what is needed', () => {
+    const updates: KidProfile[] = [];
+    const { container } = render(<Live updates={updates} />);
+    play([1, 3, 6, 8]);
+    expect(container.querySelector('.finish-num')!.textContent).toBe('6');
+    expect(best(updates)).toBe(6);
+    expect(container.querySelector('.finish-msg')!.textContent).toMatch(/Get 7 or more right first time to clear this topic/);
+  });
+
+  it('shows the first-time score while playing', () => {
+    const updates: KidProfile[] = [];
+    const { container } = render(<Live updates={updates} />);
+    const pill = () => container.querySelector('.first-pill')!;
+    expect(pill().getAttribute('aria-label')).toBe('0 right first time so far');
+    fireEvent.click(choice('B'));
+    act(() => void vi.advanceTimersByTime(1000));
+    fireEvent.click(choice('A'));
+    act(() => void vi.advanceTimersByTime(1300));
+    expect(pill().getAttribute('aria-label')).toBe('0 right first time so far');
+    fireEvent.click(choice('A'));
+    expect(pill().getAttribute('aria-label')).toBe('1 right first time so far');
+  });
+
+  it('praise after a mistake is kind but is not the first-time cheer, and stars are still earned', () => {
+    const updates: KidProfile[] = [];
+    // already has stars, so the first-star badge does not interrupt the message
+    const { container } = render(<Live updates={updates} start={{ stars: 10 }} />);
+    fireEvent.click(choice('B'));
+    act(() => void vi.advanceTimersByTime(1000));
+    fireEvent.click(choice('A'));
+    expect(container.querySelector('.msg')!.textContent).toMatch(/^You got it! You earned 2 stars\./);
+    expect(updates.at(-1)!.stars).toBe(12);
+  });
+
+  it('after the parent steps in, the answer still does not count', () => {
+    const updates: KidProfile[] = [];
+    const { container } = render(<Live updates={updates} start={{ maxTries: 1 }} />);
+    fireEvent.click(choice('B'));
+    fireEvent.click(screen.getByRole('button', { name: 'Parent help' }));
+    fireEvent.click(screen.getByRole('button', { name: /try again/ }));
+    fireEvent.click(choice('A'));
+    expect(container.querySelector('.first-pill')!.getAttribute('aria-label')).toBe('0 right first time so far');
+    act(() => void vi.advanceTimersByTime(1300));
+    expect(updates.at(-1)!.topics['y-add-e']!.b).toBe(0);
+  });
+
+  it('the daily bonus needs 7 right first time: 3 missed still earns it, 4 missed does not', () => {
+    const won = vi.fn();
+    const a: KidProfile[] = [];
+    const first = render(<Live updates={a} daily={{ bonus: 5, onComplete: won }} />);
+    play([1, 2, 3]);
+    expect(won).toHaveBeenCalledTimes(1);
+    expect(a.at(-1)!.stars).toBe(20 + 5);
+    first.unmount();
+    const lost = vi.fn();
+    const b: KidProfile[] = [];
+    const second = render(<Live updates={b} daily={{ bonus: 5, onComplete: lost }} />);
+    play([1, 2, 3, 4]);
+    expect(lost).not.toHaveBeenCalled();
+    expect(b.at(-1)!.stars).toBe(20);
+    expect(second.container.querySelector('.finish-daily')).toBeNull();
+  });
+});

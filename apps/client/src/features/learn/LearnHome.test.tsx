@@ -33,7 +33,7 @@ describe('Up next', () => {
 
   it('says why it is next, in plain words', () => {
     render(<LearnHome profile={kid()} onStartTopic={() => {}} />);
-    expect(upnext().textContent).toMatch(/Score 7 or more out of 10 to clear it/);
+    expect(upnext().textContent).toMatch(/Get 7 or more right first time to clear it/);
   });
 
   it('moves on to the next topic after one is cleared', () => {

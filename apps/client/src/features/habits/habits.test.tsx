@@ -66,8 +66,8 @@ describe('the habits page', () => {
   it('lists the activities under headings with their ages, and opens one', () => {
     const { onOpen, onClose } = open(HABITS_PAGE_ID);
     for (const g of HABIT_GROUPS) expect(screen.getByRole('region', { name: g })).toBeTruthy();
-    expect(HABIT_ACTIVITIES).toHaveLength(5);
-    expect(screen.getAllByText(/^Ages \d+ to \d+$/)).toHaveLength(5);
+    expect(HABIT_ACTIVITIES).toHaveLength(12);
+    expect(screen.getAllByText(/^Ages \d+ to \d+$/)).toHaveLength(12);
     fireEvent.click(screen.getByRole('button', { name: /Cross safely/ }));
     expect(onOpen).toHaveBeenCalledWith('habit-road');
     fireEvent.click(screen.getByRole('button', { name: 'Back to the learn page' }));

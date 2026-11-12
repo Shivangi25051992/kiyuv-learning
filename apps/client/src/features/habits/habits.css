@@ -353,3 +353,164 @@
   font-size: 30px;
   line-height: 1;
 }
+
+/* "What would you do?" */
+.scenario-options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+}
+.scenario-btn {
+  width: 100%;
+  min-height: 64px;
+  padding: var(--s3) var(--s4);
+  border: var(--edge) solid var(--run-color);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: 0 4px 0 var(--run-color);
+  font-family: var(--font-body);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.scenario-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--run-color);
+}
+.scenario-btn.tried {
+  border-color: #d9d5e8;
+  box-shadow: none;
+  background: #f3f1fa;
+  color: #5a5475;
+}
+.scenario-feedback {
+  min-height: 3em;
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius-sm);
+  background: #f4f1fb;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #3a3358;
+}
+
+/* Put it in order */
+.seq-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s2);
+}
+.seq-step {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--s2) var(--s3);
+  border: var(--edge) solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.seq-step.done {
+  border-color: #1faa72;
+  background: #e9f8f0;
+}
+.seq-num {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #d9d5e8;
+  color: #4b4468;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+.seq-step.done .seq-num {
+  background: #0f7a4f;
+  color: #fff;
+}
+.seq-pic {
+  flex: none;
+  font-size: 34px;
+  line-height: 1;
+}
+.seq-name {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Calm breathing */
+.breath-wrap {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+}
+.breath-circle {
+  display: grid;
+  place-items: center;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #b9a8f0);
+  font-size: 64px;
+  transform: scale(1);
+  transition: transform 4s ease-in-out;
+  box-shadow: 0 0 0 10px rgba(185, 168, 240, 0.35);
+}
+.breath-wrap.phase-in .breath-circle {
+  transform: scale(1.7);
+}
+.breath-wrap.phase-out .breath-circle {
+  transform: scale(1);
+}
+.breath-count {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--run-color);
+}
+
+/* Your heart */
+.heart-box {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: var(--s3);
+}
+.heart-pic {
+  font-size: 96px;
+  line-height: 1;
+  animation: heart-beat calc(60s / var(--bpm, 80)) ease-in-out infinite;
+}
+.heart-bpm {
+  font-family: var(--font-display);
+  font-size: 44px;
+  line-height: 1;
+}
+.heart-box small {
+  font-weight: 800;
+  color: var(--muted);
+}
+@keyframes heart-beat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.18); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.1); }
+}

@@ -149,7 +149,7 @@ describe('Kiyu on screen', () => {
         <Trigger event="streak3" />
       </CompanionProvider>,
     );
-    const box = screen.getByRole('checkbox') as HTMLInputElement;
+    const box = screen.getByRole('checkbox', { name: /Show Kiyu/ }) as HTMLInputElement;
     expect(box.checked).toBe(true);
     fireEvent.click(screen.getByText('go'));
     expect(actor()).not.toBeNull();
@@ -161,7 +161,7 @@ describe('Kiyu on screen', () => {
     expect(actor()).toBeNull();
     cleanup();
     render(<CompanionProvider><CompanionSettings /></CompanionProvider>);
-    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole('checkbox', { name: /Show Kiyu/ }) as HTMLInputElement).checked).toBe(false);
   });
 
   it('a greeting is shown once while the app is open, not every time', () => {
