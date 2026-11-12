@@ -12,6 +12,7 @@ import { DailyCard } from './DailyCard.js';
 import { ProfileBanner } from './ProfileBanner.js';
 import { todaysDaily } from './dailyChallenge.js';
 import { dayStreakOf, isDailyDone, loadDaily } from './dailyState.js';
+import { HABITS_PAGE_ID } from '../habits/habits.js';
 import { SUBJECTS_PAGE_ID } from './pages.js';
 import { challengeProgress, recommend, upNext } from './learnPath.js';
 import { themeOfLevel } from './levelThemes.js';
@@ -227,6 +228,16 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
             />
           )}
           {profile.track === 'early' && !isToddler && playTimeCard}
+          {!isToddler && (
+            <ExtraCard
+              emoji="🧼"
+              title="Good habits"
+              text="Wash hands, eat well, cross safely, recycle and grow a plant."
+              action="Try"
+              tone="#0f7a4f"
+              onClick={() => onStartTopic(HABITS_PAGE_ID)}
+            />
+          )}
           <ExtraCard
             emoji="🔢"
             title="Browse by subject"
