@@ -291,3 +291,57 @@ describe('answer sizing', () => {
     expect(answerSize('A mountain that can erupt hot lava')).toBe('op-xl');
   });
 });
+
+describe('daily challenge bonus', () => {
+  // Like the real app: every update goes back into the runner as its new profile.
+  const Live: React.FC<{ updates: KidProfile[]; daily?: { bonus: number; onComplete: () => void } }> = ({ updates, daily }) => {
+    const [profile, setProfile] = React.useState(kid());
+    return (
+      <TopicRunner
+        profile={profile}
+        topicId="y-add-e"
+        onUpdateProfile={(p) => {
+          updates.push(p);
+          setProfile(p);
+        }}
+        onExitToMap={() => {}}
+        daily={daily}
+      />
+    );
+  };
+  const answer = (n: number) => {
+    for (let i = 0; i < n; i++) {
+      fireEvent.click(choice('A'));
+      act(() => void vi.advanceTimersByTime(1300));
+    }
+  };
+
+  it('adds the bonus stars once, marks the challenge done and says so', () => {
+    const onComplete = vi.fn();
+    const updates: KidProfile[] = [];
+    const { container } = render(<Live updates={updates} daily={{ bonus: 5, onComplete }} />);
+    answer(10);
+    expect(container.querySelector('.finish')).not.toBeNull();
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    // 10 right answers at 2 stars each, plus the 5 bonus stars
+    expect(updates.at(-1)!.stars).toBe(25);
+    expect(container.querySelector('.finish-daily')!.textContent).toMatch(/Daily challenge done! \+5 bonus stars/);
+  });
+
+  it('gives no bonus and no banner when it is not the daily challenge', () => {
+    const updates: KidProfile[] = [];
+    const { container } = render(<Live updates={updates} />);
+    answer(10);
+    expect(updates.at(-1)!.stars).toBe(20);
+    expect(container.querySelector('.finish-daily')).toBeNull();
+  });
+
+  it('does not pay the bonus before the round is finished', () => {
+    const onComplete = vi.fn();
+    const updates: KidProfile[] = [];
+    render(<Live updates={updates} daily={{ bonus: 5, onComplete }} />);
+    answer(9);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(updates.at(-1)!.stars).toBe(18);
+  });
+});

@@ -107,13 +107,13 @@ export interface Recommendation {
  *  - the Mixed Challenge, once it is open
  *  - a free bonus course that has never been played
  */
-export function recommend(profile: KidProfile, challengeId: string): Recommendation[] {
+export function recommend(profile: KidProfile, challengeId: string, skipId?: string): Recommendation[] {
   const out: Recommendation[] = [];
   const info = topicInfoMap(profile.track);
   const next = nextUnclearedTopic(profile.track, profile.topics);
 
   const retry = Object.entries(profile.topics)
-    .filter(([id, p]) => p.p > 0 && !isCleared(p) && id !== next && info[id] && isTopicUnlocked(profile.track, profile.topics, id))
+    .filter(([id, p]) => p.p > 0 && !isCleared(p) && id !== next && id !== skipId && info[id] && isTopicUnlocked(profile.track, profile.topics, id))
     .sort((a, b) => a[1].b - b[1].b)[0];
   if (retry) {
     const [id, p] = retry;
@@ -134,7 +134,7 @@ export function recommend(profile: KidProfile, challengeId: string): Recommendat
       emoji: '🏅',
     });
   }
-  const fresh = coursesForTrack(profile.track).find((c) => c.free && !profile.topics[c.id]);
+  const fresh = coursesForTrack(profile.track).find((c) => c.free && !profile.topics[c.id] && c.id !== skipId);
   if (fresh) {
     out.push({ kind: 'course', id: fresh.id, title: fresh.name, reason: 'A free bonus course to try.', emoji: fresh.emoji });
   }

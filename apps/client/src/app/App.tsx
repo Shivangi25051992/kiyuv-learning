@@ -68,6 +68,8 @@ import { TopicRunner } from '../features/play/TopicRunner.js';
 import { CoursesView } from '../features/play/CoursesView.js';
 import { ToddlerScreen } from '../features/toddler/ToddlerScreen.js';
 import { SubjectsView } from '../features/learn/SubjectsView.js';
+import { dailyRunFor } from '../features/learn/dailyChallenge.js';
+import { markActiveToday, markDailyDone } from '../features/learn/dailyState.js';
 import { SUBJECTS_PAGE_ID } from '../features/learn/pages.js';
 import { PLAY_TIME_ID, isPlayActivity, isPlayScreen } from '../features/toddler/playTime.js';
 import { COURSES_PAGE_ID, isCourseId } from '@kiyuv/content';
@@ -432,6 +434,8 @@ export const App: React.FC = () => {
     setProfiles(updatedList);
     saveLocalProfiles(authUser.uid, updatedList);
     scheduleKidSync(authUser.uid, nextProfile.kidId, flushImmediately);
+    // Learning today counts toward the day streak.
+    markActiveToday(`${authUser.uid}:${nextProfile.kidId}`);
   };
 
   const handleLogout = async () => {
@@ -643,6 +647,9 @@ export const App: React.FC = () => {
                 profile={activeProfile}
                 topicId={currentTopicId}
                 onUpdateProfile={handleUpdateActiveProfileProgress}
+                daily={dailyRunFor(`${authUser.uid}:${activeProfile.kidId}`, currentTopicId, () =>
+                  markDailyDone(`${authUser.uid}:${activeProfile.kidId}`),
+                )}
                 onExitToMap={() => setCurrentTopicId(backTarget(currentTopicId))}
                 onPlayTopic={(tid) => {
                   sfx.select();

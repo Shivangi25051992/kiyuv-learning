@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CHALLENGE_ID, CHALLENGE_WIN, COURSES_PAGE_ID, PASS_MARK, coursesForTrack, freeCourseCount, levelStatus } from '@kiyuv/content';
 import type { KidProfile } from '@kiyuv/shared';
 import { Pic } from '../../ui/Pic.js';
 import { Mascot } from '../../ui/Mascot.js';
-import { IconFlame, IconLock, IconPlay, IconStar } from '../../ui/Icons.js';
+import { IconLock, IconPlay } from '../../ui/Icons.js';
 import { loadRound } from '../play/roundState.js';
 import { PLAY_TIME_ID } from '../toddler/playTime.js';
 import { AdventureMap } from './AdventureMap.js';
+import { DailyCard } from './DailyCard.js';
+import { ProfileBanner } from './ProfileBanner.js';
+import { todaysDaily } from './dailyChallenge.js';
+import { dayStreakOf, isDailyDone, loadDaily } from './dailyState.js';
 import { SUBJECTS_PAGE_ID } from './pages.js';
 import { challengeProgress, recommend, upNext } from './learnPath.js';
 import { themeOfLevel } from './levelThemes.js';
@@ -17,6 +21,8 @@ interface LearnHomeProps {
   roundKey?: string;
   /** Opens a topic, a course, or a page (courses, subjects, challenge, play time). */
   onStartTopic: (id: string) => void;
+  /** The current time. Only tests set this. */
+  now?: Date;
 }
 
 /** A card with a picture, a title, a line of plain words and one clear action. */
@@ -43,11 +49,15 @@ const ExtraCard: React.FC<{
 );
 
 /** The Learn page: one clear next step, the adventure path, then challenges and extras. */
-export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStartTopic }) => {
+export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStartTopic, now: nowProp }) => {
+  const [now] = useState(() => nowProp ?? new Date());
+  const dayKey = roundKey ?? `kid:${profile.kidId}`;
+  const [daily] = useState(() => todaysDaily(dayKey, profile, now));
+  const dayState = loadDaily(dayKey);
   const status = levelStatus(profile.track, profile.topics);
   const theme = themeOfLevel(status.current);
   const next = upNext(profile);
-  const recs = recommend(profile, CHALLENGE_ID);
+  const recs = recommend(profile, CHALLENGE_ID, daily?.id);
   const challenge = challengeProgress(profile);
   const saved = next && roundKey ? loadRound(roundKey, next.id) : null;
   const courseCount = coursesForTrack(profile.track).length;
@@ -78,30 +88,7 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
         </button>
       )}
 
-      <header className="learn-top">
-        <div>
-          <h1 className="learn-hello">Hi {profile.nickname}!</h1>
-          <p className="learn-where">
-            {status.allCleared ? 'You finished the whole adventure!' : `You are in Level ${status.current}: ${theme.name}`}
-          </p>
-        </div>
-        <ul className="learn-chips" aria-label="Your progress">
-          <li className="chip">
-            <IconStar size={20} />
-            <span>
-              <b>{profile.stars}</b> stars
-            </span>
-          </li>
-          {profile.streak > 0 && (
-            <li className="chip">
-              <IconFlame size={20} />
-              <span>
-                <b>{profile.streak}</b> in a row
-              </span>
-            </li>
-          )}
-        </ul>
-      </header>
+      <ProfileBanner profile={profile} days={dayStreakOf(dayState, now)} />
 
       {next ? (
         <section className="upnext" aria-labelledby="upnext-title" style={{ ['--lvl' as string]: theme.color }}>
@@ -127,6 +114,10 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
           </div>
           <Mascot mood="cheer" size={88} className="upnext-mascot" />
         </section>
+      )}
+
+      {daily && (
+        <DailyCard pick={daily} done={isDailyDone(dayState, now)} now={now} onStart={() => onStartTopic(daily.id)} />
       )}
 
       {recs.length > 0 && (
