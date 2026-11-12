@@ -66,6 +66,8 @@ import { ParentAreaModal } from '../features/parent/ParentAreaModal.js';
 import { CurriculumView } from '../features/play/CurriculumView.js';
 import { TopicRunner } from '../features/play/TopicRunner.js';
 import { CoursesView } from '../features/play/CoursesView.js';
+import { ToddlerScreen } from '../features/toddler/ToddlerScreen.js';
+import { PLAY_TIME_ID, isPlayActivity, isPlayScreen } from '../features/toddler/playTime.js';
 import { COURSES_PAGE_ID, isCourseId } from '@kiyuv/content';
 import { ProfilePicker } from '../features/profiles/ProfilePicker.js';
 import { TrophiesView } from '../features/progress/TrophiesView.js';
@@ -75,8 +77,11 @@ import { clearJoinCode, readJoinCode } from '../features/groups/joinLink.js';
 type ScreenMode = 'picker' | 'onboarding' | 'app';
 
 /** Where leaving a round goes: a bonus course returns to the course list, the rest to the topic list. */
-const backTarget = (current: string | null): string | null =>
-  current && isCourseId(current) ? COURSES_PAGE_ID : null;
+const backTarget = (current: string | null): string | null => {
+  if (current && isCourseId(current)) return COURSES_PAGE_ID;
+  if (current && isPlayActivity(current)) return PLAY_TIME_ID;
+  return null;
+};
 
 export const App: React.FC = () => {
   const [authUser, setAuthUser] = useState<AuthParentUser | null>(null);
@@ -602,7 +607,17 @@ export const App: React.FC = () => {
             key={`${activeTab}-${currentTopicId ?? 'map'}`}
             id="main"
           >
-            {currentTopicId === COURSES_PAGE_ID ? (
+            {currentTopicId && isPlayScreen(currentTopicId) ? (
+              <ToddlerScreen
+                id={currentTopicId}
+                profile={activeProfile}
+                onOpen={(id) => {
+                  sfx.select();
+                  setCurrentTopicId(id);
+                }}
+                onClose={() => setCurrentTopicId(null)}
+              />
+            ) : currentTopicId === COURSES_PAGE_ID ? (
               <CoursesView
                 profile={activeProfile}
                 onBack={() => setCurrentTopicId(null)}

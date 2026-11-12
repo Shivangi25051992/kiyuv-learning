@@ -21,6 +21,7 @@ import {
 import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
 import { Pic } from '../../ui/Pic.js';
 import { SUBJECT_COLORS } from './subjectColors.js';
+import { PLAY_TIME_ID } from '../toddler/playTime.js';
 import { loadRound } from './roundState.js';
 import { IconCheck, IconFlame, IconLock, IconPlay, IconStar, IconTrophy } from '../../ui/Icons.js';
 
@@ -90,6 +91,20 @@ const ChallengeButton: React.FC<{ profile: KidProfile; onStart: () => void }> = 
     </button>
   );
 };
+
+/** Play time for the youngest children: tap-and-see activities with no questions. */
+const PlayTimeButton: React.FC<{ onOpen: () => void }> = ({ onOpen }) => (
+  <button type="button" className="next-btn playtime-btn" data-silent onClick={onOpen}>
+    <span className="challenge-emoji" aria-hidden="true">
+      <Pic emoji="🎈" />
+    </span>
+    <span>
+      <b>Play time</b>
+      <small>Tap, pop and play</small>
+    </span>
+    <IconPlay size={28} />
+  </button>
+);
 
 /** One button that opens the bonus courses page, so the long course list stays out of the way. */
 const CoursesButton: React.FC<{ profile: KidProfile; onOpen: () => void }> = ({ profile, onOpen }) => {
@@ -196,6 +211,7 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
   if (mode === 'play') {
     return (
       <div className="play-home">
+        {profile.track === 'early' && <PlayTimeButton onOpen={() => onStartTopic(PLAY_TIME_ID)} />}
         <button
           type="button"
           className="surprise-btn"
@@ -277,6 +293,7 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
   // --------------------------------------------------------------- Learn mode
   return (
     <div className="learn-home">
+      {profile.track === 'early' && profile.age <= 3 && <PlayTimeButton onOpen={() => onStartTopic(PLAY_TIME_ID)} />}
       <StatsBar profile={profile} />
       <LevelBanner profile={profile} />
 
@@ -297,6 +314,7 @@ export const CurriculumView: React.FC<CurriculumViewProps> = ({
       )}
 
       <ChallengeButton profile={profile} onStart={() => onStartTopic(CHALLENGE_ID)} />
+      {profile.track === 'early' && profile.age > 3 && <PlayTimeButton onOpen={() => onStartTopic(PLAY_TIME_ID)} />}
       <CoursesButton profile={profile} onOpen={() => onStartTopic(COURSES_PAGE_ID)} />
 
       <h2 className="section-title">

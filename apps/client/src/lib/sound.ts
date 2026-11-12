@@ -196,6 +196,19 @@ export const sfx = {
   hello: () => melody([[C5, 0.08], [G5, 0.08], [E6, 0.2, 0.5]], { type: 'triangle', sparkle: true }),
 };
 
+/**
+ * The six bars of the little xylophone: a pentatonic scale (C D E G A, then high C).
+ * Any notes tapped together sound pleasant, so random tapping still makes music.
+ */
+export const XYLOPHONE_NOTES = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5] as const;
+
+/** Plays one xylophone bar (0 to 5): a soft, clear bell tone. */
+export function playNote(index: number): void {
+  const freq = XYLOPHONE_NOTES[index];
+  if (freq === undefined) return;
+  tone(freq, 0.5, { volume: 0.2, sparkle: true });
+}
+
 // ---------------------------------------------------------------------------
 // Read-aloud voice (the browser's built-in speech; nothing is sent anywhere)
 //
