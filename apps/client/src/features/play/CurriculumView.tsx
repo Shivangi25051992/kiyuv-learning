@@ -17,6 +17,7 @@ import {
   type CurriculumSystem,
 } from '@kiyuv/content';
 import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
+import { Pic } from '../../ui/Pic.js';
 import { loadRound } from './roundState.js';
 import { IconCheck, IconFlame, IconLock, IconPlay, IconStar, IconTrophy } from '../../ui/Icons.js';
 
@@ -78,18 +79,20 @@ const ChallengeButton: React.FC<{ profile: KidProfile; onStart: () => void }> = 
   if (!isChallengeUnlocked(profile.track, profile.topics)) {
     return (
       <p className="challenge-hint">
-        <IconLock size={14} /> Clear {CHALLENGE_MIN_TOPICS} topics to unlock the Mixed Challenge ({have}/{CHALLENGE_MIN_TOPICS}).
+        <IconLock size={18} /> Clear {CHALLENGE_MIN_TOPICS} topics to unlock the Mixed Challenge ({have}/{CHALLENGE_MIN_TOPICS}).
       </p>
     );
   }
   return (
-    <button type="button" className="challenge-btn" data-silent onClick={onStart}>
-      <span aria-hidden="true">🏅</span>
+    <button type="button" className="next-btn challenge-btn" data-silent onClick={onStart}>
+      <span className="challenge-emoji" aria-hidden="true">
+        <Pic emoji="🏅" />
+      </span>
       <span>
         <b>Mixed Challenge</b>
         <small>Win with {CHALLENGE_WIN} or more out of 10</small>
       </span>
-      <IconPlay size={26} />
+      <IconPlay size={28} />
     </button>
   );
 };
@@ -100,16 +103,30 @@ const BonusCourses: React.FC<{ profile: KidProfile; onStart: (id: string) => voi
   return (
     <section className="bonus-courses" aria-label="Bonus courses">
       <h2 className="section-title">Bonus courses</h2>
-      <ul className="bonus-grid">
-        {COURSES.map((c) => {
+      <ul className="game-grid">
+        {COURSES.map((c, i) => {
+          const colors = SUBJECT_COLORS[(i + 3) % SUBJECT_COLORS.length]!;
           const best = profile.topics[c.id]?.b ?? 0;
           return (
-            <li key={c.id}>
-              <button type="button" className="bonus-card" data-silent onClick={() => onStart(c.id)}>
-                <span className="bonus-emoji" aria-hidden="true">{c.emoji}</span>
-                <span className="bonus-name">{c.name}</span>
-                <small>{c.blurb}</small>
-                <span className="bonus-best">{best > 0 ? `Best: ${best}/10` : 'New'}</span>
+            <li key={c.id} className="stagger-item" style={{ ['--i' as string]: i }}>
+              <button
+                type="button"
+                className="game-card"
+                data-silent
+                style={{
+                  ['--card-main' as string]: colors.main,
+                  ['--card-text' as string]: colors.text,
+                  ['--card-soft' as string]: colors.soft,
+                }}
+                onClick={() => onStart(c.id)}
+                aria-label={`${c.name}. ${c.blurb}. ${best > 0 ? `Best score ${best} out of 10` : 'Not played yet'}`}
+              >
+                <span className="game-emoji" aria-hidden="true">
+                  <Pic emoji={c.emoji} />
+                </span>
+                <span className="game-name">{c.name}</span>
+                <span className="bonus-blurb">{c.blurb}</span>
+                <span className="game-go">{best > 0 ? `Best ${best}/10` : 'New'}</span>
               </button>
             </li>
           );
@@ -146,7 +163,7 @@ export const LevelBanner: React.FC<{ profile: KidProfile }> = ({ profile }) => {
           return (
             <li key={n} className={`level-step ${state}`}>
               <span className="sr-only">{`Level ${n} ${word}`}</span>
-              <span aria-hidden="true">{state === 'ahead' ? <IconLock size={12} /> : n}</span>
+              <span aria-hidden="true">{state === 'ahead' ? <IconLock size={15} /> : n}</span>
             </li>
           );
         })}
