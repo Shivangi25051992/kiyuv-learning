@@ -83,7 +83,7 @@ const EARTH: readonly MultipleChoiceItem[] = [
 
 export const COURSES: readonly Course[] = [
   { id: 'c-space', name: 'Space Explorers', emoji: '🚀', blurb: 'Planets, stars and astronauts', items: SPACE },
-  { id: 'c-body', name: 'Amazing Body', emoji: '🫀', blurb: 'How your body works', items: BODY },
+  { id: 'c-body', name: 'Amazing Body', emoji: '🧠', blurb: 'How your body works', items: BODY },
   { id: 'c-earth', name: 'Planet Earth', emoji: '🌍', blurb: 'Oceans, mountains and weather', items: EARTH },
 ];
 
