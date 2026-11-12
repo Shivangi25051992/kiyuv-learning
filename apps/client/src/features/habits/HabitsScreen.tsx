@@ -3,6 +3,7 @@ import { FAV_COLOR_THEMES, type KidProfile } from '@kiyuv/shared';
 import { Pic } from '../../ui/Pic.js';
 import { IconBack } from '../../ui/Icons.js';
 import { GrowPlay, PlatePlay, RecyclePlay, RoadPlay, WashPlay, type HabitProps } from './activities.js';
+import { BreathePlay, DigestPlay, HeartPlay, KindPlay, OnlinePlay, ScreenPlay, WaterPlay } from './activities2.js';
 import { HABITS_PAGE_ID, HABIT_ACTIVITIES, HABIT_GROUPS } from './habits.js';
 import '../toddler/toddler.css';
 import '../toddler/toddler2.css';
@@ -14,6 +15,13 @@ const VIEWS: Record<string, React.FC<HabitProps>> = {
   'habit-road': RoadPlay,
   'habit-recycle': RecyclePlay,
   'habit-grow': GrowPlay,
+  'habit-breathe': BreathePlay,
+  'habit-kind': KindPlay,
+  'habit-online': OnlinePlay,
+  'habit-screen': ScreenPlay,
+  'habit-water': WaterPlay,
+  'habit-digest': DigestPlay,
+  'habit-heart': HeartPlay,
 };
 
 interface HabitsScreenProps {

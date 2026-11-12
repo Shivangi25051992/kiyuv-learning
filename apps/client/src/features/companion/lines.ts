@@ -24,6 +24,8 @@ export interface LineContext {
   hour?: number;
   /** Days in a row the child has learned. */
   days?: number;
+  /** How the child said they feel today, if they did. */
+  feeling?: string;
 }
 
 /** How Kiyu moves: stays in a corner, runs across the screen, or runs to something that was tapped. */
@@ -56,6 +58,14 @@ const GREETINGS = {
   night: ['It is getting late, {name}. One short game, then sleep!', 'Yawn... a quick game and then bed, {name}!'],
 } as const;
 
+/** When a child has said how they feel, Kiyu's hello matches it, kindly. */
+const GENTLE_GREETINGS: Record<string, { mood: MascotMood; lines: readonly string[] }> = {
+  tired: { mood: 'sleepy', lines: ['Hi {name}. Let us go gently today.'] },
+  worried: { mood: 'love', lines: ['Hi {name}. I am here with you.'] },
+  sad: { mood: 'love', lines: ['Hi {name}. I am here with you.'] },
+  angry: { mood: 'think', lines: ['Hi {name}. Let us take a slow breath together.'] },
+};
+
 const PLAY_TAP_MOODS: readonly MascotMood[] = ['excited', 'laugh', 'wink', 'surprised'];
 
 const LINES: Record<Exclude<CompanionEvent, 'greet' | 'play-tap'>, { mood: MascotMood; lines: readonly string[]; ms: number; move: CompanionMove }> = {
@@ -73,6 +83,8 @@ const LINES: Record<Exclude<CompanionEvent, 'greet' | 'play-tap'>, { mood: Masco
 export function reactionFor(event: CompanionEvent, ctx: LineContext = {}, rand: () => number = Math.random): Reaction {
   const name = ctx.name?.trim() || 'friend';
   if (event === 'greet') {
+    const gentle = GENTLE_GREETINGS[ctx.feeling ?? ''];
+    if (gentle) return { mood: gentle.mood, line: withName(pickOne(gentle.lines, rand), name), move: 'home', ms: 4800 };
     const part = partOfDay(ctx.hour ?? 12);
     const base = withName(pickOne(GREETINGS[part], rand), name);
     const streak = (ctx.days ?? 0) >= 3 ? ` You are on a ${ctx.days}-day streak!` : '';

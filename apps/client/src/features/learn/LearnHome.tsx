@@ -7,6 +7,8 @@ import { IconLock, IconPlay } from '../../ui/Icons.js';
 import { loadRound } from '../play/roundState.js';
 import { PLAY_TIME_ID } from '../toddler/playTime.js';
 import { useCompanion } from '../companion/CompanionProvider.js';
+import { FeelingsCard } from '../feelings/FeelingsCard.js';
+import { feelingToday } from '../feelings/feelingsState.js';
 import { AdventureMap } from './AdventureMap.js';
 import { DailyCard } from './DailyCard.js';
 import { ProfileBanner } from './ProfileBanner.js';
@@ -61,8 +63,12 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
   const { react: companion } = useCompanion();
   const nickname = profile.nickname;
   useEffect(() => {
-    companion('greet', { once: true, aboveTabbar: true, ctx: { name: nickname, hour: now.getHours(), days } });
-  }, [companion, nickname, now, days]);
+    companion('greet', {
+      once: true,
+      aboveTabbar: true,
+      ctx: { name: nickname, hour: now.getHours(), days, feeling: feelingToday(dayKey, now) ?? undefined },
+    });
+  }, [companion, nickname, now, days, dayKey]);
   const status = levelStatus(profile.track, profile.topics);
   const theme = themeOfLevel(status.current);
   const next = upNext(profile);
@@ -123,6 +129,10 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
           </div>
           <Mascot mood="cheer" size={88} className="upnext-mascot" />
         </section>
+      )}
+
+      {!isToddler && (
+        <FeelingsCard name={profile.nickname} storeKey={dayKey} now={now} onBreathe={() => onStartTopic('habit-breathe')} />
       )}
 
       {daily && (

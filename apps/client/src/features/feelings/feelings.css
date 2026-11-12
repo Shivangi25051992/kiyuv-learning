@@ -1,0 +1,110 @@
+/* ==========================================================================
+   Daily feelings check-in
+   ========================================================================== */
+.feelings-card {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s4);
+  border: var(--edge) solid #8a6bd1;
+  border-radius: var(--radius-lg);
+  background: #fff;
+  box-shadow: 0 5px 0 #8a6bd1;
+}
+.feelings-title {
+  margin: 0;
+  font-size: 21px;
+  text-align: center;
+}
+.feelings-faces {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.feelings-face {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 84px;
+  padding: var(--s2);
+  border: 0;
+  border-radius: var(--radius);
+  background: #f4f1fb;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.feelings-face:active {
+  background: #e3dcf5;
+}
+.feelings-face > span {
+  font-size: 40px;
+  line-height: 1;
+}
+.feelings-face small {
+  font-size: 14px;
+  font-weight: 800;
+  color: #4b4468;
+}
+.feelings-skip {
+  justify-self: center;
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border: 0;
+  background: transparent;
+  color: #4b4468;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.feelings-card.answered {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+}
+.feelings-reply {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.feelings-note {
+  margin: var(--s2) 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #4b4468;
+}
+.feelings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.feelings-breathe,
+.feelings-done {
+  min-height: 44px;
+  padding: 0 var(--s4);
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.feelings-breathe {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: #5b3fb0;
+  color: #fff;
+}
+.feelings-done {
+  border: 2px solid #cfc7e6;
+  background: #fff;
+  color: #4b4468;
+}

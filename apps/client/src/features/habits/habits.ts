@@ -20,9 +20,16 @@ export interface HabitActivity {
 export const HABIT_ACTIVITIES: readonly HabitActivity[] = [
   { id: 'habit-wash', name: 'Wash your hands', emoji: '🧼', blurb: 'Five steps to clean hands', ages: 'Ages 3 to 8', group: 'Healthy habits' },
   { id: 'habit-plate', name: 'Healthy plate', emoji: '🥕', blurb: 'Every day foods and treats', ages: 'Ages 4 to 10', group: 'Healthy habits' },
+  { id: 'habit-breathe', name: 'Calm breathing', emoji: '😌', blurb: 'Breathe slowly with Kiyu', ages: 'Ages 4 to 13', group: 'Feelings and calm' },
+  { id: 'habit-kind', name: 'Be kind', emoji: '🤝', blurb: 'What would a good friend do?', ages: 'Ages 7 to 13', group: 'Kind and respectful' },
   { id: 'habit-road', name: 'Cross safely', emoji: '🚦', blurb: 'Wait, look, then cross', ages: 'Ages 5 to 9', group: 'Staying safe' },
+  { id: 'habit-online', name: 'Stay safe online', emoji: '🔒', blurb: 'Passwords, strangers and pop-ups', ages: 'Ages 8 to 13', group: 'Staying safe' },
+  { id: 'habit-screen', name: 'Sleep and screens', emoji: '🌙', blurb: 'Rest well and take screen breaks', ages: 'Ages 8 to 13', group: 'Sleep and screens' },
   { id: 'habit-recycle', name: 'Recycle sort', emoji: '📦', blurb: 'Which bin does it go in?', ages: 'Ages 5 to 10', group: 'Our planet' },
   { id: 'habit-grow', name: 'Grow a plant', emoji: '🌱', blurb: 'Water it, give it sun, watch it grow', ages: 'Ages 4 to 9', group: 'How things grow' },
+  { id: 'habit-water', name: 'The water cycle', emoji: '🌧', blurb: 'Follow a drop of water round and round', ages: 'Ages 7 to 12', group: 'How things grow' },
+  { id: 'habit-digest', name: 'Journey of food', emoji: '🍲', blurb: 'Where does your lunch go?', ages: 'Ages 8 to 13', group: 'How your body works' },
+  { id: 'habit-heart', name: 'Your heart', emoji: '🫀', blurb: 'What does exercise do to your heart?', ages: 'Ages 7 to 13', group: 'How your body works' },
 ];
 
 export const HABIT_GROUPS: readonly string[] = [...new Set(HABIT_ACTIVITIES.map((a) => a.group))];
