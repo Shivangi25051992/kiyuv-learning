@@ -3589,3 +3589,8 @@ select.text-input {
     transform: scale(1);
   }
 }
+
+/* "Right first time" score pill in a round */
+.first-pill svg {
+  color: #1faa72;
+}

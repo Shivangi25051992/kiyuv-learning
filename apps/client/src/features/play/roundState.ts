@@ -12,11 +12,14 @@ export interface RoundState {
   topicId: string;
   /** 1 to 10. */
   questionIndex: number;
+  /** Questions answered right on the first try so far in this round. */
   sessionCorrect: number;
   /** Null means "make a new question" (the last one was already answered). */
   question: GeneratedQuestion | null;
   wrongTries: number;
   helpStage: HelpStage;
+  /** True once the current question has had a wrong answer, so it can no longer score. */
+  missed?: boolean;
   /** Keys of the questions already asked this round, so none comes twice. */
   asked?: string[];
 }
@@ -104,6 +107,7 @@ export function loadRound(key: string, topicId: string): RoundState | null {
       question: v.question ?? null,
       wrongTries: v.wrongTries,
       helpStage: v.helpStage,
+      missed: v.missed === true || v.wrongTries > 0 || v.helpStage !== 'none',
       asked,
     };
   } catch {

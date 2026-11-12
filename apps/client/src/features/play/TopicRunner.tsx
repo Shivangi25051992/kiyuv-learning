@@ -27,7 +27,7 @@ import { Mascot, type MascotMood } from '../../ui/Mascot.js';
 import { useCompanion } from '../companion/CompanionProvider.js';
 import { questionKey } from './questionKey.js';
 import { clearRound, loadRound, saveRound } from './roundState.js';
-import { IconBack, IconFlame, IconPlay, IconRefresh, IconSpeaker, IconStar, IconBook } from '../../ui/Icons.js';
+import { IconBack, IconCheck, IconFlame, IconPlay, IconRefresh, IconSpeaker, IconStar, IconBook } from '../../ui/Icons.js';
 
 interface TopicRunnerProps {
   profile: KidProfile;
@@ -132,6 +132,9 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
   // Wrong answers given to the current question. When a parent has set a limit and the
   // tries run out, the question is blocked until a parent helps (stage 'blocked', then 'parent').
   const [wrongTries, setWrongTries] = useState(restored?.wrongTries ?? 0);
+  // True once this question has had a wrong answer. Only questions answered right on the
+  // first try score, so a score of 7 means 7 questions known, not 7 questions reached.
+  const [missed, setMissed] = useState(restored?.missed ?? false);
   const [revealed, setRevealed] = useState<string | null>(null);
   const [helpStage, setHelpStage] = useState<'none' | 'blocked' | 'parent'>(
     wasBlocked ? 'blocked' : 'none',
@@ -154,6 +157,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         question: null,
         wrongTries: 0,
         helpStage: 'none',
+        missed: false,
         asked: askedRef.current,
       });
       return;
@@ -165,9 +169,10 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       question,
       wrongTries,
       helpStage,
+      missed,
       asked: askedRef.current,
     });
-  }, [storageKey, topicId, finished, optionState, questionIndex, sessionCorrect, question, wrongTries, helpStage]);
+  }, [storageKey, topicId, finished, optionState, questionIndex, sessionCorrect, question, wrongTries, helpStage, missed]);
 
   const questionRef = useRef<HTMLDivElement>(null);
   const theme = FAV_COLOR_THEMES[profile.favColor] ?? FAV_COLOR_THEMES.blue;
@@ -184,6 +189,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     setFeedbackMsg('');
     setLocked(false);
     setWrongTries(0);
+    setMissed(false);
     setRevealed(null);
     setHelpStage('none');
     askedRef.current = [];
@@ -251,6 +257,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     setFeedbackMsg('');
     setLocked(false);
     setWrongTries(0);
+    setMissed(false);
     setRevealed(null);
     setHelpStage('none');
     setQuestion(freshQuestion());
@@ -280,7 +287,10 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       const nextStreak = profile.streak + 1;
       const nextBestStreak = Math.max(profile.bestStreak, nextStreak);
       const nextTotalCorrect = profile.totalCorrect + 1;
-      const nextSessionCorrect = sessionCorrect + 1;
+      // Right on the first try scores a point. Right after a mistake still moves on, and still
+      // earns stars, but does not count toward clearing the topic.
+      const firstTry = !missed;
+      const nextSessionCorrect = sessionCorrect + (firstTry ? 1 : 0);
       setSessionCorrect(nextSessionCorrect);
 
       // A challenge earns stars and streaks but never changes a topic's best score.
@@ -344,7 +354,8 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
         confettiBlast();
       }
 
-      const praise = pick(isEarly ? EARLY_PRAISES : PRIMARY_PRAISES);
+      // A correct answer after a mistake still gets kind words, but not the cheer for first time.
+      const praise = firstTry ? pick(isEarly ? EARLY_PRAISES : PRIMARY_PRAISES) : 'You got it!';
       if (newlyUnlockedBadge) {
         setTimeout(() => {
           showTrophy();
@@ -387,6 +398,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
       const maxTries = profile.maxTries ?? 0;
       const triesUsed = wrongTries + 1;
       setWrongTries(triesUsed);
+      setMissed(true);
       if (maxTries > 0 && triesUsed >= maxTries) {
         setLocked(true);
         setHelpStage('blocked');
@@ -445,12 +457,12 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
     const message = isChallenge
       ? sessionCorrect >= CHALLENGE_WIN
         ? 'Challenge won! You are a champion.'
-        : `Good try! Get ${CHALLENGE_WIN} or more right to win the challenge.`
+        : `Good try! Get ${CHALLENGE_WIN} or more right first time to win the challenge.`
       : sessionCorrect >= 9
         ? 'Mastered! Brilliant work.'
         : sessionCorrect >= PASS_MARK
           ? 'Topic cleared! Play again to score even higher.'
-          : `Good try! Get ${PASS_MARK} or more right to clear this topic.`;
+          : `Good try! Get ${PASS_MARK} or more right first time to clear this topic.`;
     const mood: MascotMood = sessionCorrect >= PASS_MARK ? 'cheer' : 'happy';
     const upNext = upNextTopics(profile.track, profile.topics, topicId, 2).flatMap((id) => {
       for (const subject of CURRICULUM[profile.track].subjects) {
@@ -476,7 +488,7 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
           {medal}
         </div>
         <h1 className="finish-title">Great practice, {profile.nickname}!</h1>
-        <div className="finish-score" aria-label={`${sessionCorrect} out of ${QUESTIONS_PER_SESSION}`}>
+        <div className="finish-score" aria-label={`${sessionCorrect} out of ${QUESTIONS_PER_SESSION} right first time`}>
           <span className="finish-num">{sessionCorrect}</span>
           <span className="finish-of">/ {QUESTIONS_PER_SESSION}</span>
         </div>
@@ -553,6 +565,12 @@ export const TopicRunner: React.FC<TopicRunnerProps> = ({
             <IconStar size={18} />
             <span key={profile.stars} className="bump">
               <CountUp value={profile.stars} />
+            </span>
+          </div>
+          <div className="pill first-pill" role="img" aria-label={`${sessionCorrect} right first time so far`}>
+            <IconCheck size={18} />
+            <span key={sessionCorrect} className="bump">
+              {sessionCorrect}
             </span>
           </div>
           <div

@@ -1,4 +1,5 @@
 import React from 'react';
+import { PASS_MARK } from '@kiyuv/content';
 import { Pic } from '../../ui/Pic.js';
 import { IconCheck, IconFlame, IconPlay } from '../../ui/Icons.js';
 import { DAILY_BONUS_STARS, type DailyPick } from './dailyChallenge.js';
@@ -39,7 +40,7 @@ export const DailyCard: React.FC<DailyCardProps> = ({ pick, done, now, onStart }
       className="daily-card"
       data-silent
       onClick={onStart}
-      aria-label={`Daily challenge for ${weekday}: ${pick.name}. Finish it for ${DAILY_BONUS_STARS} bonus stars.`}
+      aria-label={`Daily challenge for ${weekday}: ${pick.name}. Get ${PASS_MARK} or more right first time for ${DAILY_BONUS_STARS} bonus stars.`}
     >
       <span className="daily-ic" aria-hidden="true">
         <Pic emoji="🎁" />
@@ -48,7 +49,7 @@ export const DailyCard: React.FC<DailyCardProps> = ({ pick, done, now, onStart }
         <small>Daily challenge · {day}</small>
         <b>{pick.name}</b>
         <span>
-          {pick.subject} · Finish it for {DAILY_BONUS_STARS} bonus stars
+          {pick.subject} · {PASS_MARK}+ right first time for {DAILY_BONUS_STARS} bonus stars
         </span>
       </span>
       <span className="daily-go" aria-hidden="true">

@@ -105,7 +105,7 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
             <p className="eyebrow">Up next</p>
             <h2 id="upnext-title">{next.name}</h2>
             <p className="upnext-why">
-              {next.subject}. Score {PASS_MARK} or more out of 10 to clear it and open the next topic.
+              {next.subject}. Get {PASS_MARK} or more right first time to clear it and open the next topic.
             </p>
           </div>
           <Mascot mood="cheer" size={88} className="upnext-mascot" />
@@ -182,7 +182,7 @@ export const LearnHome: React.FC<LearnHomeProps> = ({ profile, roundKey, onStart
                 </span>
                 <span className="extra-text">
                   <b>Mixed Challenge</b>
-                  <small>10 mixed questions from topics you cleared. Get {CHALLENGE_WIN} or more to win!</small>
+                  <small>10 mixed questions from topics you cleared. Get {CHALLENGE_WIN} or more right first time to win!</small>
                 </span>
                 <span className="extra-go">Play</span>
               </button>
